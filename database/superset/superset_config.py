@@ -2,6 +2,8 @@ import os
 from typing import Any
 
 from flask_appbuilder.security.manager import AUTH_OAUTH
+from pyhive.sqlalchemy_hive import HiveDialect
+from sqlalchemy import text
 from superset.security import SupersetSecurityManager
 
 GITHUB = "github"
@@ -14,6 +16,20 @@ class GitHubSecurityManager(SupersetSecurityManager):
         if userinfo["username"] != GITHUB_USERNAME:
             return None
         return super().auth_user_oauth(userinfo)
+
+
+def spark_listing(dialect: HiveDialect, connection: Any, command: str, schema: str | None) -> list[Any]:
+    if schema is None:
+        return list(connection.execute(text(command)))
+    return list(connection.execute(text(f"{command} IN {dialect.identifier_preparer.quote_identifier(schema)}")))
+
+
+def spark_table_names(dialect: HiveDialect, connection: Any, schema: str | None, **kwargs: Any) -> list[str]:
+    return [row.tableName for row in spark_listing(dialect, connection, "SHOW TABLES", schema)]
+
+
+def spark_view_names(dialect: HiveDialect, connection: Any, schema: str | None, **kwargs: Any) -> list[str]:
+    return [row.viewName for row in spark_listing(dialect, connection, "SHOW VIEWS", schema)]
 
 
 def github_provider() -> dict[str, Any]:
@@ -33,6 +49,8 @@ def github_provider() -> dict[str, Any]:
     }
 
 
+HiveDialect.get_table_names = spark_table_names
+HiveDialect.get_view_names = spark_view_names
 SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
 SQLALCHEMY_DATABASE_URI = "sqlite:////app/superset_home/superset.db"
 AUTH_TYPE = AUTH_OAUTH

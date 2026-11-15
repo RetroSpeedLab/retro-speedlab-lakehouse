@@ -9,8 +9,17 @@ START = datetime(2026, 11, 15)
 RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
 HOURLY_JOBS = ("api-hourly", "silver", "gold", "vacuum-live", "sources-hourly", "platform")
-NIGHTLY_JOBS = ("api-nightly", "silver", "gold", "maintenance", "sources-nightly", "platform")
-INDEPENDENT = ("sources-hourly", "sources-nightly", "platform")
+NIGHTLY_JOBS = (
+    "api-nightly",
+    "silver",
+    "gold",
+    "experiments",
+    "maintenance",
+    "sources-nightly",
+    "videos-nightly",
+    "platform",
+)
+INDEPENDENT = ("sources-hourly", "sources-nightly", "videos-nightly", "platform")
 MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
 
 

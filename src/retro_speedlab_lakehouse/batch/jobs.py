@@ -9,6 +9,7 @@ from retro_speedlab_lakehouse.batch.gold import build_gold
 from retro_speedlab_lakehouse.batch.maintenance import maintain, vacuum_live
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
+from retro_speedlab_lakehouse.experiments.job import build_experiments
 from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, Table
 from retro_speedlab_lakehouse.mining.build import build_mining_gold
 from retro_speedlab_lakehouse.mining.records import mine_records
@@ -18,6 +19,7 @@ from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.catalog import SOURCE_TABLES
 from retro_speedlab_lakehouse.sources.job import ingest_sources
 from retro_speedlab_lakehouse.sources.registry import hourly_sources, nightly_sources
+from retro_speedlab_lakehouse.videos.mirror import mirror_videos
 
 Job = Callable[[SparkSession, Settings, Gate], int]
 ALL_TABLES: tuple[Table, ...] = CORE_TABLES + MINING_TABLES + SOURCE_TABLES
@@ -46,6 +48,10 @@ def gold(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_gold(spark, settings.lake, gate, now())
 
 
+def lab_experiments(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return build_experiments(spark, settings.lake, gate, now())
+
+
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_platform(spark, ALL_TABLES, settings.lake, gate, now())
 
@@ -65,6 +71,8 @@ JOBS: dict[str, Job] = {
     "sources-nightly": sources_nightly,
     "silver": silver,
     "gold": gold,
+    "experiments": lab_experiments,
+    "videos-nightly": mirror_videos,
     "platform": platform,
     "maintenance": maintenance,
     "vacuum-live": live_vacuum,

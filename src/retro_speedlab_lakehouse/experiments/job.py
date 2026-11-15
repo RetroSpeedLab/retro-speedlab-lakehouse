@@ -1,0 +1,129 @@
+from datetime import UTC, datetime, timedelta
+
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.types import (
+    BooleanType,
+    DoubleType,
+    LongType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
+
+from retro_speedlab_lakehouse.experiments.analysis import Outcome, analyzed
+from retro_speedlab_lakehouse.experiments.arms import Change, SearchHour, experiments
+from retro_speedlab_lakehouse.lake.catalog import LAB_EXPERIMENTS, LAB_RUNS, SEARCH_EVENTS
+from retro_speedlab_lakehouse.lake.tables import exists, read
+from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.quality.gate import Gate
+from retro_speedlab_lakehouse.settings import LakeSettings
+from retro_speedlab_lakehouse.stream.search_rows import ATTEMPTS, CROSSING, RECORDS, STEPS, field
+
+DEPLOYED = "deployed"
+IMPROVED = "improved"
+UNVERIFIED = "unverified"
+RESULT = StructType(
+    [
+        StructField("game", StringType(), False),
+        StructField("stamp", StringType(), False),
+        StructField("changed_at", TimestampType(), False),
+        StructField("metric", StringType(), False),
+        StructField("better", StringType(), False),
+        StructField("control_n", LongType(), False),
+        StructField("treatment_n", LongType(), False),
+        StructField("enough", BooleanType(), False),
+        StructField("control_estimate", DoubleType(), True),
+        StructField("treatment_estimate", DoubleType(), True),
+        StructField("effect", DoubleType(), True),
+        StructField("ci_lower", DoubleType(), True),
+        StructField("ci_upper", DoubleType(), True),
+        StructField("confidence", DoubleType(), True),
+        StructField("p_value", DoubleType(), True),
+        StructField("holm_p", DoubleType(), True),
+        StructField("bh_p", DoubleType(), True),
+        StructField("verdict", StringType(), False),
+        StructField("computed_at", TimestampType(), False),
+    ]
+)
+
+
+def search_hours(events: DataFrame) -> list[SearchHour]:
+    topic = F.col("topic")
+    hourly = (
+        events.where(topic.isin(ATTEMPTS, STEPS, RECORDS))
+        .groupBy(F.col("key").alias("game"), F.date_trunc("hour", "event_at").alias("hour"))
+        .agg(
+            F.sum((topic == ATTEMPTS).cast("long")).alias("attempts"),
+            F.sum(((topic == ATTEMPTS) & (field("outcome") == CROSSING)).cast("long")).alias("crossings"),
+            F.coalesce(
+                F.sum(F.when((topic == STEPS) & (field("kind") == IMPROVED), field("saved").cast("long"))), F.lit(0)
+            ).alias("saved"),
+            F.sum((topic == RECORDS).cast("long")).alias("records"),
+            F.sum(((topic == STEPS) & (field("kind") == UNVERIFIED)).cast("long")).alias("unverified"),
+        )
+        .where("attempts > 0")
+    )
+    return [
+        SearchHour(
+            row["game"],
+            row["hour"].replace(tzinfo=UTC),
+            row["attempts"],
+            row["crossings"],
+            row["saved"],
+            row["records"],
+            row["unverified"],
+        )
+        for row in hourly.collect()
+    ]
+
+
+def deployed_changes(lab_runs: DataFrame) -> list[Change]:
+    deployed = lab_runs.where(F.col("outcome") == DEPLOYED).select("game", "stamp", "started_at", "minutes").collect()
+    return [
+        Change(row["game"], row["stamp"], row["started_at"].replace(tzinfo=UTC) + timedelta(minutes=row["minutes"]))
+        for row in deployed
+    ]
+
+
+def result_row(change: Change, outcome: Outcome, now: datetime) -> tuple[object, ...]:
+    result = outcome.result
+    sizes = (
+        change.game,
+        change.stamp,
+        change.at,
+        outcome.metric.name,
+        outcome.metric.better,
+        outcome.control_n,
+        outcome.treatment_n,
+        result is not None,
+    )
+    if result is None:
+        return (*sizes, None, None, None, None, None, None, None, None, None, outcome.verdict, now)
+    interval = result.confidence_interval
+    estimates = (
+        result.control_estimate,
+        result.treatment_estimate,
+        result.absolute_effect,
+        interval.lower,
+        interval.upper,
+        interval.confidence_level,
+        result.p_value,
+    )
+    return (*sizes, *estimates, outcome.holm_p, outcome.bh_p, outcome.verdict, now)
+
+
+def build_experiments(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
+    if not exists(spark, SEARCH_EVENTS, lake) or not exists(spark, LAB_RUNS, lake):
+        return 0
+    hours = search_hours(read(spark, SEARCH_EVENTS, lake))
+    changes = deployed_changes(read(spark, LAB_RUNS, lake))
+    rows = [
+        result_row(change, outcome, now)
+        for change, before, after in experiments(changes, hours, now)
+        for outcome in analyzed(before, after)
+    ]
+    results = spark.createDataFrame(rows, RESULT)
+    replace(LAB_EXPERIMENTS, lake, results, gate)
+    return len(rows)

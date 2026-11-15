@@ -30,6 +30,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     VERIFIER_SPLITS,
     Table,
 )
+from retro_speedlab_lakehouse.sources.catalog import SILVER_NUMBERS, SOURCE_NUMBERS
 
 OUTCOMES = frozenset({"rejected", "notes", "deployed"})
 KNOWLEDGE_KINDS = frozenset({"mechanics", "enemies", "powerups", "levels", "ram"})
@@ -91,6 +92,8 @@ CHECKS: dict[Table, list[Check]] = {
     HUMANS_VS_AI: [*keyed(HUMANS_VS_AI), AllowedValues("status", HUMAN_STATUSES), InRange("place", min_value=1)],
     SPLIT_COMPARISON: [*keyed(SPLIT_COMPARISON), *at_least_zero("ai_frames", "human_best_frames", "humans")],
     VERIFICATION_STATS: [*keyed(VERIFICATION_STATS), AllowedValues("side", SIDES), InRange("replays", min_value=1)],
+    SILVER_NUMBERS: [*keyed(SILVER_NUMBERS), *present("label", "value", "unit", "window", "measured_at")],
+    SOURCE_NUMBERS: [*keyed(SOURCE_NUMBERS), *present("label", "value", "unit", "window", "computed_at")],
 }
 
 

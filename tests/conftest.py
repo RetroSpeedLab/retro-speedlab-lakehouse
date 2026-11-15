@@ -17,6 +17,17 @@ from retro_speedlab_lakehouse.settings import (
     SparkSettings,
     StreamSettings,
 )
+from retro_speedlab_lakehouse.sources.settings import (
+    BugsinkSettings,
+    DiscordSettings,
+    GithubSettings,
+    LangfuseSettings,
+    Sources,
+    TwitchSettings,
+    UmamiSettings,
+    UptimeSettings,
+    WandbSettings,
+)
 from retro_speedlab_lakehouse.spark.session import spark_session
 from retro_speedlab_lakehouse.stream.rows import KAFKA_ROW
 
@@ -49,6 +60,19 @@ def spark(tmp_path_factory: pytest.TempPathFactory) -> Iterator[SparkSession]:
     session.stop()
 
 
+def source_settings() -> Sources:
+    return Sources(
+        github=GithubSettings(owner="datenwissenschaften", repositories=["retro-speedlab-core"], token="token"),
+        uptime=UptimeSettings(url="https://uptime.test", page="retrospeedlab"),
+        twitch=TwitchSettings(client_id="id", client_secret="secret", channel="retrospeedlab"),
+        discord=DiscordSettings(token="token", channel="1"),
+        umami=UmamiSettings(url="https://umami.test/api", username="user", password="password", website="site"),
+        langfuse=LangfuseSettings(url="https://langfuse.test", public_key="public", secret_key="secret"),
+        wandb=WandbSettings(api_key="key", project="datenwissenschaften/retro-speedlab"),
+        bugsink=BugsinkSettings(url="https://bugsink.test/api", token="token"),
+    )
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(
@@ -69,7 +93,7 @@ def settings(tmp_path: Path) -> Settings:
             games_url="https://games.retrospeedlab.com",
             min_available_mb=1,
         ),
-        sources={},
+        sources=source_settings(),
     )
 
 

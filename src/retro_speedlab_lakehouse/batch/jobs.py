@@ -15,11 +15,9 @@ from retro_speedlab_lakehouse.mining.records import mine_records
 from retro_speedlab_lakehouse.mining.verify import verify_replays
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
-from retro_speedlab_lakehouse.sources.bronze import ingest
 from retro_speedlab_lakehouse.sources.catalog import SOURCE_TABLES
-from retro_speedlab_lakehouse.sources.gold import build_source_gold
+from retro_speedlab_lakehouse.sources.job import ingest_sources
 from retro_speedlab_lakehouse.sources.registry import hourly_sources, nightly_sources
-from retro_speedlab_lakehouse.sources.silver import build_source_silver
 
 Job = Callable[[SparkSession, Settings, Gate], int]
 ALL_TABLES: tuple[Table, ...] = CORE_TABLES + MINING_TABLES + SOURCE_TABLES
@@ -33,19 +31,19 @@ def now() -> datetime:
 
 
 def sources_hourly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return sum(ingest(spark, settings.lake, gate, source) for source in hourly_sources(settings))
+    return ingest_sources(spark, settings.lake, gate, hourly_sources(settings.sources), now())
 
 
 def sources_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return sum(ingest(spark, settings.lake, gate, source) for source in nightly_sources(settings))
+    return ingest_sources(spark, settings.lake, gate, nightly_sources(settings.sources), now())
 
 
 def silver(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return build_silver(spark, settings.lake, gate) + build_source_silver(spark, settings.lake, gate)
+    return build_silver(spark, settings.lake, gate)
 
 
 def gold(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return build_gold(spark, settings.lake, gate, now()) + build_source_gold(spark, settings.lake, gate)
+    return build_gold(spark, settings.lake, gate, now())
 
 
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:

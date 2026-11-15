@@ -43,7 +43,8 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 |-------|------------|------|------|
 | `bronze.events` | stream | `event_id` | Every outbox event as it came from Kafka |
 | `bronze.api` | `api-hourly`, `api-nightly` | | Snapshots of the public API: `/games`, lab runs, nightly also speedrun, knowledge and the lab insight |
-| `bronze.sources` | `sources-hourly`, `sources-nightly` | | Raw records of the external sources, with their watermarks in `bronze.source_watermarks` |
+| `bronze.sources` | `sources-hourly`, `sources-nightly` | | Every load of the external sources' aggregated numbers, with their watermarks in `bronze.source_watermarks` |
+| `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
 | `live.live_run` | stream | `slot` | The run on stream, served by `GET /live/speedrun` |
 | `live.stream_status` | stream | `stream` | Events per minute and the lag from the backend's outbox to the Delta commit |
 | `silver.game_runs` | stream | `game` | The newest reported run per game |
@@ -56,8 +57,9 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 | `gold.improvement_curve` | `gold` | `game`, `hour` | The proven run's length, hour by hour |
 | `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day and the seconds it saved |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
+| `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on /data |
 | `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform`, every job | | Rows, bytes, files and versions per table; every job run with its duration and status |
-| `gold.quality_reports` | every write | | The spark-data-quality report of every silver, gold and live write |
+| `gold.quality_reports` | every write | | The pyspark-data-quality report of every silver, gold and live write |
 | `bronze.trace_pieces` | `mine-records` | `game`, `record`, `segment` | Every piece of every verified record mined from the runner's working directories, with its inputs and whether its replay ends on the record's RAM byte for byte |
 | `bronze.frame_traces` | `mine-records` | `game`, `frame` | The newest record per game replayed frame by frame: level, position and the RAM values the game shows |
 | `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Every human highscore run and the AI's newest records replayed through the verifier in the game's served `game.pyxapp`, and the frames each level took |
@@ -71,18 +73,37 @@ and the nightly `maintenance` job runs OPTIMIZE (ZORDER for the run versions and
 retention: live tables keep 1 hour of old files and 1 day of log, silver and gold 2 days and 7 days, bronze 7 days
 and 30 days with rows kept 12 months.
 
+## External sources
+
+The sources jobs load only aggregated, public, non-personal numbers, never a message, a name or a raw response:
+
+| Source | Numbers |
+|--------|---------|
+| Uptime Kuma | Uptime of the last 24 hours and the last response time of every monitor on the public status page |
+| Twitch | Followers, kept videos and their views, clips and their views, viewers while live |
+| Discord | Members and members online |
+| Umami | Visitors, visits and page views of the last 7 days, visitors now |
+| Langfuse | Traced steps, tokens and model cost of the last 7 days |
+| W&B | PPO training runs, the newest run's reward and the versioned policy checkpoints |
+| Bugsink | Projects, open and resolved issues and error events |
+| GitHub | Repositories, commits of the last 7 days, stars and forks of the public ones (nightly) |
+
+Each source loads on its own: one that fails keeps the others and fails the job afterwards, so `/data` shows it.
+`platform` runs either way.
+
 ## Quality gate
 
-Every silver, gold and live write passes a [spark-data-quality](https://github.com/datenwissenschaften/spark-data-quality)
-suite first (`quality/suites.py`: keys present and unique, allowed outcomes, non-negative times and frames, at most
-one live run). A failing suite stops the write and the job; its report lands in `gold.quality_reports` either way.
+Every silver, gold and live write passes a [pyspark-data-quality](https://pypi.org/project/pyspark-data-quality/)
+suite first (`quality/suites.py`: keys present and unique, composite keys unique together with `UniqueKey`, allowed
+outcomes, non-negative times and frames, at most one live run). A failing suite stops the write and the job; its report
+lands in `gold.quality_reports` either way.
 
 ## Jobs
 
 | DAG | When (UTC) | Jobs |
 |-----|------------|------|
-| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `sources-hourly`, `silver`, `gold`, `vacuum-live`, `platform` |
-| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `sources-nightly`, `silver`, `gold`, `maintenance`, `platform` |
+| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, `platform` |
+| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `maintenance`, `sources-nightly`, `platform` |
 | `lakehouse_mining` | 03:30, done by 06:00 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
 Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the
@@ -145,11 +166,13 @@ platform` dashboards from `database/superset/assets.py`, overwriting their chart
 ## Configuration
 
 `config.yaml` holds everything but the secrets: the backend URL, Kafka's address and topics, the relay's poll and
-cursor, the lake's paths and S3 endpoint, Spark's master and memory, the stream's triggers, and the Thrift Server's
-port, metastore, registration interval and Spark. The secrets come from the environment: `UPLOAD_API_KEY` (the
-backend's events endpoint), `LAKE_ACCESS_KEY_ID` and `LAKE_SECRET_ACCESS_KEY` (the lake; the Thrift Server holds its
-own read-only pair), `AIRFLOW__API_AUTH__JWT_SECRET`, and Superset's `SUPERSET_SECRET_KEY`, `GITHUB_CLIENT_ID` and
-`GITHUB_CLIENT_SECRET`. The event schemas are in [EVENTS.md](EVENTS.md).
+cursor, the lake's paths and S3 endpoint, Spark's master and memory, the stream's triggers, the sources' GitHub
+repositories and status page, and the Thrift Server's port, metastore, registration interval and Spark. The secrets
+come from the environment: `UPLOAD_API_KEY` (the backend's events endpoint), `LAKE_ACCESS_KEY_ID` and
+`LAKE_SECRET_ACCESS_KEY` (the lake; the Thrift Server holds its own read-only pair), `AIRFLOW__API_AUTH__JWT_SECRET`,
+Superset's `SUPERSET_SECRET_KEY`, `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`, and the sources' settings, which
+`dokku/sources.sh` copies from the backend's and the runner's config without printing them. The event schemas are in
+[EVENTS.md](EVENTS.md).
 
 ## Deploy
 
@@ -165,6 +188,7 @@ bash dokku/setup.sh          # once, black-omen: the lakehouse app, storage, lim
 bash dokku/lake-keys.sh      # once: bucket and keys, the writer key to the lakehouse, the reader key to the backend
 bash dokku/database-setup.sh # once: the Thrift Server, Superset, their read-only lake key and the main server's proxy
 bash dokku/database-tunnel.sh # once: the tunnel's user, key, sshd block, firewall rule and service
+bash dokku/sources.sh        # whenever a source's credentials change
 bash dokku/wheelhouse.sh     # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift
 ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml

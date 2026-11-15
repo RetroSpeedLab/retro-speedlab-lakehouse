@@ -1,10 +1,12 @@
-import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 from box import Box
 from pydantic import BaseModel, ConfigDict, NonNegativeInt, PositiveFloat, PositiveInt
+
+from retro_speedlab_lakehouse.environment import secret
+from retro_speedlab_lakehouse.sources.settings import GithubSettings, Sources, UptimeSettings, load_sources
 
 
 class Frozen(BaseModel):
@@ -80,13 +82,7 @@ class Settings(Frozen):
     spark: SparkSettings
     stream: StreamSettings
     mining: MiningSettings
-    sources: dict[str, Any]
-
-
-def secret(name: str) -> str:
-    if name not in os.environ:
-        raise RuntimeError(f"Set {name}")
-    return os.environ[name]
+    sources: Sources
 
 
 def load_document(config: Path) -> Any:
@@ -116,5 +112,8 @@ def load_settings(config: Path) -> Settings:
         spark=SparkSettings(**document.spark.to_dict()),
         stream=StreamSettings(**document.stream.to_dict()),
         mining=MiningSettings(**document.mining.to_dict()),
-        sources=document.sources.to_dict(),
+        sources=load_sources(
+            GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
+            UptimeSettings(**document.sources.uptime.to_dict()),
+        ),
     )

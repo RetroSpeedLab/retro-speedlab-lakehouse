@@ -16,7 +16,10 @@ class SourcePage:
 
 
 class Source(Protocol):
-    name: str
-    stream: str
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def stream(self) -> str: ...
 
     def fetch(self, watermark: str | None, now: datetime) -> SourcePage: ...

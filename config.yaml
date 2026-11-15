@@ -46,7 +46,24 @@ mining:
   games_url: https://games.retrospeedlab.com
   min_available_mb: 6300
 
-sources: {}
+sources:
+  github:
+    owner: datenwissenschaften
+    repositories:
+      - retro-speedlab-core
+      - retro-speedlab-engine
+      - retro-speedlab-games
+      - retro-speedlab-runner
+      - retro-speedlab-backend
+      - retro-speedlab-frontend
+      - retro-speedlab-stream
+      - retro-speedlab-lakehouse
+      - retro-speedlab-maintainer
+      - spark-data-quality
+      - experimentation-toolkit
+  uptime:
+    url: https://uptime.datenwissenschaften.com
+    page: retrospeedlab
 
 thrift:
   port: 10000

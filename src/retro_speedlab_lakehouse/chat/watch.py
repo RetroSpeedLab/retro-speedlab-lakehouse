@@ -22,13 +22,15 @@ def publish(producer: Producer, channel: str, payload: dict[str, str | int]) -> 
 
 
 def listen(chat: ChatSettings, producer: Producer, connection: ssl.SSLSocket, stopped: threading.Event) -> None:
-    minute = fresh_minute(datetime.now(UTC))
+    listening_since = datetime.now(UTC)
+    minute = fresh_minute(listening_since)
     for line in lines(connection):
         if stopped.is_set():
             return
         now = datetime.now(UTC)
         if now >= minute.started + MINUTE:
-            publish(producer, chat.channel, minute.payload(chat.channel, now))
+            if minute.started >= listening_since:
+                publish(producer, chat.channel, minute.payload(chat.channel, now))
             minute = fresh_minute(now)
         if line is None:
             continue

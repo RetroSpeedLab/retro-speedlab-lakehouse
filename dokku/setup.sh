@@ -8,6 +8,7 @@ readonly BACKEND_HOST=dokku
 readonly BACKEND_APP=retro-speedlab-backend
 readonly DATA=/mnt/fastdata/lakehouse/data
 readonly NETWORK=retro-speedlab-lakehouse
+readonly RUNNER_WORKING=/mnt/fastdata/dokku/retro-speedlab-runner/working
 
 dokku() {
     ssh "${HOST}" "$@"
@@ -23,6 +24,7 @@ copy_setting() {
 ssh "${SERVER}" "mkdir -p ${DATA}/state ${DATA}/bronze ${DATA}/checkpoints ${DATA}/airflow && echo 0 > ${DATA}/state/relay-cursor"
 dokku apps:create "${APP}"
 dokku storage:mount "${APP}" "${DATA}:/lake"
+dokku storage:mount "${APP}" "${RUNNER_WORKING}:/runner:ro"
 dokku docker-options:add "${APP}" build "--network host"
 dokku docker-options:add "${APP}" deploy "--cpu-shares 512 --init"
 dokku network:set "${APP}" attach-post-deploy "${NETWORK}"

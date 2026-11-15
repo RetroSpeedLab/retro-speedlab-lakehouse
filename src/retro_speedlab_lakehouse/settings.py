@@ -65,6 +65,13 @@ class DatabaseSettings(Frozen):
     thrift: ThriftSettings
 
 
+class MiningSettings(Frozen):
+    working: Path
+    speedlab: Path
+    games_url: str
+    min_available_mb: PositiveInt
+
+
 class Settings(Frozen):
     backend: BackendSettings
     kafka: KafkaSettings
@@ -72,6 +79,7 @@ class Settings(Frozen):
     lake: LakeSettings
     spark: SparkSettings
     stream: StreamSettings
+    mining: MiningSettings
     sources: dict[str, Any]
 
 
@@ -107,5 +115,6 @@ def load_settings(config: Path) -> Settings:
         lake=lake_settings(document),
         spark=SparkSettings(**document.spark.to_dict()),
         stream=StreamSettings(**document.stream.to_dict()),
+        mining=MiningSettings(**document.mining.to_dict()),
         sources=document.sources.to_dict(),
     )

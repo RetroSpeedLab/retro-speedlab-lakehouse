@@ -11,6 +11,7 @@ from retro_speedlab_lakehouse.settings import (
     BackendSettings,
     KafkaSettings,
     LakeSettings,
+    MiningSettings,
     RelaySettings,
     Settings,
     SparkSettings,
@@ -62,6 +63,12 @@ def settings(tmp_path: Path) -> Settings:
         lake=lake_settings(tmp_path),
         spark=SparkSettings(master="local[1]", driver_memory="1g", shuffle_partitions=1, jars_dir=None, packages=[]),
         stream=StreamSettings(live_trigger_seconds=2, silver_trigger_seconds=60, status_seconds=0),
+        mining=MiningSettings(
+            working=tmp_path / "working",
+            speedlab=tmp_path / "speedlab",
+            games_url="https://games.retrospeedlab.com",
+            min_available_mb=1,
+        ),
         sources={},
     )
 

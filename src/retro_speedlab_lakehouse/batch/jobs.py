@@ -9,7 +9,10 @@ from retro_speedlab_lakehouse.batch.gold import build_gold
 from retro_speedlab_lakehouse.batch.maintenance import maintain, vacuum_live
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
-from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, Table
+from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, Table
+from retro_speedlab_lakehouse.mining.build import build_mining_gold
+from retro_speedlab_lakehouse.mining.records import mine_records
+from retro_speedlab_lakehouse.mining.verify import verify_replays
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.bronze import ingest
@@ -19,7 +22,7 @@ from retro_speedlab_lakehouse.sources.registry import hourly_sources, nightly_so
 from retro_speedlab_lakehouse.sources.silver import build_source_silver
 
 Job = Callable[[SparkSession, Settings, Gate], int]
-ALL_TABLES: tuple[Table, ...] = CORE_TABLES + SOURCE_TABLES
+ALL_TABLES: tuple[Table, ...] = CORE_TABLES + MINING_TABLES + SOURCE_TABLES
 SUCCESS = "success"
 FAILED = "failed"
 ERROR_LENGTH = 500
@@ -67,6 +70,9 @@ JOBS: dict[str, Job] = {
     "platform": platform,
     "maintenance": maintenance,
     "vacuum-live": live_vacuum,
+    "mine-records": mine_records,
+    "verify-replays": verify_replays,
+    "mining-gold": build_mining_gold,
 }
 
 

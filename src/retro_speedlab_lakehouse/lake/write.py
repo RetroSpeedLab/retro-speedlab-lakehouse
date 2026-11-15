@@ -37,6 +37,14 @@ def merge_newer(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -
     merging(table, lake, rows, gate).whenMatchedUpdateAll(condition=newer).whenNotMatchedInsertAll().execute()
 
 
+def overwrite_games(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate, games: list[str]) -> None:
+    gate.check(table, rows)
+    ensure(table, lake, rows)
+    chosen = ", ".join(f"'{game}'" for game in games)
+    writer = rows.write.format("delta").mode("overwrite").option("replaceWhere", f"game IN ({chosen})")
+    writer.save(table.location(lake))
+
+
 def replace(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> None:
     builder = merging(table, lake, rows, gate).whenMatchedUpdateAll().whenNotMatchedInsertAll()
     builder.whenNotMatchedBySourceDelete().execute()

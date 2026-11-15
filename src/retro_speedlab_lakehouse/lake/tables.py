@@ -10,7 +10,8 @@ def exists(spark: SparkSession, table: Table, lake: LakeSettings) -> bool:
 
 
 def create(table: Table, lake: LakeSettings, rows: DataFrame) -> None:
-    rows.limit(0).write.format("delta").mode("errorifexists").partitionBy(*table.partitions).save(table.location(lake))
+    empty = rows.sparkSession.createDataFrame([], rows.schema)
+    empty.write.format("delta").mode("errorifexists").partitionBy(*table.partitions).save(table.location(lake))
     properties = ", ".join(f"'{key}' = '{value}'" for key, value in RETENTION_PROPERTIES[table.retention].items())
     rows.sparkSession.sql(f"ALTER TABLE delta.`{table.location(lake)}` SET TBLPROPERTIES ({properties})")
 

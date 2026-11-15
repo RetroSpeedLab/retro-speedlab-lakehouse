@@ -94,6 +94,20 @@ PLATFORM_JOBS = table(Layer.GOLD, "platform_jobs", ("run_id", "job"))
 SOURCES_STATUS = table(Layer.GOLD, "sources_status", ("source", "stream"))
 QUALITY_REPORTS = table(Layer.GOLD, "quality_reports", ())
 
+TRACE_PIECES = table(Layer.BRONZE, "trace_pieces", ("game", "record", "segment"))
+FRAME_TRACES = Table(Layer.BRONZE, "frame_traces", ("game", "frame"), ("game",), ())
+VERIFIER_REPLAYS = table(Layer.SILVER, "verifier_replays", ("side", "entry"))
+VERIFIER_SPLITS = table(Layer.SILVER, "verifier_splits", ("side", "entry", "split"))
+LEVEL_SEGMENTS = table(Layer.GOLD, "level_segments", ("game", "segment"))
+LEVEL_HISTORY = table(Layer.GOLD, "level_history", ("game", "level", "at"))
+POSITION_HEATMAP = table(Layer.GOLD, "position_heatmap", ("game", "level", "cell_x", "cell_y"))
+RAM_HEATMAP = table(Layer.GOLD, "ram_heatmap", ("game", "level", "label", "value"))
+MINING_SUMMARY = table(Layer.GOLD, "mining_summary", ("game",))
+BOARD_HISTORY = table(Layer.GOLD, "board_history", ("game", "side", "at"))
+HUMANS_VS_AI = table(Layer.GOLD, "humans_vs_ai", ("game", "id"))
+SPLIT_COMPARISON = table(Layer.GOLD, "split_comparison", ("game", "level_index"))
+VERIFICATION_STATS = table(Layer.GOLD, "verification_stats", ("game", "side"))
+
 CORE_TABLES = (
     EVENTS,
     API,
@@ -120,4 +134,19 @@ CORE_TABLES = (
     PLATFORM_JOBS,
     SOURCES_STATUS,
     QUALITY_REPORTS,
+)
+MINING_TABLES = (
+    TRACE_PIECES,
+    FRAME_TRACES,
+    VERIFIER_REPLAYS,
+    VERIFIER_SPLITS,
+    LEVEL_SEGMENTS,
+    LEVEL_HISTORY,
+    POSITION_HEATMAP,
+    RAM_HEATMAP,
+    MINING_SUMMARY,
+    BOARD_HISTORY,
+    HUMANS_VS_AI,
+    SPLIT_COMPARISON,
+    VERIFICATION_STATS,
 )

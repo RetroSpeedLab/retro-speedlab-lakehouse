@@ -40,6 +40,12 @@ stream:
   silver_trigger_seconds: 60
   status_seconds: 30
 
+mining:
+  working: /runner
+  speedlab: /lakehouse/speedlab
+  games_url: https://games.retrospeedlab.com
+  min_available_mb: 6144
+
 sources: {}
 
 thrift:

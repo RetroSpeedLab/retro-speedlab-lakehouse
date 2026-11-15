@@ -10,6 +10,7 @@ RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
 HOURLY_JOBS = ("api-hourly", "sources-hourly", "silver", "gold", "vacuum-live", "platform")
 NIGHTLY_JOBS = ("api-nightly", "sources-nightly", "silver", "gold", "maintenance", "platform")
+MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
 
 
 def job(name: str) -> BashOperator:
@@ -36,3 +37,4 @@ def chained(dag_id: str, schedule: str, jobs: tuple[str, ...], timeout: timedelt
 
 hourly = chained("lakehouse_hourly", "10 * * * *", HOURLY_JOBS, timedelta(minutes=40))
 nightly = chained("lakehouse_nightly", "30 2 * * *", NIGHTLY_JOBS, timedelta(hours=3))
+mining = chained("lakehouse_mining", "30 3 * * *", MINING_JOBS, timedelta(hours=2, minutes=30))

@@ -19,8 +19,11 @@ trap 'rm -f "${pins}"' EXIT
 mkdir -p "${wheels}/spark-jars" "${wheels}/java"
 uv export --project "${LAKEHOUSE}" --frozen --no-dev --no-emit-project --no-emit-package spark-data-quality \
     --no-hashes --quiet | grep '==' | sed 's/ ;.*//' >"${pins}"
-uvx --from pip==25.3 pip download --no-deps --only-binary=:all: --python-version 3.12 --implementation cp \
-    "${PLATFORMS[@]/#/--platform=}" --dest "${wheels}" --requirement "${pins}"
+while read -r pin; do
+    uvx --from pip==25.3 pip download --quiet --no-deps --only-binary=:all: --python-version 3.12 --implementation cp \
+        "${PLATFORMS[@]/#/--platform=}" --dest "${wheels}" "${pin}" \
+        || uvx --python 3.12 --from pip==25.3 pip wheel --quiet --no-deps --wheel-dir "${wheels}" "${pin}"
+done <"${pins}"
 uvx --from pip==25.3 pip wheel --no-deps --wheel-dir "${wheels}" "$(python3 -c "${GIT_REQUIREMENT}" "${LAKEHOUSE}")"
 while read -r sum group artifact version; do
     jar="${artifact}-${version}.jar"

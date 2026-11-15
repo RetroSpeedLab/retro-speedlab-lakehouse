@@ -13,7 +13,8 @@ license = "GPL-3.0-only"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "pyspark==4.1.3",
-    "spark-data-quality",
+    "pyspark-data-quality==0.1.0",
+    "experimentation-toolkit==0.1.0",
     "delta-spark==4.4.1",
     "apache-airflow==3.3.2",
     "apache-airflow-providers-standard==1.20.1",
@@ -58,6 +59,3 @@ reportUnknownMemberType = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[tool.uv.sources]
-spark-data-quality = { git = "https://github.com/datenwissenschaften/spark-data-quality", rev = "98b9b01e3d0b128ff42447c331909497976730c3" }

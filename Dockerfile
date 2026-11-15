@@ -11,10 +11,8 @@ COPY jars.lock java.lock /tmp/
 RUN read -r java_sum java_file </tmp/java.lock     && python -c "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], '/tmp/java.tgz')"         "${WHEELHOUSE}/java/${java_file}"     && echo "${java_sum}  /tmp/java.tgz" | sha256sum --check     && mkdir /opt/java && tar -xzf /tmp/java.tgz -C /opt/java --strip-components=1 && rm /tmp/java.tgz     && mkdir /opt/spark-jars     && while read -r sum group artifact version; do         jar="${artifact}-${version}.jar";         python -c "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])"             "${WHEELHOUSE}/spark-jars/${jar}" "/opt/spark-jars/${jar}"         && echo "${sum}  /opt/spark-jars/${jar}" | sha256sum --check || exit 1;     done </tmp/jars.lock
 WORKDIR /lakehouse
 COPY pyproject.toml uv.lock ./
-RUN uv export --frozen --no-dev --no-emit-project --no-emit-package spark-data-quality --quiet \
-        --output-file /tmp/requirements.txt \
+RUN uv export --frozen --no-dev --no-emit-project --quiet --output-file /tmp/requirements.txt \
     && uv venv /opt/venv \
-    && uv pip install --no-index --find-links "${WHEELHOUSE}/" --requirement /tmp/requirements.txt \
-        spark-data-quality==0.1.0
+    && uv pip install --no-index --find-links "${WHEELHOUSE}/" --requirement /tmp/requirements.txt
 COPY . .
 RUN uv pip install --no-deps --no-index --find-links "${WHEELHOUSE}/" .

@@ -1,0 +1,4 @@
+[
+ {"game": "comet_courier", "stamp": "2026-11-14T2007", "outcome": "deployed", "cost_usd": 1.8248, "minutes": 12.22, "turns": 49, "subagents": 0, "commits": 1, "tool_errors": 4, "progress": {"progressed": true, "hours": 1.5, "seconds": -2.5}},
+ {"game": "comet_courier", "stamp": "2026-11-15T0135", "outcome": "notes", "cost_usd": 0.9, "minutes": 30.0, "turns": 20, "subagents": 1, "commits": 0, "tool_errors": 0, "progress": null}
+]

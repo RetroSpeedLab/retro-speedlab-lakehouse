@@ -1,0 +1,13 @@
+{
+  "formation": {
+    "stream": {
+      "quantity": 1
+    },
+    "relay": {
+      "quantity": 1
+    },
+    "airflow": {
+      "quantity": 1
+    }
+  }
+}

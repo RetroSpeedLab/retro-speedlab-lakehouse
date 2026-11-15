@@ -1,0 +1,43 @@
+backend:
+  url: https://api.retrospeedlab.com
+
+kafka:
+  bootstrap: retro-speedlab-kafka.web:9092
+  retention_hours: 168
+  backend_topics:
+    - runs.live
+    - runs.snapshots
+    - lab.runs
+    - lab.reports
+    - highscores.entries
+  planned_topics:
+    - runs.attempts
+    - runs.records
+    - policy.rounds
+    - lab.events
+    - chat.events
+
+relay:
+  poll_seconds: 1
+  batch: 200
+  cursor: /lake/state/relay-cursor
+
+lake:
+  bronze: /lake/bronze
+  serving: s3a://retro-speedlab-lake
+  checkpoints: /lake/checkpoints
+  endpoint: https://lake.retrospeedlab.com
+
+spark:
+  master: local[2]
+  driver_memory: 1400m
+  shuffle_partitions: 4
+  jars_dir: /opt/spark-jars
+  packages: []
+
+stream:
+  live_trigger_seconds: 2
+  silver_trigger_seconds: 60
+  status_seconds: 30
+
+sources: {}

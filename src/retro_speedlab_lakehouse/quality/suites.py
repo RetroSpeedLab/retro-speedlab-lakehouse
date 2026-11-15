@@ -1,4 +1,4 @@
-from spark_data_quality import AllowedValues, Check, InRange, NotNull, QualitySuite, RowCount, Unique
+from spark_data_quality import AllowedValues, Check, InRange, NotNull, QualitySuite, RowCount, Unique, UniqueKey
 
 from retro_speedlab_lakehouse.lake.catalog import (
     BOARD_HISTORY,
@@ -45,7 +45,7 @@ def present(*columns: str) -> list[Check]:
 def keyed(table: Table) -> list[Check]:
     if len(table.keys) == 1:
         return [*present(*table.keys), Unique(table.keys[0])]
-    return present(*table.keys)
+    return [*present(*table.keys), UniqueKey(table.keys)]
 
 
 def at_least_zero(*columns: str) -> list[Check]:
@@ -62,7 +62,7 @@ CHECKS: dict[Table, list[Check]] = {
     GAMES: [*keyed(GAMES), Unique("number"), *present("title", "version")],
     LAB_PROGRESS: [*keyed(LAB_PROGRESS), *present("progressed", "seconds")],
     SPLITS: [*keyed(SPLITS), *at_least_zero("level_seconds", "first_seconds", "frames")],
-    HISTORY: [*present("game", "at", "seconds"), *at_least_zero("seconds")],
+    HISTORY: [*keyed(HISTORY), *at_least_zero("seconds")],
     KNOWLEDGE: [*keyed(KNOWLEDGE), AllowedValues("kind", KNOWLEDGE_KINDS)],
     GAME_SUMMARY: [*keyed(GAME_SUMMARY), *present("title", "won"), *at_least_zero("levels_cleared", "lab_runs")],
     LEVEL_COSTS: [*keyed(LEVEL_COSTS), InRange("share", min_value=0, max_value=1), *at_least_zero("frames")],

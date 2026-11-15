@@ -58,6 +58,13 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
 | `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform`, every job | | Rows, bytes, files and versions per table; every job run with its duration and status |
 | `gold.quality_reports` | every write | | The spark-data-quality report of every silver, gold and live write |
+| `bronze.trace_pieces` | `mine-records` | `game`, `record`, `segment` | Every piece of every verified record mined from the runner's working directories, with its inputs and whether its replay ends on the record's RAM byte for byte |
+| `bronze.frame_traces` | `mine-records` | `game`, `frame` | The newest record per game replayed frame by frame: level, position and the RAM values the game shows |
+| `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Every human highscore run and the AI's newest records replayed through the verifier in the game's served `game.pyxapp`, and the frames each level took |
+| `gold.level_segments`, `gold.mining_summary` | `mining-gold` | `game` | Frames per level and piece of the newest record, its costliest level and piece |
+| `gold.level_history` | `mining-gold` | `game`, `level`, `at` | Every change of a level's frames in the won runs the search reported |
+| `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per value of each shown RAM label, per level |
+| `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Every improvement of the best human and the AI, each human run against the AI, per-level frames of verified human runs against the AI's, and the replays' verdicts |
 
 Writes use Delta MERGE (newest event wins), `gold.game_summary` compares with itself a day ago by time travel,
 and the nightly `maintenance` job runs OPTIMIZE (ZORDER for the run versions and history), VACUUM and the
@@ -76,9 +83,20 @@ one live run). A failing suite stops the write and the job; its report lands in 
 |-----|------------|------|
 | `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `sources-hourly`, `silver`, `gold`, `vacuum-live`, `platform` |
 | `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `sources-nightly`, `silver`, `gold`, `maintenance`, `platform` |
+| `lakehouse_mining` | 03:30, done by 06:00 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
 Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the
 first one ends.
+
+## Mining
+
+`mine-records` reads the runner's working directories read-only (`/runner`), and only records it has not mined yet.
+The image carries retro-speedlab-core, retro-speedlab-engine and retro-speedlab-games under `speedlab/`, side by side
+as `dokku/deploy.sh` archives them; each Spark task replays its pieces, partitioned by game and piece, in one
+`python -m datenwissenschaften.speedrun.trace` process. `verify-replays` downloads each game's served `game.pyxapp`
+once per task and runs its bundled verifier exactly as the backend does, then `datenwissenschaften.speedrun.level_clock`
+on the same cartridge for the level splits. Both jobs refuse to start with less than `mining.min_available_mb`
+available on black-omen and run in the Airflow container, capped at 2 cores and 3.5 GB and niced.
 
 ## Database
 

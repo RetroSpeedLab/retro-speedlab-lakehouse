@@ -23,7 +23,7 @@ the order of the backend's outbox.
 | `runs.snapshots` | game slug | The speedrun a slot off stream reports to `PUT /games/{slug}/snapshot` | backend outbox | `bronze.events`, `silver.run_versions`, `silver.game_runs` |
 | `lab.runs` | `{game}/{stamp}` | `game`, `stamp`, `outcome` (`rejected`, `notes`, `deployed`), `cost_usd`, `minutes`, `turns`, `subagents`, `commits`, `tool_errors`, `timeline` | backend outbox | `bronze.events`, `silver.lab_runs` |
 | `lab.reports` | `{game}/{name}` | `id`, `game`, `name`, `headline`, `lines`, `created`, `updated` | backend outbox | `bronze.events`, `silver.reports` |
-| `highscores.entries` | highscore id | `id`, `game`, `version`, `name` (the public Discord display name on the board), `frames`, `set_at` | backend outbox | `bronze.events`, `silver.highscores` |
+| `highscores.entries` | highscore id | `id`, `game`, `version`, `name` (the public Discord display name on the board), `frames`, `set_at`, `inputs` (the run's inputs, one byte per frame, base64) | backend outbox | `bronze.events`, `silver.highscores` |
 
 The backend writes a run event only when the run changed apart from `updated_at`, and at least once a minute.
 

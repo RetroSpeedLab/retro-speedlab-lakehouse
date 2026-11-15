@@ -44,7 +44,7 @@ mining:
   working: /runner
   speedlab: /lakehouse/speedlab
   games_url: https://games.retrospeedlab.com
-  min_available_mb: 6144
+  min_available_mb: 6300
 
 sources: {}
 

@@ -69,9 +69,15 @@ EVENTS = Table(Layer.BRONZE, "events", ("event_id",), ("date",), ())
 API = Table(Layer.BRONZE, "api", (), ("date",), ())
 SOURCES = Table(Layer.BRONZE, "sources", (), ("date",), ())
 WATERMARKS = table(Layer.BRONZE, "source_watermarks", ("source", "stream"))
+SEARCH_EVENTS = Table(Layer.BRONZE, "search_events", ("topic", "partition", "offset"), ("date",), ())
+VIDEOS = Table(Layer.BRONZE, "videos", ("game", "name", "version"), ("date",), ())
 
 LIVE_RUN = table(Layer.LIVE, "live_run", ("slot",))
 STREAM_STATUS = table(Layer.LIVE, "stream_status", ("stream",))
+SEARCH_PULSE = table(Layer.LIVE, "search_pulse", ("game",))
+POLICY_PULSE = table(Layer.LIVE, "policy_pulse", ("game",))
+LAB_STATUS = table(Layer.LIVE, "lab_status", ("slot",))
+CHAT_PULSE = table(Layer.LIVE, "chat_pulse", ("channel",))
 
 GAMES = table(Layer.SILVER, "games", ("slug",))
 GAME_RUNS = Table(Layer.SILVER, "game_runs", ("game",), (), ())
@@ -89,6 +95,7 @@ LEVEL_COSTS = table(Layer.GOLD, "level_costs", ("game", "level"))
 IMPROVEMENT = table(Layer.GOLD, "improvement_curve", ("game", "hour"))
 RECORDS_DAILY = table(Layer.GOLD, "records_daily", ("game", "date"))
 LAB_OUTCOMES = table(Layer.GOLD, "lab_outcomes", ("game", "outcome"))
+LAB_EXPERIMENTS = table(Layer.GOLD, "lab_experiments", ("game", "stamp", "metric"))
 PLATFORM_TABLES = table(Layer.GOLD, "platform_tables", ("table",))
 PLATFORM_JOBS = table(Layer.GOLD, "platform_jobs", ("run_id", "job"))
 SOURCES_STATUS = table(Layer.GOLD, "sources_status", ("source", "stream"))
@@ -113,8 +120,14 @@ CORE_TABLES = (
     API,
     SOURCES,
     WATERMARKS,
+    SEARCH_EVENTS,
+    VIDEOS,
     LIVE_RUN,
     STREAM_STATUS,
+    SEARCH_PULSE,
+    POLICY_PULSE,
+    LAB_STATUS,
+    CHAT_PULSE,
     GAMES,
     GAME_RUNS,
     RUN_VERSIONS,
@@ -130,6 +143,7 @@ CORE_TABLES = (
     IMPROVEMENT,
     RECORDS_DAILY,
     LAB_OUTCOMES,
+    LAB_EXPERIMENTS,
     PLATFORM_TABLES,
     PLATFORM_JOBS,
     SOURCES_STATUS,

@@ -9,6 +9,7 @@ from pyspark.sql import DataFrame, SparkSession
 
 from retro_speedlab_lakehouse.settings import (
     BackendSettings,
+    ChatSettings,
     KafkaSettings,
     LakeSettings,
     MiningSettings,
@@ -80,19 +81,22 @@ def settings(tmp_path: Path) -> Settings:
         kafka=KafkaSettings(
             bootstrap="kafka:9092",
             backend_topics=["runs.live", "runs.snapshots", "lab.runs", "lab.reports", "highscores.entries"],
-            planned_topics=["runs.attempts"],
+            search_topics=["runs.attempts", "runs.steps", "runs.records", "policy.rounds", "lab.events", "chat.events"],
             retention_hours=168,
         ),
         relay=RelaySettings(poll_seconds=1, batch=2, cursor=tmp_path / "cursor"),
         lake=lake_settings(tmp_path),
         spark=SparkSettings(master="local[1]", driver_memory="1g", shuffle_partitions=1, jars_dir=None, packages=[]),
-        stream=StreamSettings(live_trigger_seconds=2, silver_trigger_seconds=60, status_seconds=0),
         mining=MiningSettings(
             working=tmp_path / "working",
             speedlab=tmp_path / "speedlab",
             games_url="https://games.retrospeedlab.com",
             min_available_mb=1,
         ),
+        stream=StreamSettings(
+            live_trigger_seconds=2, silver_trigger_seconds=60, search_trigger_seconds=60, status_seconds=0
+        ),
+        chat=ChatSettings(channel="retrospeedlab", ignored=frozenset({"streamelements"})),
         sources=source_settings(),
     )
 

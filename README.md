@@ -11,6 +11,8 @@ starves it.
 ```mermaid
 flowchart LR
     runner[Runner on black-omen] -->|PUT snapshots, lab runs, reports| backend[Backend on the main server]
+    runner -->|attempts, steps, records, PPO rounds, lab events| kafka
+    chat[Twitch chat counter] -->|messages per minute| kafka
     backend --> outbox[(Outbox in Postgres)]
     outbox -->|GET /lakehouse/events| relay[Relay]
     relay --> kafka[Kafka KRaft]
@@ -29,6 +31,7 @@ flowchart LR
 | black-omen `retro-speedlab-kafka` | Kafka 4.3 in KRaft mode, one broker, 768 MB heap, data on `/mnt/fastdata/lakehouse/kafka`, 7 days or 1 GB per topic |
 | black-omen `retro-speedlab-lakehouse` `relay` | Moves the backend's outbox events to Kafka every second |
 | black-omen `retro-speedlab-lakehouse` `stream` | Spark Structured Streaming: the live run every 2 s, everything else every minute |
+| black-omen `retro-speedlab-lakehouse` `chat` | Counts the Twitch chat's messages and chatters per minute, anonymously and without keeping a name or a message |
 | black-omen `retro-speedlab-lakehouse` `airflow` | Airflow 3 (LocalExecutor, SQLite, one task at a time) running the Spark batch jobs with `nice -n 15` |
 | black-omen `/mnt/fastdata/lakehouse/data/bronze` | Bronze Delta tables: the complete raw history, kept 12 months |
 | main server `retro-speedlab-lake` | Garage, an S3-compatible store, with the live, silver and gold Delta tables the site serves |
@@ -42,11 +45,17 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 | Table | Written by | Keys | What |
 |-------|------------|------|------|
 | `bronze.events` | stream | `event_id` | Every outbox event as it came from Kafka |
+| `bronze.search_events` | stream | `topic`, `partition`, `offset` | Every event the runner and the chat counter published |
+| `bronze.videos` | `videos-nightly` | `game`, `name`, `version` | Every version of the backend's per-game videos the mirror copied; the newest file of each is in `/mnt/fastdata/lakehouse/data/bronze/videos/<game>/` |
 | `bronze.api` | `api-hourly`, `api-nightly` | | Snapshots of the public API: `/games`, lab runs, nightly also speedrun, knowledge and the lab insight |
 | `bronze.sources` | `sources-hourly`, `sources-nightly` | | Every load of the external sources' aggregated numbers, with their watermarks in `bronze.source_watermarks` |
 | `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
 | `live.live_run` | stream | `slot` | The run on stream, served by `GET /live/speedrun` |
 | `live.stream_status` | stream | `stream` | Events per minute and the lag from the backend's outbox to the Delta commit |
+| `live.search_pulse` | stream | `game` | The last hour of the search: attempts, attempts per minute over the last 10 minutes, crossings, frames saved, improvements and records |
+| `live.policy_pulse` | stream | `game` | The newest PPO round (reward, loss, entropy, exit rate) and the rounds and mean reward of the last hour |
+| `live.lab_status` | stream | `slot` | The newest lab-run event of the last hour |
+| `live.chat_pulse` | stream | `channel` | The newest minute of chat and the messages of the last hour |
 | `silver.game_runs` | stream | `game` | The newest reported run per game |
 | `silver.run_versions` | stream | `event_id` | Every reported run: the attempts history |
 | `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and the highscore boards' entries |
@@ -57,6 +66,7 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 | `gold.improvement_curve` | `gold` | `game`, `hour` | The proven run's length, hour by hour |
 | `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day and the seconds it saved |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
+| `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as an experiment: before against after, with estimates, intervals and Holm and BH adjusted p-values |
 | `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on /data |
 | `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform`, every job | | Rows, bytes, files and versions per table; every job run with its duration and status |
 | `gold.quality_reports` | every write | | The pyspark-data-quality report of every silver, gold and live write |
@@ -91,6 +101,26 @@ The sources jobs load only aggregated, public, non-personal numbers, never a mes
 Each source loads on its own: one that fails keeps the others and fails the job afterwards, so `/data` shows it.
 `platform` runs either way.
 
+## Lab experiments
+
+The nightly `experiments` job treats every deployed lab run as an experiment on its game, with
+[experimentation-toolkit](https://pypi.org/project/experimentation-toolkit/). Control is the searched hours before the
+change (since the change before it, at most 72), treatment the searched hours after it (from 30 minutes after the lab
+run ended, to allow for the deploy, until the next change, at most 72). A searched hour is one with at least one
+search attempt in `bronze.search_events`. The metrics:
+
+| Metric | Better | Analysis |
+|--------|--------|----------|
+| `frames_saved_per_hour` | higher | Welch's t on the frames the improvements saved per searched hour |
+| `crossing_rate` | higher | Score test and Newcombe interval on the attempts that crossed into a new state |
+| `record_hour_rate` | higher | The same on the searched hours with a new record from power-on |
+| `verify_failure_rate` | lower | The same on the won runs that did not replay from power-on, of all won runs offered |
+
+A metric is analyzed only with at least 12 searched hours on both sides, and for the rates at least 30 trials on
+both sides; otherwise it reads `not enough data yet`. The p-values of one change are adjusted with Holm (the verdict)
+and Benjamini-Hochberg (reported). The verdict is `better` or `worse` only when the Holm-adjusted p is at most 0.05
+and the 95% interval of the effect excludes zero on that side; otherwise `no clear change`.
+
 ## Quality gate
 
 Every silver, gold and live write passes a [pyspark-data-quality](https://pypi.org/project/pyspark-data-quality/)
@@ -103,11 +133,12 @@ lands in `gold.quality_reports` either way.
 | DAG | When (UTC) | Jobs |
 |-----|------------|------|
 | `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, `platform` |
-| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `maintenance`, `sources-nightly`, `platform` |
+| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `experiments`, `maintenance`, `sources-nightly`, `videos-nightly`, `platform` |
 | `lakehouse_mining` | 03:30, done by 06:00 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
 Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the
-first one ends.
+first one ends. `videos-nightly` copies the backend's per-game videos over its public API, only those whose ETag
+changed, and keeps the newest file of each next to `bronze.videos`.
 
 ## Mining
 

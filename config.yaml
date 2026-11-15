@@ -10,8 +10,9 @@ kafka:
     - lab.runs
     - lab.reports
     - highscores.entries
-  planned_topics:
+  search_topics:
     - runs.attempts
+    - runs.steps
     - runs.records
     - policy.rounds
     - lab.events
@@ -38,6 +39,7 @@ spark:
 stream:
   live_trigger_seconds: 2
   silver_trigger_seconds: 60
+  search_trigger_seconds: 60
   status_seconds: 30
 
 mining:
@@ -45,6 +47,11 @@ mining:
   speedlab: /lakehouse/speedlab
   games_url: https://games.retrospeedlab.com
   min_available_mb: 6300
+
+chat:
+  ignored:
+    - streamelements
+    - sery_bot
 
 sources:
   github:

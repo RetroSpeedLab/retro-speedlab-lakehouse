@@ -25,7 +25,7 @@ def create_topics(kafka: KafkaSettings) -> None:
     config = {"retention.ms": str(kafka.retention_hours * MILLISECONDS_PER_HOUR), "compression.type": "zstd"}
     missing = [
         NewTopic(name, num_partitions=PARTITIONS, replication_factor=REPLICAS, config=config)
-        for name in kafka.backend_topics + kafka.planned_topics
+        for name in kafka.backend_topics + kafka.search_topics
         if name not in existing
     ]
     for name in admin_created(admin, missing):

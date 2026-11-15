@@ -8,6 +8,7 @@ import typer
 from loguru import logger
 
 from retro_speedlab_lakehouse.batch.jobs import run_job
+from retro_speedlab_lakehouse.chat.watch import watch_chat
 from retro_speedlab_lakehouse.database.thrift import serve
 from retro_speedlab_lakehouse.relay.producer import relay as run_relay
 from retro_speedlab_lakehouse.relay.topics import create_topics
@@ -18,17 +19,25 @@ from retro_speedlab_lakehouse.stream.job import start
 app = typer.Typer(no_args_is_help=True)
 
 
-@app.command()
-def relay(config: Path) -> None:
-    settings = load_settings(config)
+def stopping(name: str) -> threading.Event:
     stopped = threading.Event()
 
     def stop(signum: int, frame: FrameType | None) -> None:
-        logger.info(f"Signal {signum}: the relay stops")
+        logger.info(f"Signal {signum}: the {name} stops")
         stopped.set()
 
     signal.signal(signal.SIGTERM, stop)
-    run_relay(settings, stopped)
+    return stopped
+
+
+@app.command()
+def relay(config: Path) -> None:
+    run_relay(load_settings(config), stopping("relay"))
+
+
+@app.command()
+def chat(config: Path) -> None:
+    watch_chat(load_settings(config), stopping("chat"))
 
 
 @app.command()

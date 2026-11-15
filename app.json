@@ -8,6 +8,9 @@
     },
     "airflow": {
       "quantity": 1
+    },
+    "chat": {
+      "quantity": 1
     }
   }
 }

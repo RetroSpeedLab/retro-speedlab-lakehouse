@@ -27,14 +27,23 @@ the order of the backend's outbox.
 
 The backend writes a run event only when the run changed apart from `updated_at`, and at least once a minute.
 
-## Planned topics
+## Search topics
 
-Created and empty; phase 2 makes the runner and core publish to them directly from black-omen.
+The runner on black-omen publishes these straight to Kafka through core's event sink, and the lakehouse's `chat`
+process publishes `chat.events`. Their envelope has no outbox `id`; the Kafka offset orders them:
 
-| Topic | Key | Payload |
-|-------|-----|---------|
-| `runs.attempts` | game slug | One search attempt: `game`, `state`, `seed`, `frames`, `reached`, `at` |
-| `runs.records` | game slug | A verified record: `game`, `frames`, `seconds`, `movie`, `version`, `at` |
-| `policy.rounds` | game slug | One PPO training round: `game`, `release`, `round`, `steps`, `exits`, `reward`, `at` |
-| `lab.events` | `{game}/{stamp}` | A lab-run step: `game`, `stamp`, `kind` (`started`, `tool`, `commit`, `check`, `shipped`), `at` |
-| `chat.events` | channel | Aggregated chat activity per minute: `channel`, `messages`, `chatters`, `at`; never message bodies or user names |
+```json
+{"topic": "runs.attempts", "key": "comet_courier", "at": "2026-11-15T12:00:00.000+00:00", "payload": {}}
+```
+
+Every payload carries `game` (except `chat.events`) and `at`. All of them land in `bronze.search_events`; the
+`search` query of the stream counts the last hour into the `live` tables every minute.
+
+| Topic | Key | Payload | Producer | Delta tables |
+|-------|-----|---------|----------|--------------|
+| `runs.attempts` | game slug | One finished search job: `state`, `seed`, `role`, `seconds`, `outcome` (`crossing`, `checkpoint`, `nothing`), `crossings`, `frames`, `reached` | core's searcher | `bronze.search_events`, `live.search_pulse` |
+| `runs.steps` | game slug | One search step: `kind` (`found`, `checkpoint`, `stuck`, `improved`, `lab`, `unverified`), `state`, `frames`, `saved` | core's search | `bronze.search_events`, `live.search_pulse` |
+| `runs.records` | game slug | A new record from power-on that replays: `version`, `frames`, `seconds`, `pieces`, `previous_frames` | core's record | `bronze.search_events`, `live.search_pulse` |
+| `policy.rounds` | game slug | One PPO round: `run` (W&B run path), `round`, `steps`, `reward`, `exits`, `episodes`, `exit_rate`, `entropy`, `explained_variance`, `loss` | core's policy trainer | `bronze.search_events`, `live.policy_pulse` |
+| `lab.events` | `{game}/{stamp}` | A lab-run step: `stamp`, `kind` (`started`, `judging`, `finished`), and on `finished` its `outcome` and `commits` | the runner's lab job | `bronze.search_events`, `live.lab_status` |
+| `chat.events` | channel | One minute of Twitch chat: `channel`, `minute`, `messages`, `chatters`; never a message or a name | the lakehouse's `chat` process | `bronze.search_events`, `live.chat_pulse` |

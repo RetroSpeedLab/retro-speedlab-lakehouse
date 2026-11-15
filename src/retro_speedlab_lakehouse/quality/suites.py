@@ -2,6 +2,7 @@ from spark_data_quality import AllowedValues, Check, InRange, NotNull, QualitySu
 
 from retro_speedlab_lakehouse.lake.catalog import (
     BOARD_HISTORY,
+    CHAT_PULSE,
     GAME_RUNS,
     GAME_SUMMARY,
     GAMES,
@@ -10,19 +11,23 @@ from retro_speedlab_lakehouse.lake.catalog import (
     HUMANS_VS_AI,
     IMPROVEMENT,
     KNOWLEDGE,
+    LAB_EXPERIMENTS,
     LAB_OUTCOMES,
     LAB_PROGRESS,
     LAB_RUNS,
+    LAB_STATUS,
     LEVEL_COSTS,
     LEVEL_HISTORY,
     LEVEL_SEGMENTS,
     LIVE_RUN,
     MINING_SUMMARY,
+    POLICY_PULSE,
     POSITION_HEATMAP,
     RAM_HEATMAP,
     RECORDS_DAILY,
     REPORTS,
     RUN_VERSIONS,
+    SEARCH_PULSE,
     SPLIT_COMPARISON,
     SPLITS,
     VERIFICATION_STATS,
@@ -37,6 +42,8 @@ KNOWLEDGE_KINDS = frozenset({"mechanics", "enemies", "powerups", "levels", "ram"
 SIDES = frozenset({"human", "ai"})
 REPLAY_STATUSES = frozenset({"verified", "rejected", "unserved", "no_inputs"})
 HUMAN_STATUSES = REPLAY_STATUSES | {"pending"}
+LAB_KINDS = frozenset({"started", "judging", "finished"})
+VERDICTS = frozenset({"better", "worse", "no clear change", "not enough data yet"})
 
 
 def present(*columns: str) -> list[Check]:
@@ -92,6 +99,31 @@ CHECKS: dict[Table, list[Check]] = {
     HUMANS_VS_AI: [*keyed(HUMANS_VS_AI), AllowedValues("status", HUMAN_STATUSES), InRange("place", min_value=1)],
     SPLIT_COMPARISON: [*keyed(SPLIT_COMPARISON), *at_least_zero("ai_frames", "human_best_frames", "humans")],
     VERIFICATION_STATS: [*keyed(VERIFICATION_STATS), AllowedValues("side", SIDES), InRange("replays", min_value=1)],
+    SEARCH_PULSE: [
+        *keyed(SEARCH_PULSE),
+        *at_least_zero("attempts_last_hour", "attempts_per_minute", "frames_saved_last_hour", "records_last_hour"),
+        *present("last_event_at", "updated_at"),
+    ],
+    POLICY_PULSE: [
+        *keyed(POLICY_PULSE),
+        *present("round", "reward", "last_event_at"),
+        InRange("rounds_last_hour", min_value=1),
+    ],
+    LAB_STATUS: [
+        *keyed(LAB_STATUS),
+        *present("game", "stamp", "last_event_at"),
+        AllowedValues("kind", LAB_KINDS),
+        RowCount(max_count=1),
+    ],
+    CHAT_PULSE: [
+        *keyed(CHAT_PULSE),
+        *at_least_zero("messages_last_minute", "chatters_last_minute", "messages_last_hour"),
+    ],
+    LAB_EXPERIMENTS: [
+        *keyed(LAB_EXPERIMENTS),
+        AllowedValues("verdict", VERDICTS),
+        *at_least_zero("control_n", "treatment_n"),
+    ],
     SILVER_NUMBERS: [*keyed(SILVER_NUMBERS), *present("label", "value", "unit", "window", "measured_at")],
     SOURCE_NUMBERS: [*keyed(SOURCE_NUMBERS), *present("label", "value", "unit", "window", "computed_at")],
 }

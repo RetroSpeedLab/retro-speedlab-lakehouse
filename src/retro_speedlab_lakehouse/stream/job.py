@@ -15,16 +15,18 @@ from retro_speedlab_lakehouse.lake.tables import ensure
 from retro_speedlab_lakehouse.lake.write import merge_newer
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
-from retro_speedlab_lakehouse.stream import rows
+from retro_speedlab_lakehouse.stream import rows, search_rows
+from retro_speedlab_lakehouse.stream.search import search_batch
 from retro_speedlab_lakehouse.stream.status import StreamStatus
 
 LIVE_QUERY = "live"
 ENTITIES_QUERY = "entities"
+SEARCH_QUERY = "search"
 BRONZE_APP = "retro-speedlab-lakehouse-bronze"
 
 
-def kafka_events(spark: SparkSession, settings: Settings, topics: list[str]) -> DataFrame:
-    return rows.parsed(
+def kafka_rows(spark: SparkSession, settings: Settings, topics: list[str]) -> DataFrame:
+    return (
         spark.readStream.format("kafka")
         .option("kafka.bootstrap.servers", settings.kafka.bootstrap)
         .option("subscribe", ",".join(topics))
@@ -32,6 +34,10 @@ def kafka_events(spark: SparkSession, settings: Settings, topics: list[str]) -> 
         .option("failOnDataLoss", "true")
         .load()
     )
+
+
+def kafka_events(spark: SparkSession, settings: Settings, topics: list[str]) -> DataFrame:
+    return rows.parsed(kafka_rows(spark, settings, topics))
 
 
 def write_if_any(table: Table, settings: Settings, gate: Gate, batch: DataFrame) -> None:
@@ -106,4 +112,13 @@ def start(spark: SparkSession, settings: Settings) -> list[StreamingQuery]:
         .foreachBatch(lambda events, batch_id: entities_batch(settings, entities_gate, events, batch_id))
         .start()
     )
-    return [live, entities]
+    search_gate = Gate(SEARCH_QUERY)
+    search = (
+        search_rows.parsed(kafka_rows(spark, settings, settings.kafka.search_topics))
+        .writeStream.queryName(SEARCH_QUERY)
+        .option("checkpointLocation", str(settings.lake.checkpoints / SEARCH_QUERY))
+        .trigger(processingTime=f"{settings.stream.search_trigger_seconds} seconds")
+        .foreachBatch(lambda events, batch_id: search_batch(settings, search_gate, events, batch_id))
+        .start()
+    )
+    return [live, entities, search]

@@ -21,7 +21,7 @@ class BackendSettings(Frozen):
 class KafkaSettings(Frozen):
     bootstrap: str
     backend_topics: list[str]
-    planned_topics: list[str]
+    search_topics: list[str]
     retention_hours: PositiveInt
 
 
@@ -51,6 +51,7 @@ class SparkSettings(Frozen):
 class StreamSettings(Frozen):
     live_trigger_seconds: PositiveInt
     silver_trigger_seconds: PositiveInt
+    search_trigger_seconds: PositiveInt
     status_seconds: NonNegativeInt
 
 
@@ -74,6 +75,11 @@ class MiningSettings(Frozen):
     min_available_mb: PositiveInt
 
 
+class ChatSettings(Frozen):
+    channel: str
+    ignored: frozenset[str]
+
+
 class Settings(Frozen):
     backend: BackendSettings
     kafka: KafkaSettings
@@ -82,6 +88,7 @@ class Settings(Frozen):
     spark: SparkSettings
     stream: StreamSettings
     mining: MiningSettings
+    chat: ChatSettings
     sources: Sources
 
 
@@ -112,6 +119,7 @@ def load_settings(config: Path) -> Settings:
         spark=SparkSettings(**document.spark.to_dict()),
         stream=StreamSettings(**document.stream.to_dict()),
         mining=MiningSettings(**document.mining.to_dict()),
+        chat=ChatSettings(channel=secret("TWITCH_CHANNEL").lower(), ignored=frozenset(document.chat.ignored)),
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),

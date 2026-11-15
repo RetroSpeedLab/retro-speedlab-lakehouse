@@ -1,0 +1,1 @@
+thrift: python -m retro_speedlab_lakehouse thrift config.yaml

@@ -41,3 +41,15 @@ stream:
   status_seconds: 30
 
 sources: {}
+
+thrift:
+  port: 10000
+  metastore: /database/metastore
+  warehouse: /database/warehouse
+  register_seconds: 3600
+  spark:
+    master: local[2]
+    driver_memory: 640m
+    shuffle_partitions: 4
+    jars_dir: /opt/spark-jars
+    packages: []

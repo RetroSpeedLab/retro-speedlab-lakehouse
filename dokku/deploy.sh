@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ $# -eq 0 ]]; then
+    echo "Name the apps to deploy: retro-speedlab-lakehouse, retro-speedlab-thrift or both" >&2
+    exit 1
+fi
+readonly APPS=("$@")
 readonly HOST=dokku-black-omen
 readonly SERVER=black-omen
-readonly APP=retro-speedlab-lakehouse
 readonly WHEELHOUSE=/mnt/fastdata/wheelhouse
 readonly WHEELHOUSE_PORT=8765
 LAKEHOUSE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -34,4 +38,6 @@ git -C "${bundle}" add --all
 git -C "${bundle}" -c user.name=deploy -c user.email=deploy@retrospeedlab.com commit --quiet \
     --message "retro-speedlab-lakehouse=$(git -C "${LAKEHOUSE}" rev-parse HEAD)"
 wheelhouse="$(on_server "cd ${WHEELHOUSE} && { python3 -m http.server ${WHEELHOUSE_PORT} --bind 127.0.0.1 >/dev/null 2>&1 & echo \$!; }")"
-git -C "${bundle}" push --force "${HOST}:${APP}" main
+for app in "${APPS[@]}"; do
+    git -C "${bundle}" push --force "${HOST}:${app}" main
+done

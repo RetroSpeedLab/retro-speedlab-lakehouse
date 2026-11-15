@@ -80,13 +80,58 @@ one live run). A failing suite stops the write and the job; its report lands in 
 Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the
 first one ends.
 
+## Database
+
+[database.retrospeedlab.com](https://database.retrospeedlab.com) is Apache Superset's SQL Lab and dashboards on the
+lake, for the maintainer only.
+
+```mermaid
+flowchart LR
+    browser[Browser] -->|HTTPS| nginx[nginx and letsencrypt on the main server]
+    nginx --> proxy[retro-speedlab-database: socat]
+    proxy -->|172.17.0.1:18088| sshd[sshd on the main server]
+    sshd -->|reverse SSH tunnel| superset[retro-speedlab-superset on black-omen]
+    superset -->|PyHive, port 10000| thrift[retro-speedlab-thrift on black-omen]
+    thrift -->|s3a, read-only key| lake[(Garage lake)]
+    thrift -->|read-only mount| bronze[(Bronze Delta)]
+```
+
+| Where | What |
+|-------|------|
+| black-omen `retro-speedlab-thrift` | The lakehouse image running the Spark Thrift Server in local mode: Delta, an embedded Derby metastore on `/mnt/fastdata/database/thrift`, the lake's read-only `database` key and bronze mounted read-only; 640 MB heap, 1 GB and 1 CPU, cpu-shares 256 |
+| black-omen `retro-speedlab-superset` | Superset 6.1 with one gunicorn worker, its metadata in SQLite on `/mnt/fastdata/database/superset`, published only on `127.0.0.1:18088`; 768 MB and 1 CPU, cpu-shares 256 |
+| black-omen `retro-speedlab-database-tunnel` | A systemd service holding `ssh -R 172.17.0.1:18088:127.0.0.1:18088` to the main server, restarted whenever it drops |
+| main server `retro-speedlab-database` | socat from the app's nginx to the tunnel's end on the docker bridge, behind letsencrypt |
+
+The Thrift Server registers every table of the catalog that exists as `<layer>.<table>` (`CREATE TABLE IF NOT EXISTS
+... USING DELTA LOCATION ...`) when it starts and every hour, so a deploy or a new table needs nothing else. Nothing
+publishes its port: only Superset reaches it, over the `retro-speedlab-database` network.
+
+The tunnel logs in as `database-tunnel` on the main server, a system user without a shell or password. Its key
+on black-omen lives in `/etc/retro-speedlab/database-tunnel` and is only allowed to listen on `172.17.0.1:18088`
+(`restrict,port-forwarding,permitlisten` in its `authorized_keys`, and `database/tunnel/sshd.conf` as a `Match
+User` block: remote forwarding only, no TTY, no agent, no X11). ufw lets only the docker bridge reach that port.
+
+Superset signs in with GitHub only, and only the account `datenwissenschaften` gets in, as Admin; anyone else is
+turned away and the public role has no permissions. Until the OAuth app's credentials are set the login page has no
+provider, so nobody can sign in. Create a GitHub OAuth app with the homepage `https://database.retrospeedlab.com` and
+the callback `https://database.retrospeedlab.com/oauth-authorized/github`, then:
+
+```bash
+ssh dokku-black-omen config:set retro-speedlab-superset GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=...
+```
+
+The lake connection forbids DML, CTAS and file uploads. Every start imports the `Speedrun records` and `Lakehouse
+platform` dashboards from `database/superset/assets.py`, overwriting their charts.
+
 ## Configuration
 
 `config.yaml` holds everything but the secrets: the backend URL, Kafka's address and topics, the relay's poll and
-cursor, the lake's paths and S3 endpoint, Spark's master and memory, and the stream's triggers. The secrets come from
-the environment: `UPLOAD_API_KEY` (the backend's events endpoint), `LAKE_ACCESS_KEY_ID` and
-`LAKE_SECRET_ACCESS_KEY` (the lake), and `AIRFLOW__API_AUTH__JWT_SECRET`. The event schemas are in
-[EVENTS.md](EVENTS.md).
+cursor, the lake's paths and S3 endpoint, Spark's master and memory, the stream's triggers, and the Thrift Server's
+port, metastore, registration interval and Spark. The secrets come from the environment: `UPLOAD_API_KEY` (the
+backend's events endpoint), `LAKE_ACCESS_KEY_ID` and `LAKE_SECRET_ACCESS_KEY` (the lake; the Thrift Server holds its
+own read-only pair), `AIRFLOW__API_AUTH__JWT_SECRET`, and Superset's `SUPERSET_SECRET_KEY`, `GITHUB_CLIENT_ID` and
+`GITHUB_CLIENT_SECRET`. The event schemas are in [EVENTS.md](EVENTS.md).
 
 ## Deploy
 
@@ -100,9 +145,13 @@ ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh    # once, black-omen: Kafka
 bash dokku/setup.sh          # once, black-omen: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh      # once: bucket and keys, the writer key to the lakehouse, the reader key to the backend
+bash dokku/database-setup.sh # once: the Thrift Server, Superset, their read-only lake key and the main server's proxy
+bash dokku/database-tunnel.sh # once: the tunnel's user, key, sshd block, firewall rule and service
 bash dokku/wheelhouse.sh     # whenever uv.lock, jars.lock or java.lock change
-bash dokku/deploy.sh
+bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift
 ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml
+bash dokku/database-deploy.sh # the Thrift Server, Superset and the proxy
+ssh dokku letsencrypt:enable retro-speedlab-database
 ```
 
 ## Development

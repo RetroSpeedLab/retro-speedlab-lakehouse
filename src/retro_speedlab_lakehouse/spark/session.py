@@ -24,7 +24,7 @@ def lake_options(lake: LakeSettings) -> dict[str, str]:
     }
 
 
-def spark_session(name: str, spark: SparkSettings, lake: LakeSettings) -> SparkSession:
+def session_builder(name: str, spark: SparkSettings, lake: LakeSettings) -> SparkSession.Builder:
     builder = (
         SparkSession.builder.appName(name)  # type: ignore[attr-defined]
         .master(spark.master)
@@ -45,4 +45,8 @@ def spark_session(name: str, spark: SparkSettings, lake: LakeSettings) -> SparkS
         builder = builder.config("spark.jars.packages", ",".join(spark.packages))
     for key, value in lake_options(lake).items():
         builder = builder.config(key, value)
-    return builder.getOrCreate()
+    return builder
+
+
+def spark_session(name: str, spark: SparkSettings, lake: LakeSettings) -> SparkSession:
+    return session_builder(name, spark, lake).getOrCreate()

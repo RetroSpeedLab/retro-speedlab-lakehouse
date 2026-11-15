@@ -52,6 +52,19 @@ class StreamSettings(Frozen):
     status_seconds: NonNegativeInt
 
 
+class ThriftSettings(Frozen):
+    port: PositiveInt
+    metastore: Path
+    warehouse: Path
+    register_seconds: PositiveInt
+    spark: SparkSettings
+
+
+class DatabaseSettings(Frozen):
+    lake: LakeSettings
+    thrift: ThriftSettings
+
+
 class Settings(Frozen):
     backend: BackendSettings
     kafka: KafkaSettings
@@ -68,17 +81,30 @@ def secret(name: str) -> str:
     return os.environ[name]
 
 
+def load_document(config: Path) -> Any:
+    return Box(yaml.safe_load(config.read_text(encoding="utf-8")), box_dots=False)
+
+
+def lake_settings(document: Any) -> LakeSettings:
+    return LakeSettings(
+        **document.lake.to_dict(),
+        access_key=secret("LAKE_ACCESS_KEY_ID"),
+        secret_key=secret("LAKE_SECRET_ACCESS_KEY"),
+    )
+
+
+def load_database_settings(config: Path) -> DatabaseSettings:
+    document = load_document(config)
+    return DatabaseSettings(lake=lake_settings(document), thrift=ThriftSettings(**document.thrift.to_dict()))
+
+
 def load_settings(config: Path) -> Settings:
-    document: Any = Box(yaml.safe_load(config.read_text(encoding="utf-8")), box_dots=False)
+    document = load_document(config)
     return Settings(
         backend=BackendSettings(url=document.backend.url, api_key=secret("UPLOAD_API_KEY")),
         kafka=KafkaSettings(**document.kafka.to_dict()),
         relay=RelaySettings(**document.relay.to_dict()),
-        lake=LakeSettings(
-            **document.lake.to_dict(),
-            access_key=secret("LAKE_ACCESS_KEY_ID"),
-            secret_key=secret("LAKE_SECRET_ACCESS_KEY"),
-        ),
+        lake=lake_settings(document),
         spark=SparkSettings(**document.spark.to_dict()),
         stream=StreamSettings(**document.stream.to_dict()),
         sources=document.sources.to_dict(),

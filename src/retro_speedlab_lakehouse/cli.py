@@ -1,5 +1,6 @@
 import signal
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 from types import FrameType
 from typing import Annotated
@@ -8,6 +9,7 @@ import typer
 from loguru import logger
 
 from retro_speedlab_lakehouse.batch.jobs import run_job
+from retro_speedlab_lakehouse.batch.night import NIGHT_END, NIGHT_START, outside_the_night
 from retro_speedlab_lakehouse.chat.watch import watch_chat
 from retro_speedlab_lakehouse.database.thrift import serve
 from retro_speedlab_lakehouse.relay.producer import relay as run_relay
@@ -65,6 +67,9 @@ def job(
     dag: Annotated[str, typer.Option()],
     run_id: Annotated[str, typer.Option()],
 ) -> None:
+    if outside_the_night(name, datetime.now(UTC)):
+        logger.warning(f"{name} runs only between {NIGHT_START} and {NIGHT_END} UTC; it is skipped now")
+        return
     settings = load_settings(config)
     spark = spark_session(f"lakehouse-{name}", settings.spark, settings.lake)
     try:

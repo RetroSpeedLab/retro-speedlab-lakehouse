@@ -137,7 +137,10 @@ lands in `gold.quality_reports` either way.
 | `lakehouse_mining` | 03:30, done by 06:00 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
 Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the
-first one ends. `videos-nightly` copies the backend's per-game videos over its public API, only those whose ETag
+first one ends. The nightly-only jobs (`api-nightly`, `experiments`, `maintenance`, `sources-nightly`,
+`videos-nightly`) run only between 02:00 and 06:00 UTC: started at any other time, by a catch-up or a retry, they
+log that and skip. Airflow runs one task at a time; hourly tasks go first (priority 10 against 1), a nightly task
+ends after 40 minutes and an hourly one after 25, so the hourly DAG never waits long behind the nightly one. `videos-nightly` copies the backend's per-game videos over its public API, only those whose ETag
 changed, and keeps the newest file of each next to `bronze.videos`.
 
 ## Mining

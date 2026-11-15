@@ -67,7 +67,7 @@ CHECKS: dict[Table, list[Check]] = {
     REPORTS: [*keyed(REPORTS), *present("headline", "event_id")],
     LAB_RUNS: [*keyed(LAB_RUNS), AllowedValues("outcome", OUTCOMES), *at_least_zero("minutes", "cost_usd")],
     HIGHSCORES: [*keyed(HIGHSCORES), *present("game", "version"), InRange("frames", min_value=1)],
-    GAMES: [*keyed(GAMES), Unique("number"), *present("title", "version")],
+    GAMES: [*keyed(GAMES), Unique("number"), *present("title", "version"), RowCount(min_count=1)],
     LAB_PROGRESS: [*keyed(LAB_PROGRESS), *present("progressed", "seconds")],
     SPLITS: [*keyed(SPLITS), *at_least_zero("level_seconds", "first_seconds", "frames")],
     HISTORY: [*keyed(HISTORY), *at_least_zero("seconds")],

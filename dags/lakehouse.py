@@ -19,20 +19,36 @@ NIGHTLY_JOBS = (
     "videos-nightly",
     "platform",
 )
-INDEPENDENT = ("sources-hourly", "sources-nightly", "videos-nightly", "platform")
 MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
+INDEPENDENT = ("sources-hourly", "sources-nightly", "videos-nightly", "platform")
+HOURLY_PRIORITY = 10
+NIGHTLY_PRIORITY = 1
+HOURLY_TASK_TIMEOUT = timedelta(minutes=25)
+NIGHTLY_TASK_TIMEOUT = timedelta(minutes=40)
+MINING_TIMEOUT = timedelta(hours=2, minutes=30)
+ABSOLUTE = "absolute"
 
 
-def job(name: str) -> BashOperator:
+def job(name: str, priority: int, timeout: timedelta) -> BashOperator:
     command = (
         f"nice -n {NICE} python -m retro_speedlab_lakehouse job {name} {CONFIG} "
         "--dag {{ dag.dag_id }} --run-id {{ run_id }}"
     )
-    rule = TriggerRule.ALL_DONE if name in INDEPENDENT else TriggerRule.ALL_SUCCESS
-    return BashOperator(task_id=name, bash_command=command, retries=RETRIES, retry_delay=RETRY_DELAY, trigger_rule=rule)
+    return BashOperator(
+        task_id=name,
+        bash_command=command,
+        retries=RETRIES,
+        retry_delay=RETRY_DELAY,
+        trigger_rule=TriggerRule.ALL_DONE if name in INDEPENDENT else TriggerRule.ALL_SUCCESS,
+        priority_weight=priority,
+        weight_rule=ABSOLUTE,
+        execution_timeout=timeout,
+    )
 
 
-def chained(dag_id: str, schedule: str, jobs: tuple[str, ...], timeout: timedelta) -> DAG:
+def chained(
+    dag_id: str, schedule: str, jobs: tuple[str, ...], timeout: timedelta, priority: int, task_timeout: timedelta
+) -> DAG:
     with DAG(
         dag_id=dag_id,
         schedule=schedule,
@@ -43,10 +59,14 @@ def chained(dag_id: str, schedule: str, jobs: tuple[str, ...], timeout: timedelt
         dagrun_timeout=timeout,
         tags=["lakehouse"],
     ) as dag:
-        chain(*[job(name) for name in jobs])
+        chain(*[job(name, priority, task_timeout) for name in jobs])
     return dag
 
 
-hourly = chained("lakehouse_hourly", "10 * * * *", HOURLY_JOBS, timedelta(minutes=40))
-nightly = chained("lakehouse_nightly", "30 2 * * *", NIGHTLY_JOBS, timedelta(hours=3))
-mining = chained("lakehouse_mining", "30 3 * * *", MINING_JOBS, timedelta(hours=2, minutes=30))
+hourly = chained(
+    "lakehouse_hourly", "10 * * * *", HOURLY_JOBS, timedelta(minutes=40), HOURLY_PRIORITY, HOURLY_TASK_TIMEOUT
+)
+nightly = chained(
+    "lakehouse_nightly", "30 2 * * *", NIGHTLY_JOBS, timedelta(hours=3), NIGHTLY_PRIORITY, NIGHTLY_TASK_TIMEOUT
+)
+mining = chained("lakehouse_mining", "30 3 * * *", MINING_JOBS, MINING_TIMEOUT, NIGHTLY_PRIORITY, MINING_TIMEOUT)

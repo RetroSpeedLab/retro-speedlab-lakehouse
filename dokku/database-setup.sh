@@ -35,7 +35,7 @@ dokku ps:set "${THRIFT}" procfile-path database/Procfile
 dokku app-json:set "${THRIFT}" appjson-path database/app.json
 dokku ps:set "${THRIFT}" restart-policy unless-stopped
 dokku docker-options:add "${THRIFT}" build "--network host"
-dokku docker-options:add "${THRIFT}" deploy "--cpu-shares 256 --init"
+dokku docker-options:add "${THRIFT}" deploy "--cpu-shares 256 --init --network-alias ${THRIFT}"
 dokku resource:limit --process-type thrift --memory 1024m --cpu 1 "${THRIFT}"
 dokku network:set "${THRIFT}" initial-network "${NETWORK}"
 dokku proxy:disable "${THRIFT}"

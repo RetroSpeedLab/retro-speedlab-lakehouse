@@ -9,7 +9,7 @@ from superset.app import create_app
 NAMESPACE = uuid.UUID("5d0e4a8c-7f62-4c1b-9b8e-2f4a6d1c3e70")
 VERSION = "1.0.0"
 DATABASE = "Retro Speedlab Lake"
-SQLALCHEMY_URI = "hive://retro-speedlab-thrift.thrift:10000/default?auth=NOSASL"
+SQLALCHEMY_URI = "hive://retro-speedlab-thrift:10000/default?auth=NOSASL"
 TEMPORAL_TYPES = ("TIMESTAMP", "DATE")
 GRID_COLUMNS = 12
 CHART_HEIGHT = 50

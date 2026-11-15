@@ -6,4 +6,4 @@ COPY superset_config.py /app/pythonpath/superset_config.py
 COPY assets.py start.sh /app/
 USER superset
 ENV SERVER_WORKER_AMOUNT=1 SERVER_THREADS_AMOUNT=8 GUNICORN_TIMEOUT=300
-CMD ["/app/start.sh"]
+CMD ["bash", "/app/start.sh"]

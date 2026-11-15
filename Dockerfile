@@ -17,4 +17,4 @@ RUN uv export --frozen --no-dev --no-emit-project --no-emit-package spark-data-q
     && uv pip install --no-index --find-links "${WHEELHOUSE}/" --requirement /tmp/requirements.txt \
         spark-data-quality==0.1.0
 COPY . .
-RUN uv pip install --no-deps --no-index .
+RUN uv pip install --no-deps --no-index --find-links "${WHEELHOUSE}/" .

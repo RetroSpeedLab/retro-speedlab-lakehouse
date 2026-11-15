@@ -62,8 +62,8 @@ KNOWLEDGE_KINDS = ("mechanics", "enemies", "powerups", "levels", "ram")
 
 def latest_snapshots(api: DataFrame, endpoint: str) -> DataFrame:
     kept = api.where((F.col("endpoint") == endpoint) & (F.col("status") == 200))
-    newest = kept.groupBy("slug").agg(F.max("fetched_at").alias("fetched_at"))
-    return kept.join(newest, ["slug", "fetched_at"])
+    newest_first = Window.partitionBy("slug").orderBy(F.col("fetched_at").desc())
+    return kept.withColumn("recency", F.row_number().over(newest_first)).where("recency = 1").drop("recency")
 
 
 def games(api: DataFrame) -> DataFrame:

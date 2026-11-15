@@ -17,6 +17,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     EVENTS,
     GAME_RUNS,
     GAME_SUMMARY,
+    GAMES,
     HIGHSCORES,
     LAB_PROGRESS,
     LAB_RUNS,
@@ -124,6 +125,7 @@ def test_silver_and_gold_answer_the_questions(spark: SparkSession, settings: Set
     stream_events(spark, settings)
     api_snapshots(spark, settings)
     build_silver(spark, settings.lake, Gate("silver"))
+    assert read(spark, GAMES, settings.lake).count() == len(fixture("games.json"))
     assert read(spark, LAB_PROGRESS, settings.lake).collect()[0]["seconds"] == -2.5
     build_gold(spark, settings.lake, Gate("gold"), START + timedelta(hours=1))
     summary = read(spark, GAME_SUMMARY, settings.lake).where("game = 'comet_courier'").first()

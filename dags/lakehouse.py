@@ -27,6 +27,7 @@ def chained(dag_id: str, schedule: str, jobs: tuple[str, ...], timeout: timedelt
         schedule=schedule,
         start_date=START,
         catchup=False,
+        is_paused_upon_creation=False,
         max_active_runs=1,
         dagrun_timeout=timeout,
         tags=["lakehouse"],

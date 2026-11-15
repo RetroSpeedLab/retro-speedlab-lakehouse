@@ -5,6 +5,7 @@ export AIRFLOW__CORE__EXECUTOR=LocalExecutor
 export AIRFLOW__CORE__DAGS_FOLDER=/lakehouse/dags
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
 export AIRFLOW__CORE__PARALLELISM=1
+export AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS=True
 export AIRFLOW__CORE__EXECUTION_API_SERVER_URL=http://127.0.0.1:8080/execution/
 export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////lake/airflow/airflow.db
 export AIRFLOW__API__HOST=127.0.0.1

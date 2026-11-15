@@ -10,6 +10,7 @@ source = tomllib.loads(pathlib.Path(sys.argv[1], "pyproject.toml").read_text())[
 print("git+" + source["spark-data-quality"]["git"] + "@" + source["spark-data-quality"]["rev"])'
 readonly PLATFORMS=(manylinux_2_28_x86_64 manylinux_2_27_x86_64 manylinux2014_x86_64 manylinux_2_17_x86_64
     manylinux_2_5_x86_64 linux_x86_64 any)
+readonly BUILD_TOOLS=(setuptools==80.9.0 wheel==0.45.1)
 LAKEHOUSE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly LAKEHOUSE
 
@@ -22,8 +23,9 @@ uv export --project "${LAKEHOUSE}" --frozen --no-dev --no-emit-project --no-emit
 while read -r pin; do
     uvx --from pip==25.3 pip download --quiet --no-deps --only-binary=:all: --python-version 3.12 --implementation cp \
         "${PLATFORMS[@]/#/--platform=}" --dest "${wheels}" "${pin}" \
-        || uvx --python 3.12 --from pip==25.3 pip wheel --quiet --no-deps --wheel-dir "${wheels}" "${pin}"
+        || uvx --from pip==25.3 pip download --quiet --no-deps --no-binary=:all: --dest "${wheels}" "${pin}"
 done <"${pins}"
+uvx --from pip==25.3 pip download --quiet --no-deps --only-binary=:all: --dest "${wheels}" "${BUILD_TOOLS[@]}"
 uvx --from pip==25.3 pip wheel --no-deps --wheel-dir "${wheels}" "$(python3 -c "${GIT_REQUIREMENT}" "${LAKEHOUSE}")"
 while read -r sum group artifact version; do
     jar="${artifact}-${version}.jar"

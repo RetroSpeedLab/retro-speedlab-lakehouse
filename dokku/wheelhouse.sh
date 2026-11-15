@@ -16,7 +16,7 @@ pins="$(mktemp)"
 trap 'rm -f "${pins}"' EXIT
 mkdir -p "${wheels}/spark-jars" "${wheels}/java"
 uv export --project "${LAKEHOUSE}" --frozen --no-dev --no-emit-project --no-hashes --quiet \
- | grep '==' | sed 's/ ;.*//' >"${pins}"
+    | grep '==' | sed 's/ ;.*//' >"${pins}"
 while read -r pin; do
     uvx --from pip==25.3 pip download --quiet --no-deps --only-binary=:all: --python-version 3.12 --implementation cp \
         "${PLATFORMS[@]/#/--platform=}" --dest "${wheels}" "${pin}" \

@@ -49,7 +49,7 @@ thrift:
   register_seconds: 3600
   spark:
     master: local[2]
-    driver_memory: 640m
+    driver_memory: 512m
     shuffle_partitions: 4
     jars_dir: /opt/spark-jars
     packages: []

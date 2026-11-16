@@ -78,7 +78,7 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per value of each shown RAM label, per level |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Every improvement of the best human and the AI, each human run against the AI, per-level frames of verified human runs against the AI's, and the replays' verdicts |
 
-Writes use Delta MERGE (newest event wins), `gold.game_summary` compares with itself a day ago by time travel,
+Writes use Delta MERGE (newest event wins), the live pulse tables a plain overwrite of their few rows, `gold.game_summary` compares with itself a day ago by time travel,
 and the nightly `maintenance` job runs OPTIMIZE (ZORDER for the run versions and history), VACUUM and the
 retention: live tables keep 1 hour of old files and 1 day of log, silver and gold 2 days and 7 days, bronze 7 days
 and 30 days with rows kept 12 months.

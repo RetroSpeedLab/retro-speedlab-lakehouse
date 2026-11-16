@@ -5,7 +5,7 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.lake.catalog import CHAT_PULSE, LAB_STATUS, POLICY_PULSE, SEARCH_EVENTS, SEARCH_PULSE
 from retro_speedlab_lakehouse.lake.tables import ensure, read
-from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.lake.write import overwrite
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.stream import search_rows
@@ -45,6 +45,7 @@ def search_batch(settings: Settings, gate: Gate, events: DataFrame, batch_id: in
     now = datetime.now(UTC)
     window = recent(spark, settings, now).persist()
     for table, pulse in PULSES:
-        replace(table, settings.lake, pulse(window, now), gate)
+        counted = pulse(window, now)
+        overwrite(table, settings.lake, spark.createDataFrame(counted.collect(), counted.schema), gate)
     window.unpersist()
     gate.flush(spark, settings.lake)

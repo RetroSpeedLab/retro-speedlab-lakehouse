@@ -45,6 +45,12 @@ def overwrite_games(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gat
     writer.save(table.location(lake))
 
 
+def overwrite(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> None:
+    gate.check(table, rows)
+    ensure(table, lake, rows)
+    rows.write.format("delta").mode("overwrite").save(table.location(lake))
+
+
 def replace(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> None:
     builder = merging(table, lake, rows, gate).whenMatchedUpdateAll().whenNotMatchedInsertAll()
     builder.whenNotMatchedBySourceDelete().execute()

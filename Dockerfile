@@ -16,3 +16,5 @@ RUN uv export --frozen --no-dev --no-emit-project --quiet --output-file /tmp/req
     && uv pip install --no-index --find-links "${WHEELHOUSE}/" --requirement /tmp/requirements.txt
 COPY . .
 RUN uv pip install --no-deps --no-index --find-links "${WHEELHOUSE}/" .
+RUN useradd --uid 10002 --create-home lakehouse
+USER lakehouse

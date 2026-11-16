@@ -13,6 +13,7 @@ from retro_speedlab_lakehouse.spark.session import session_builder
 
 ALL_INTERFACES = "0.0.0.0"
 EXIT_ON_ERROR = True
+DERBY_LOG = "derby.log"
 
 
 def hive_options(thrift: ThriftSettings) -> dict[str, str]:
@@ -20,6 +21,7 @@ def hive_options(thrift: ThriftSettings) -> dict[str, str]:
         raise ValueError("The Thrift Server needs spark.jars_dir: its sessions load Delta from the driver class path")
     return {
         "spark.driver.extraClassPath": str(thrift.spark.jars_dir / "*"),
+        "spark.driver.extraJavaOptions": f"-Dderby.stream.error.file={thrift.metastore.parent / DERBY_LOG}",
         "spark.sql.warehouse.dir": str(thrift.warehouse),
         "spark.hadoop.javax.jdo.option.ConnectionURL": f"jdbc:derby:;databaseName={thrift.metastore};create=true",
         "spark.hadoop.hive.server2.thrift.port": str(thrift.port),

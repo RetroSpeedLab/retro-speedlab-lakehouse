@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+umask 077
+
 readonly SYNC_SECONDS=3600
 
 sync_datasets() {

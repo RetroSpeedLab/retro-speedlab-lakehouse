@@ -1,4 +1,5 @@
 readonly SETTINGS_SERVER=black-omen
+readonly LAKEHOUSE_USER=10002
 
 copy_settings() {
     local host="$1" app="$2" target="$3" name

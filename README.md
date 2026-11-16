@@ -38,7 +38,9 @@ flowchart LR
 
 Bronze stays on black-omen, which has the disk; only what the site serves goes to the lake on the main server.
 Spark writes it over HTTPS with s3a and its own key; the backend reads it with a read-only key over the dokku
-network with delta-rs. No console and no Airflow or Spark UI is public.
+network with delta-rs. No console and no Airflow or Spark UI is public. No browser reads the lake, so its proxy
+drops Garage's wildcard CORS headers. The lakehouse and Thrift Server run as an unprivileged user that owns
+their data directories, and Superset's metadata is readable only by Superset.
 
 ## Tables
 

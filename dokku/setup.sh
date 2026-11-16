@@ -10,6 +10,8 @@ readonly DATA=/mnt/fastdata/lakehouse/data
 readonly NETWORK=retro-speedlab-lakehouse
 readonly RUNNER_WORKING=/mnt/fastdata/dokku/retro-speedlab-runner/working
 
+source "$(dirname "${BASH_SOURCE[0]}")/settings.sh"
+
 dokku() {
     ssh "${HOST}" "$@"
 }
@@ -21,7 +23,8 @@ copy_setting() {
     dokku config:set --no-restart "${APP}" "${name}=${value}" >/dev/null
 }
 
-ssh "${SERVER}" "mkdir -p ${DATA}/state ${DATA}/bronze ${DATA}/checkpoints ${DATA}/airflow && echo 0 > ${DATA}/state/relay-cursor"
+ssh "${SERVER}" "mkdir -p ${DATA}/state ${DATA}/bronze ${DATA}/checkpoints ${DATA}/airflow && echo 0 > ${DATA}/state/relay-cursor \
+    && sudo chown -R ${LAKEHOUSE_USER}:${LAKEHOUSE_USER} ${DATA}"
 dokku apps:create "${APP}"
 dokku storage:mount "${APP}" "${DATA}:/lake"
 dokku storage:mount "${APP}" "${RUNNER_WORKING}:/runner:ro"

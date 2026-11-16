@@ -26,7 +26,8 @@ main() {
     ssh "${MAIN}" "$@"
 }
 
-ssh "${SERVER}" "mkdir -p ${DATA}/thrift ${DATA}/superset"
+ssh "${SERVER}" "mkdir -p ${DATA}/thrift ${DATA}/superset && chmod 700 ${DATA}/superset \
+    && sudo chown -R ${LAKEHOUSE_USER}:${LAKEHOUSE_USER} ${DATA}/thrift"
 dokku network:create "${NETWORK}"
 
 dokku apps:create "${THRIFT}"

@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 from loguru import logger
 from pyspark.sql import SparkSession
 
+from retro_speedlab_lakehouse.bandit.allocation import build_allocation
+from retro_speedlab_lakehouse.bandit.holdout import build_bandit_comparison
 from retro_speedlab_lakehouse.batch.api import ingest_api_hourly, ingest_api_nightly
 from retro_speedlab_lakehouse.batch.gold import build_gold
 from retro_speedlab_lakehouse.batch.maintenance import maintain, vacuum_live
@@ -52,6 +54,14 @@ def lab_experiments(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_experiments(spark, settings.lake, gate, now())
 
 
+def search_allocation(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return build_allocation(spark, settings.lake, settings.bandit, gate, now())
+
+
+def search_bandit(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return build_bandit_comparison(spark, settings.lake, gate, now())
+
+
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_platform(spark, ALL_TABLES, settings.lake, gate, now())
 
@@ -72,6 +82,8 @@ JOBS: dict[str, Job] = {
     "silver": silver,
     "gold": gold,
     "experiments": lab_experiments,
+    "search-allocation": search_allocation,
+    "search-bandit": search_bandit,
     "videos-nightly": mirror_videos,
     "platform": platform,
     "maintenance": maintenance,

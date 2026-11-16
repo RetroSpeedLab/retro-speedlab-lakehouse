@@ -10,7 +10,16 @@ RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
 HOURLY_JOBS = ("api-hourly", "silver", "gold", "vacuum-live", "platform")
 HOURLY_ASIDE = ("sources-hourly",)
-NIGHTLY_JOBS = ("api-nightly", "silver", "gold", "experiments", "maintenance", "platform")
+NIGHTLY_JOBS = (
+    "api-nightly",
+    "silver",
+    "gold",
+    "experiments",
+    "search-allocation",
+    "search-bandit",
+    "maintenance",
+    "platform",
+)
 NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly")
 MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
 LAST = "platform"

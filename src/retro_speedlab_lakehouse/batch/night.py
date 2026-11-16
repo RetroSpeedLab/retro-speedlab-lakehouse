@@ -1,6 +1,16 @@
 from datetime import datetime, time
 
-NIGHT_JOBS = frozenset({"api-nightly", "experiments", "maintenance", "sources-nightly", "videos-nightly"})
+NIGHT_JOBS = frozenset(
+    {
+        "api-nightly",
+        "experiments",
+        "search-allocation",
+        "search-bandit",
+        "maintenance",
+        "sources-nightly",
+        "videos-nightly",
+    }
+)
 NIGHT_START = time(2, 0)
 NIGHT_END = time(6, 0)
 

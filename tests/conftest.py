@@ -9,6 +9,7 @@ from pyspark.sql import DataFrame, SparkSession
 
 from retro_speedlab_lakehouse.settings import (
     BackendSettings,
+    BanditSettings,
     ChatSettings,
     KafkaSettings,
     LakeSettings,
@@ -81,7 +82,15 @@ def settings(tmp_path: Path) -> Settings:
         kafka=KafkaSettings(
             bootstrap="kafka:9092",
             backend_topics=["runs.live", "runs.snapshots", "lab.runs", "lab.reports", "highscores.entries"],
-            search_topics=["runs.attempts", "runs.steps", "runs.records", "policy.rounds", "lab.events", "chat.events"],
+            search_topics=[
+                "runs.attempts",
+                "runs.steps",
+                "runs.records",
+                "policy.rounds",
+                "lab.events",
+                "chat.events",
+                "runs.allocations",
+            ],
             retention_hours=168,
         ),
         relay=RelaySettings(poll_seconds=1, batch=2, cursor=tmp_path / "cursor"),
@@ -96,6 +105,7 @@ def settings(tmp_path: Path) -> Settings:
         stream=StreamSettings(
             live_trigger_seconds=2, silver_trigger_seconds=60, search_trigger_seconds=60, status_seconds=0
         ),
+        bandit=BanditSettings(min_share=0.1, days=14, draws=2000),
         chat=ChatSettings(channel="retrospeedlab", ignored=frozenset({"streamelements"})),
         sources=source_settings(),
     )

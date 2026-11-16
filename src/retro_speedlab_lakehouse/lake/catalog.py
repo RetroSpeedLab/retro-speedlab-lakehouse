@@ -98,6 +98,8 @@ LAB_OUTCOMES = table(Layer.GOLD, "lab_outcomes", ("game", "outcome"))
 LAB_EXPERIMENTS = table(Layer.GOLD, "lab_experiments", ("game", "stamp", "metric"))
 SEARCH_ALLOCATION = table(Layer.GOLD, "search_allocation", ("game", "role"))
 SEARCH_BANDIT = table(Layer.GOLD, "search_bandit", ("metric",))
+LAB_ROI = table(Layer.GOLD, "lab_roi", ("game", "stamp"))
+PROMOTION_ROI = table(Layer.GOLD, "promotion_roi", ("channel", "variant"))
 PLATFORM_TABLES = table(Layer.GOLD, "platform_tables", ("table",))
 PLATFORM_JOBS = table(Layer.GOLD, "platform_jobs", ("run_id", "job"))
 SOURCES_STATUS = table(Layer.GOLD, "sources_status", ("source", "stream"))
@@ -148,6 +150,8 @@ CORE_TABLES = (
     LAB_EXPERIMENTS,
     SEARCH_ALLOCATION,
     SEARCH_BANDIT,
+    LAB_ROI,
+    PROMOTION_ROI,
     PLATFORM_TABLES,
     PLATFORM_JOBS,
     SOURCES_STATUS,

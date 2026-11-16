@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 from retro_speedlab_lakehouse.environment import secret
@@ -35,6 +37,7 @@ class UmamiSettings(SourceSettings):
     password: str
     website: str
     games_website: str
+    dropoff_since: datetime
 
 
 class LangfuseSettings(SourceSettings):
@@ -64,7 +67,9 @@ class Sources(SourceSettings):
     bugsink: BugsinkSettings
 
 
-def load_sources(github: GithubSettings, uptime: UptimeSettings, games_website: str) -> Sources:
+def load_sources(
+    github: GithubSettings, uptime: UptimeSettings, games_website: str, dropoff_since: datetime
+) -> Sources:
     return Sources(
         github=github,
         uptime=uptime,
@@ -80,6 +85,7 @@ def load_sources(github: GithubSettings, uptime: UptimeSettings, games_website: 
             password=secret("UMAMI_PASSWORD"),
             website=secret("UMAMI_WEBSITE_ID"),
             games_website=games_website,
+            dropoff_since=dropoff_since,
         ),
         langfuse=LangfuseSettings(
             url=secret("LANGFUSE_BASE_URL"),

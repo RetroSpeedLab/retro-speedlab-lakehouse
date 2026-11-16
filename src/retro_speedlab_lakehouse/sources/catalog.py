@@ -4,4 +4,15 @@ SILVER_NUMBERS = table(Layer.SILVER, "source_numbers", ("source", "metric"))
 SOURCE_NUMBERS = table(Layer.GOLD, "source_numbers", ("source", "metric"))
 SILVER_PLAYS = table(Layer.SILVER, "game_plays", ("mode", "window"))
 GAME_PLAYS = table(Layer.GOLD, "game_plays", ("game", "mode", "window"))
-SOURCE_TABLES: tuple[Table, ...] = (SILVER_NUMBERS, SOURCE_NUMBERS, SILVER_PLAYS, GAME_PLAYS)
+SILVER_DROPOFF = table(Layer.SILVER, "game_dropoff", ("game",))
+HUMAN_DROPOFF = table(Layer.GOLD, "human_dropoff", ("game", "level_index"))
+SILVER_LAB_COSTS = table(Layer.SILVER, "lab_costs", ("stamp",))
+SOURCE_TABLES: tuple[Table, ...] = (
+    SILVER_NUMBERS,
+    SOURCE_NUMBERS,
+    SILVER_PLAYS,
+    GAME_PLAYS,
+    SILVER_DROPOFF,
+    HUMAN_DROPOFF,
+    SILVER_LAB_COSTS,
+)

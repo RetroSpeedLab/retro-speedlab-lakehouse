@@ -592,16 +592,16 @@ wheels = [
 
 [[package]]
 name = "experimentation-toolkit"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "pydantic" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/be/5a/66b8670bf2aba0bd3259c9075d5ec3bb7c6ab80980a37f9e5c46fdec2b15/experimentation_toolkit-0.1.0.tar.gz", hash = "sha256:6a6093ce82509893a94cdb12d095338c5039a5542bb2317d3ed59f97d5496c85", size = 19595, upload-time = "2026-11-15T18:27:25.075Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/d4/10afb0d349468b76230384e94c06f80712ab0bd8f22e52490184be077c51/experimentation_toolkit-0.2.0.tar.gz", hash = "sha256:63af25acc041d24613f988a2cb70feca397e21294a3e0f00a3ee21f786d1ab13", size = 24943, upload-time = "2026-11-16T10:41:28.46Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3c/ff/5991dd29c6a986390f75f433c957b19a5d85bbb2a4061fd0b8683924ad2e/experimentation_toolkit-0.1.0-py3-none-any.whl", hash = "sha256:60c3865100d3ec2c2a0cb5f0778f0ecb9fe3fbaae7d2b9a3eb656bf8e635e5fc", size = 24200, upload-time = "2026-11-15T18:27:23.895Z" },
+    { url = "https://files.pythonhosted.org/packages/86/73/d772f096ce733545f0dc09430204c4ef649103074ad4296ef0a6f8b61ca2/experimentation_toolkit-0.2.0-py3-none-any.whl", hash = "sha256:3b831471d5b69196e81cb852d544e9a6ccb0238d548b9d4c3480e05f31c8dd48", size = 30851, upload-time = "2026-11-16T10:41:26.927Z" },
 ]
 
 [[package]]
@@ -1643,6 +1643,7 @@ dependencies = [
     { name = "python-box" },
     { name = "pyxel" },
     { name = "pyyaml" },
+    { name = "scipy" },
     { name = "tenacity" },
     { name = "typer" },
 ]
@@ -1661,7 +1662,7 @@ requires-dist = [
     { name = "apache-airflow-providers-standard", specifier = "==1.20.1" },
     { name = "confluent-kafka", specifier = "==2.16.0" },
     { name = "delta-spark", specifier = "==4.4.1" },
-    { name = "experimentation-toolkit", specifier = "==0.1.0" },
+    { name = "experimentation-toolkit", specifier = "==0.2.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "loguru", specifier = "==0.7.3" },
     { name = "numpy", specifier = "==2.5.1" },
@@ -1671,6 +1672,7 @@ requires-dist = [
     { name = "python-box", specifier = "==7.4.1" },
     { name = "pyxel", specifier = "==3.0.1" },
     { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "scipy", specifier = "==1.18.1" },
     { name = "tenacity", specifier = "==9.1.2" },
     { name = "typer", specifier = "==0.20.0" },
 ]

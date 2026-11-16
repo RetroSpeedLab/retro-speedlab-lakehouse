@@ -20,6 +20,7 @@ BETTER = "better"
 WORSE = "worse"
 UNCLEAR = "no clear change"
 TOO_FEW = "not enough data yet"
+FRAMES_SAVED = "frames_saved_per_hour"
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,7 +44,7 @@ class Outcome:
 
 
 def frames_saved(before: Arm, after: Arm) -> AnalysisResult:
-    return analyze_continuous(control=before.saved, treatment=after.saved, metric_name="frames_saved_per_hour")
+    return analyze_continuous(control=before.saved, treatment=after.saved, metric_name=FRAMES_SAVED)
 
 
 def crossing_rate(before: Arm, after: Arm) -> AnalysisResult:
@@ -77,7 +78,7 @@ def verify_failures(before: Arm, after: Arm) -> AnalysisResult:
 
 
 METRICS = (
-    Metric("frames_saved_per_hour", HIGHER, lambda arm: len(arm.hours), MIN_HOURS, frames_saved),
+    Metric(FRAMES_SAVED, HIGHER, lambda arm: len(arm.hours), MIN_HOURS, frames_saved),
     Metric("crossing_rate", HIGHER, lambda arm: arm.attempts, MIN_TRIALS, crossing_rate),
     Metric("record_hour_rate", HIGHER, lambda arm: len(arm.hours), MIN_HOURS, record_rate),
     Metric("verify_failure_rate", LOWER, lambda arm: arm.verified, MIN_TRIALS, verify_failures),
@@ -116,6 +117,10 @@ def analyzed(before: Arm, after: Arm) -> list[Outcome]:
         judged = verdict(metric.better, result, holm[metric.name])
         outcomes.append(Outcome(metric, *sizes, result, holm[metric.name], bh[metric.name], judged))
     return outcomes
+
+
+def primary(outcomes: list[Outcome]) -> Outcome:
+    return next(outcome for outcome in outcomes if outcome.metric.name == FRAMES_SAVED)
 
 
 def adjusted(p_values: dict[str, float], method: CorrectionMethod) -> dict[str, float]:

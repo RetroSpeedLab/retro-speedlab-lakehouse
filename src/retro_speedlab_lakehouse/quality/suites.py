@@ -20,6 +20,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     LAB_EXPERIMENTS,
     LAB_OUTCOMES,
     LAB_PROGRESS,
+    LAB_ROI,
     LAB_RUNS,
     LAB_STATUS,
     LEVEL_COSTS,
@@ -29,6 +30,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     MINING_SUMMARY,
     POLICY_PULSE,
     POSITION_HEATMAP,
+    PROMOTION_ROI,
     RAM_HEATMAP,
     RECORDS_DAILY,
     REPORTS,
@@ -43,7 +45,15 @@ from retro_speedlab_lakehouse.lake.catalog import (
     VERIFIER_SPLITS,
     Table,
 )
-from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, SILVER_NUMBERS, SILVER_PLAYS, SOURCE_NUMBERS
+from retro_speedlab_lakehouse.sources.catalog import (
+    GAME_PLAYS,
+    HUMAN_DROPOFF,
+    SILVER_DROPOFF,
+    SILVER_LAB_COSTS,
+    SILVER_NUMBERS,
+    SILVER_PLAYS,
+    SOURCE_NUMBERS,
+)
 from retro_speedlab_lakehouse.sources.plays import MODES, WINDOWS
 
 OUTCOMES = frozenset({"rejected", "notes", "deployed"})
@@ -182,6 +192,26 @@ CHECKS: dict[Table, list[Check]] = {
         AllowedValues("window", PLAY_WINDOWS),
         *at_least_zero("started", "won"),
         *present("started", "won", "measured_at", "computed_at"),
+    ],
+    SILVER_DROPOFF: [*keyed(SILVER_DROPOFF), *present("ended", "won", "since", "measured_at"), *at_least_zero("won")],
+    HUMAN_DROPOFF: [
+        *keyed(HUMAN_DROPOFF),
+        InRange("reached", min_value=1),
+        InRange("ended_share", min_value=0, max_value=1),
+        *at_least_zero("ended", "won", "humans"),
+        *present("runs", "since", "computed_at"),
+    ],
+    SILVER_LAB_COSTS: [*keyed(SILVER_LAB_COSTS), *at_least_zero("observations", "tokens", "cost_usd")],
+    LAB_ROI: [
+        *keyed(LAB_ROI),
+        AllowedValues("outcome", OUTCOMES),
+        *at_least_zero("cost_usd", "reported_cost_usd", "searched_hours", "total_cost_usd"),
+        *present("finished_at", "counted", "computed_at"),
+    ],
+    PROMOTION_ROI: [
+        *keyed(PROMOTION_ROI),
+        InRange("drafts", min_value=1),
+        *at_least_zero("cost_usd", "likes", "views", "follows"),
     ],
 }
 

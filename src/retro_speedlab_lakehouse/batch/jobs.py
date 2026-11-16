@@ -18,6 +18,7 @@ from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, Ta
 from retro_speedlab_lakehouse.mining.build import build_mining_gold
 from retro_speedlab_lakehouse.mining.records import mine_records
 from retro_speedlab_lakehouse.mining.verify import verify_replays
+from retro_speedlab_lakehouse.promotion.roi import build_promotion_roi
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.catalog import SOURCE_TABLES
@@ -49,7 +50,8 @@ def silver(spark: SparkSession, settings: Settings, gate: Gate) -> int:
 
 
 def gold(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return build_gold(spark, settings.lake, gate, now())
+    moment = now()
+    return build_gold(spark, settings.lake, gate, moment) + build_promotion_roi(spark, settings.lake, gate, moment)
 
 
 def lab_experiments(spark: SparkSession, settings: Settings, gate: Gate) -> int:

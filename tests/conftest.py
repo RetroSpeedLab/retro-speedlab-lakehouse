@@ -38,6 +38,7 @@ from retro_speedlab_lakehouse.stream.rows import KAFKA_ROW
 
 FIXTURES = Path(__file__).parent / "fixtures"
 DELTA = "io.delta:delta-spark_4.1_2.13:4.4.1"
+DROPOFF_SINCE = datetime(2026, 11, 16, 10, tzinfo=UTC)
 
 
 def fixture(name: str) -> Any:
@@ -72,7 +73,12 @@ def source_settings() -> Sources:
         twitch=TwitchSettings(client_id="id", client_secret="secret", channel="retrospeedlab"),
         discord=DiscordSettings(token="token", channel="1"),
         umami=UmamiSettings(
-            url="https://umami.test/api", username="user", password="password", website="site", games_website="games"
+            url="https://umami.test/api",
+            username="user",
+            password="password",
+            website="site",
+            games_website="games",
+            dropoff_since=DROPOFF_SINCE,
         ),
         langfuse=LangfuseSettings(url="https://langfuse.test", public_key="public", secret_key="secret"),
         wandb=WandbSettings(api_key="key", project="datenwissenschaften/retro-speedlab"),

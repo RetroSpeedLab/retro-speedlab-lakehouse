@@ -111,6 +111,7 @@ sources:
     page: retrospeedlab
   umami:
     games_website: 5a373581-adde-48eb-a9d1-dd4955f108a7
+    dropoff_since: 2026-11-16T10:00:00Z
 
 thrift:
   port: 10000

@@ -12,16 +12,18 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from retro_speedlab_lakehouse.experiments.analysis import Outcome, analyzed
+from retro_speedlab_lakehouse.experiments.analysis import Outcome, analyzed, primary
 from retro_speedlab_lakehouse.experiments.arms import Change, SearchHour, experiments
-from retro_speedlab_lakehouse.lake.catalog import LAB_EXPERIMENTS, LAB_RUNS, SEARCH_EVENTS
+from retro_speedlab_lakehouse.experiments.roi import DEPLOYED, ROI, Effect, LabRun, Spend, effect_of, lab_roi_rows
+from retro_speedlab_lakehouse.experiments.sequential import harm
+from retro_speedlab_lakehouse.lake.catalog import LAB_EXPERIMENTS, LAB_ROI, LAB_RUNS, SEARCH_EVENTS
 from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.write import replace
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
+from retro_speedlab_lakehouse.sources.catalog import SILVER_LAB_COSTS
 from retro_speedlab_lakehouse.stream.search_rows import ATTEMPTS, CROSSING, RECORDS, STEPS, field
 
-DEPLOYED = "deployed"
 IMPROVED = "improved"
 UNVERIFIED = "unverified"
 RESULT = StructType(
@@ -79,12 +81,29 @@ def search_hours(events: DataFrame) -> list[SearchHour]:
     ]
 
 
-def deployed_changes(lab_runs: DataFrame) -> list[Change]:
-    deployed = lab_runs.where(F.col("outcome") == DEPLOYED).select("game", "stamp", "started_at", "minutes").collect()
+def finished_runs(lab_runs: DataFrame) -> list[LabRun]:
+    found = lab_runs.select("game", "stamp", "outcome", "started_at", "minutes", "cost_usd").collect()
     return [
-        Change(row["game"], row["stamp"], row["started_at"].replace(tzinfo=UTC) + timedelta(minutes=row["minutes"]))
-        for row in deployed
+        LabRun(
+            row["game"],
+            row["stamp"],
+            row["outcome"],
+            row["started_at"].replace(tzinfo=UTC) + timedelta(minutes=row["minutes"]),
+            row["cost_usd"],
+        )
+        for row in found
     ]
+
+
+def deployed_changes(runs: list[LabRun]) -> list[Change]:
+    return [Change(run.game, run.stamp, run.finished_at) for run in runs if run.outcome == DEPLOYED]
+
+
+def spends(spark: SparkSession, lake: LakeSettings) -> dict[str, Spend]:
+    if not exists(spark, SILVER_LAB_COSTS, lake):
+        return {}
+    found = read(spark, SILVER_LAB_COSTS, lake).collect()
+    return {row["stamp"]: Spend(row["observations"], row["tokens"], row["cost_usd"]) for row in found}
 
 
 def result_row(change: Change, outcome: Outcome, now: datetime) -> tuple[object, ...]:
@@ -118,12 +137,14 @@ def build_experiments(spark: SparkSession, lake: LakeSettings, gate: Gate, now: 
     if not exists(spark, SEARCH_EVENTS, lake) or not exists(spark, LAB_RUNS, lake):
         return 0
     hours = search_hours(read(spark, SEARCH_EVENTS, lake))
-    changes = deployed_changes(read(spark, LAB_RUNS, lake))
-    rows = [
-        result_row(change, outcome, now)
-        for change, before, after in experiments(changes, hours, now)
-        for outcome in analyzed(before, after)
-    ]
-    results = spark.createDataFrame(rows, RESULT)
-    replace(LAB_EXPERIMENTS, lake, results, gate)
-    return len(rows)
+    runs = finished_runs(read(spark, LAB_RUNS, lake))
+    rows: list[tuple[object, ...]] = []
+    effects: dict[tuple[str, str], Effect] = {}
+    for change, before, after in experiments(deployed_changes(runs), hours, now):
+        outcomes = analyzed(before, after)
+        rows += [result_row(change, outcome, now) for outcome in outcomes]
+        effects[(change.game, change.stamp)] = effect_of(primary(outcomes), harm(before, after))
+    replace(LAB_EXPERIMENTS, lake, spark.createDataFrame(rows, RESULT), gate)
+    roi = lab_roi_rows(runs, spends(spark, lake), effects, now)
+    replace(LAB_ROI, lake, spark.createDataFrame(roi, ROI), gate)
+    return len(rows) + len(roi)

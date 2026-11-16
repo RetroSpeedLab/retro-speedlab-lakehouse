@@ -64,6 +64,8 @@ is readable only by Superset.
 | `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Level splits, improvement history and game knowledge |
 | `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
 | `silver.game_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of human game starts and campaign wins per game |
+| `silver.game_dropoff` | `sources-hourly`, `sources-nightly` | `game` | Umami's campaign runs that ended without a win, per level, and the wins since tracking began |
+| `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | Langfuse's traced steps, tokens and model cost of every lab run's session |
 | `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Human highscore runs and the AI's newest records replayed through the served game's verifier |
 | `gold.game_summary` | `gold` | `game` | Record, levels cleared, seconds saved, costliest level, lab runs, change since yesterday |
 | `gold.level_costs` | `gold` | `game`, `level` | Frames and share of the run per level |
@@ -71,6 +73,8 @@ is readable only by Superset.
 | `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as a before/after experiment |
+| `gold.lab_roi` | `experiments` | `game`, `stamp` | Every lab run's Langfuse cost, the frames its change saved with an interval, frames per dollar, running totals and the early harm flag |
+| `gold.promotion_roi` | `gold` | `channel`, `variant` | Claude cost, views, likes and follows of the published drafts, with views and likes per dollar and their intervals |
 | `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind |
 | `gold.search_bandit` | `search-bandit` | `metric` | Bandit turns against held-out static turns |
 | `silver.engagement_events` | `engagement-hourly` | `surface`, `item`, `arm`, `hour` | Exposures and outcomes per item: views and clicks from Umami, stream minutes with the chat they overlapped, promotion posts with their interactions |
@@ -79,6 +83,7 @@ is readable only by Superset.
 | `gold.engagement_experiments` | `engagement-nightly` | `experiment`, `metric` | Adaptive against holdout and the site and stream A/B tests, with SRM check, Holm and BH |
 | `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The sources' numbers of the last 2 days |
 | `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
+| `gold.human_dropoff` | `sources-hourly`, `sources-nightly` | `game`, `level_index` | Per level the campaign runs that reached it, the share that ended there, and the humans' median time against the AI's split |
 | `gold.level_segments`, `gold.mining_summary`, `gold.level_history` | `mining-gold` | `game` | Frames per level and piece of the newest record, and every change of a level's frames |
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
@@ -97,9 +102,10 @@ live run. A failing suite stops the write and the job; its report lands in `gold
 ## External sources
 
 The sources jobs load only aggregated, public, non-personal numbers, never a message, a name or a raw response:
-Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (including the game site's starts and
-campaign wins per game, and hourly the engagement events), Langfuse, W&B,
-Bugsink and GitHub. Each source loads on its own; one that fails keeps the others and fails the job afterwards.
+Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (including the game site's starts,
+campaign wins and the level where a campaign run ends without a win per game, and hourly the engagement events),
+Langfuse (including the cost of every lab run's session), W&B, Bugsink and GitHub. Each source loads on its own; one
+that fails keeps the others and fails the job afterwards.
 
 ## Lab experiments
 
@@ -117,6 +123,21 @@ the change, treatment the searched hours after it (each at most 72).
 A metric needs at least 12 searched hours on both sides, and rates at least 30 trials. The verdict is `better` or
 `worse` only when the Holm-adjusted p-value is at most 0.05 and the 95 % interval excludes zero on that side;
 Benjamini-Hochberg adjusted p-values are reported alongside.
+
+Harm is watched sooner: after every searched hour from the second on, a one-sided group-sequential test with
+O'Brien-Fleming alpha spending (Lan-DeMets, alpha 0.05, planned for 72 hours) checks whether frames saved per hour
+fell. A crossing flags the change in `gold.lab_roi` with the hours it took, so the lab can revert it early.
+
+## ROI
+
+- **Lab:** each lab run's Langfuse cost against its effect, frames saved per hour times the searched hours after
+  the change, with the 95 % interval from the experiment. A run that changed nothing saved zero frames; a change
+  without enough hours and a run without a traced cost do not count. Totals add half-widths in quadrature.
+- **Promotion:** the backend publishes the tokens and Claude cost of every draft's copy to `promotion.usage`; a
+  call shared by several networks splits its cost evenly. Views and likes per dollar use the newest metrics of the
+  published drafts, with a t interval over the drafts.
+- **Search:** frames saved per CPU-hour per game and worker kind come from `gold.search_allocation`. Every worker
+  kind runs on a CPU; the GPU only trains the PPO policy, so no frames are attributed to GPU-hours.
 
 ## Search bandit
 

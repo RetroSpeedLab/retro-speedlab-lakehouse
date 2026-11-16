@@ -151,7 +151,7 @@ def test_platform_measures_tables_and_records_jobs(spark: SparkSession, settings
     assert tables["live.live_run"]["store"] == "lake"
     assert read(spark, PLATFORM_JOBS, settings.lake).count() == 1
     assert maintain(spark, CORE_TABLES, settings.lake, START) >= 8
-    assert vacuum_live(spark, CORE_TABLES, settings.lake) == 2
+    assert vacuum_live(spark, CORE_TABLES, settings.lake) == 3
 
 
 def test_the_gate_blocks_a_failing_write_and_keeps_its_report(spark: SparkSession, settings: Settings) -> None:

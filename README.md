@@ -132,8 +132,8 @@ lands in `gold.quality_reports` either way.
 
 | DAG | When (UTC) | Jobs |
 |-----|------------|------|
-| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, `platform` |
-| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `experiments`, `maintenance`, `sources-nightly`, `videos-nightly`, `platform` |
+| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`; beside them `sources-hourly`; then `platform` |
+| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `experiments`, `maintenance`; beside them `sources-nightly` and `videos-nightly`; then `platform` |
 | `lakehouse_mining` | 03:30, done by 06:00 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
 Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the

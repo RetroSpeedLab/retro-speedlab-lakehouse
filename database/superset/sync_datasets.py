@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from assets import DATABASE, starter_datasets
+from bundle import DATABASE
 from lake_datasets import LAYERS, LakeDataset, lake_datasets
 from loguru import logger
 from sqlalchemy.exc import OperationalError
@@ -50,9 +50,9 @@ class DatasetSync:
         self.session.commit()
         return True
 
-    def run(self, starters: set[LakeDataset]) -> None:
-        synced = [lake for lake in lake_datasets(self.listing()) if lake not in starters and self.sync(lake)]
-        logger.info(f"{len(synced)} lake datasets are in sync, {len(starters)} starter datasets keep fixed columns")
+    def run(self) -> None:
+        synced = [lake for lake in lake_datasets(self.listing()) if self.sync(lake)]
+        logger.info(f"{len(synced)} lake datasets are in sync")
         if self.skipped:
             logger.warning(f"Not in the lake yet, skipped: {', '.join(self.skipped)}")
 
@@ -64,8 +64,7 @@ def main() -> None:
         from superset.models.core import Database
 
         database = db.session.query(Database).filter_by(database_name=DATABASE).one()
-        starters = {dataset.lake for dataset in starter_datasets().values()}
-        DatasetSync(db.session, database, SqlaTable).run(starters)
+        DatasetSync(db.session, database, SqlaTable).run()
 
 
 if __name__ == "__main__":

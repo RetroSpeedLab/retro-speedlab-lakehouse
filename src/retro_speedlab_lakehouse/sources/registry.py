@@ -2,7 +2,7 @@ from retro_speedlab_lakehouse.sources.bugsink import bugsink_numbers
 from retro_speedlab_lakehouse.sources.discord import discord_numbers
 from retro_speedlab_lakehouse.sources.dropoff import umami_dropoff
 from retro_speedlab_lakehouse.sources.github import github_numbers
-from retro_speedlab_lakehouse.sources.langfuse import langfuse_lab_costs, langfuse_numbers
+from retro_speedlab_lakehouse.sources.langfuse import langfuse_days, langfuse_lab_costs, langfuse_numbers
 from retro_speedlab_lakehouse.sources.plays import umami_plays
 from retro_speedlab_lakehouse.sources.record import SnapshotSource, Source
 from retro_speedlab_lakehouse.sources.settings import Sources
@@ -15,6 +15,7 @@ NUMBERS = "numbers"
 PLAYS = "plays"
 DROPOFF = "dropoff"
 LAB_COSTS = "lab_costs"
+DAILY = "daily"
 
 
 def hourly_sources(sources: Sources) -> list[Source]:
@@ -27,6 +28,7 @@ def hourly_sources(sources: Sources) -> list[Source]:
         SnapshotSource("umami", DROPOFF, lambda now: umami_dropoff(sources.umami, now)),
         SnapshotSource("langfuse", NUMBERS, lambda now: langfuse_numbers(sources.langfuse, now)),
         SnapshotSource("langfuse", LAB_COSTS, lambda now: langfuse_lab_costs(sources.langfuse, now)),
+        SnapshotSource("langfuse", DAILY, lambda now: langfuse_days(sources.langfuse, now)),
         SnapshotSource("wandb", NUMBERS, lambda now: wandb_numbers(sources.wandb)),
         SnapshotSource("bugsink", NUMBERS, lambda now: bugsink_numbers(sources.bugsink)),
     ]

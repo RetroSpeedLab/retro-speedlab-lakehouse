@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -12,6 +12,8 @@ from retro_speedlab_lakehouse.sources.settings import LangfuseSettings
 
 METRICS = "/api/public/v2/metrics"
 WEEK = timedelta(days=7)
+DAY = timedelta(days=1)
+DAYS = 8
 WINDOW = "last 7 days"
 MEASURES = [
     {"measure": "count", "aggregation": "count"},
@@ -35,6 +37,19 @@ class LabCost:
         return SourceRecord(self.stamp, asdict(self))
 
 
+@dataclass(frozen=True, slots=True)
+class DailyCost:
+    date: date
+    observations: int
+    tokens: int
+    cost_usd: float
+
+    @property
+    def record(self) -> SourceRecord:
+        body = {"date": self.date.isoformat(), "observations": self.observations, "tokens": self.tokens}
+        return SourceRecord(self.date.isoformat(), {**body, "cost_usd": self.cost_usd})
+
+
 def stamp(moment: datetime) -> str:
     return moment.isoformat().replace("+00:00", "Z")
 
@@ -45,21 +60,35 @@ def measured(settings: LangfuseSettings, query: dict[str, Any]) -> list[dict[str
         return get_json(session, METRICS, {"query": json.dumps(query)})["data"]
 
 
-def langfuse_numbers(settings: LangfuseSettings, now: datetime) -> list[Number]:
+def totals(settings: LangfuseSettings, start: datetime, end: datetime) -> dict[str, Any]:
     query = {
         "view": "observations",
         "metrics": MEASURES,
         "dimensions": [],
         "filters": [],
-        "fromTimestamp": stamp(now - WEEK),
-        "toTimestamp": stamp(now),
+        "fromTimestamp": stamp(start),
+        "toTimestamp": stamp(end),
     }
-    totals = measured(settings, query)[0]
+    return measured(settings, query)[0]
+
+
+def langfuse_numbers(settings: LangfuseSettings, now: datetime) -> list[Number]:
+    week = totals(settings, now - WEEK, now)
     return [
-        Number("observations", "Traced steps", totals["count_count"], "", WINDOW),
-        Number("tokens", "Tokens", totals["sum_totalTokens"], "", WINDOW),
-        Number("cost", "Model cost", round(totals["sum_totalCost"], 2), "USD", WINDOW),
+        Number("observations", "Traced steps", week["count_count"], "", WINDOW),
+        Number("tokens", "Tokens", week["sum_totalTokens"], "", WINDOW),
+        Number("cost", "Model cost", round(week["sum_totalCost"], 2), "USD", WINDOW),
     ]
+
+
+def daily_cost(settings: LangfuseSettings, start: datetime, now: datetime) -> DailyCost:
+    day = totals(settings, start, min(start + DAY, now))
+    return DailyCost(start.date(), int(day["count_count"]), int(day["sum_totalTokens"]), float(day["sum_totalCost"]))
+
+
+def langfuse_days(settings: LangfuseSettings, now: datetime) -> list[DailyCost]:
+    midnight = now.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    return [daily_cost(settings, midnight - back * DAY, now) for back in range(DAYS)]
 
 
 def langfuse_lab_costs(settings: LangfuseSettings, now: datetime) -> list[LabCost]:

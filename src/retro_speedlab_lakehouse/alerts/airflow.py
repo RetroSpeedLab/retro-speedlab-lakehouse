@@ -1,0 +1,39 @@
+from pathlib import Path
+from typing import Any
+
+from airflow.sdk.definitions.context import Context
+
+from retro_speedlab_lakehouse.relay.outbox import backend_client
+from retro_speedlab_lakehouse.settings import load_backend_settings
+
+TASKS_PATH = "/alerts/airflow"
+TIMEOUT_SECONDS = 15.0
+ERROR_LENGTH = 500
+SUCCESS = "success"
+FAILED = "failed"
+
+
+def task_report(state: str, context: Context) -> dict[str, Any]:
+    if "ti" not in context:
+        raise ValueError("Airflow passed no task instance to the callback")
+    error = str(context["exception"])[:ERROR_LENGTH] if "exception" in context else None
+    ti = context["ti"]
+    return {
+        "dag": ti.dag_id,
+        "task": ti.task_id,
+        "run_id": ti.run_id,
+        "state": state,
+        "tries": ti.try_number,
+        "error": error,
+    }
+
+
+class TaskReporter:
+    def __init__(self, config: Path, state: str) -> None:
+        self.config = config
+        self.state = state
+
+    def __call__(self, context: Context) -> None:
+        backend = load_backend_settings(self.config)
+        with backend_client(backend.url, backend.api_key, TIMEOUT_SECONDS) as client:
+            client.post(TASKS_PATH, json=task_report(self.state, context)).raise_for_status()

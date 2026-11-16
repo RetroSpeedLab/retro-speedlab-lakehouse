@@ -1,14 +1,30 @@
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import DoubleType, LongType, MapType, StringType, StructField, StructType, TimestampType
+from pyspark.sql.types import (
+    DateType,
+    DoubleType,
+    LongType,
+    MapType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
 
 from retro_speedlab_lakehouse.lake.catalog import SOURCES
 from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.write import replace
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
-from retro_speedlab_lakehouse.sources.catalog import SILVER_DROPOFF, SILVER_LAB_COSTS, SILVER_NUMBERS, SILVER_PLAYS
-from retro_speedlab_lakehouse.sources.registry import DROPOFF, LAB_COSTS, NUMBERS, PLAYS
+from retro_speedlab_lakehouse.sources.bronze import latest
+from retro_speedlab_lakehouse.sources.catalog import (
+    LANGFUSE_DAILY,
+    SILVER_DROPOFF,
+    SILVER_LAB_COSTS,
+    SILVER_NUMBERS,
+    SILVER_PLAYS,
+)
+from retro_speedlab_lakehouse.sources.registry import DAILY, DROPOFF, LAB_COSTS, NUMBERS, PLAYS
 
 NUMBER = StructType(
     [
@@ -17,6 +33,14 @@ NUMBER = StructType(
         StructField("value", DoubleType(), False),
         StructField("unit", StringType(), False),
         StructField("window", StringType(), False),
+    ]
+)
+DAILY_COST = StructType(
+    [
+        StructField("date", DateType(), False),
+        StructField("observations", LongType(), False),
+        StructField("tokens", LongType(), False),
+        StructField("cost_usd", DoubleType(), False),
     ]
 )
 COUNTS = MapType(StringType(), LongType(), False)
@@ -57,6 +81,12 @@ def newest(records: DataFrame, stream: str, schema: StructType) -> DataFrame:
     )
 
 
+def langfuse_daily(days: DataFrame) -> DataFrame:
+    return days.select(F.from_json("body", DAILY_COST).alias("day"), F.col("fetched_at").alias("measured_at")).select(
+        "day.*", "measured_at"
+    )
+
+
 def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> int:
     if not exists(spark, SOURCES, lake):
         return 0
@@ -66,6 +96,7 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
         (SILVER_PLAYS, newest(records, PLAYS, MODE_PLAYS).drop("source")),
         (SILVER_DROPOFF, newest(records, DROPOFF, DROPOFF_COUNTS).drop("source")),
         (SILVER_LAB_COSTS, newest(records, LAB_COSTS, LAB_COST).drop("source")),
+        (LANGFUSE_DAILY, langfuse_daily(latest(spark, lake, "langfuse", DAILY))),
     ]
     for table, rows in streams:
         replace(table, lake, rows, gate)

@@ -78,6 +78,7 @@ SEARCH_PULSE = table(Layer.LIVE, "search_pulse", ("game",))
 POLICY_PULSE = table(Layer.LIVE, "policy_pulse", ("game",))
 LAB_STATUS = table(Layer.LIVE, "lab_status", ("slot",))
 CHAT_PULSE = table(Layer.LIVE, "chat_pulse", ("channel",))
+HOST_STATUS = table(Layer.LIVE, "host_metrics", ("host",))
 
 GAMES = table(Layer.SILVER, "games", ("slug",))
 GAME_RUNS = Table(Layer.SILVER, "game_runs", ("game",), (), ())
@@ -89,6 +90,7 @@ LAB_RUNS = table(Layer.SILVER, "lab_runs", ("game", "stamp"))
 LAB_PROGRESS = table(Layer.SILVER, "lab_run_progress", ("game", "stamp"))
 REPORTS = table(Layer.SILVER, "reports", ("game", "name"))
 HIGHSCORES = table(Layer.SILVER, "highscores", ("id",))
+HOST_METRICS = table(Layer.SILVER, "host_metrics", ("host", "measured_at"))
 
 GAME_SUMMARY = table(Layer.GOLD, "game_summary", ("game",))
 LEVEL_COSTS = table(Layer.GOLD, "level_costs", ("game", "level"))
@@ -104,6 +106,7 @@ PLATFORM_TABLES = table(Layer.GOLD, "platform_tables", ("table",))
 PLATFORM_JOBS = table(Layer.GOLD, "platform_jobs", ("run_id", "job"))
 SOURCES_STATUS = table(Layer.GOLD, "sources_status", ("source", "stream"))
 QUALITY_REPORTS = table(Layer.GOLD, "quality_reports", ())
+QUALITY_FAILURES = table(Layer.GOLD, "quality_failures", ())
 
 TRACE_PIECES = table(Layer.BRONZE, "trace_pieces", ("game", "record", "segment"))
 FRAME_TRACES = Table(Layer.BRONZE, "frame_traces", ("game", "frame"), ("game",), ())
@@ -132,6 +135,7 @@ CORE_TABLES = (
     POLICY_PULSE,
     LAB_STATUS,
     CHAT_PULSE,
+    HOST_STATUS,
     GAMES,
     GAME_RUNS,
     RUN_VERSIONS,
@@ -142,6 +146,7 @@ CORE_TABLES = (
     LAB_PROGRESS,
     REPORTS,
     HIGHSCORES,
+    HOST_METRICS,
     GAME_SUMMARY,
     LEVEL_COSTS,
     IMPROVEMENT,
@@ -156,6 +161,7 @@ CORE_TABLES = (
     PLATFORM_JOBS,
     SOURCES_STATUS,
     QUALITY_REPORTS,
+    QUALITY_FAILURES,
 )
 MINING_TABLES = (
     TRACE_PIECES,

@@ -1,5 +1,6 @@
 from spark_data_quality import AllowedValues, Check, InRange, NotNull, QualitySuite, RowCount, Unique, UniqueKey
 
+from retro_speedlab_lakehouse.cockpit.catalog import AUDIENCE_HOURS, COCKPIT_DAYS, SEARCH_HOURS
 from retro_speedlab_lakehouse.engagement.catalog import (
     COMMUNITY_DAILY,
     CONTENT_RANKING,
@@ -14,6 +15,8 @@ from retro_speedlab_lakehouse.lake.catalog import (
     GAMES,
     HIGHSCORES,
     HISTORY,
+    HOST_METRICS,
+    HOST_STATUS,
     HUMANS_VS_AI,
     IMPROVEMENT,
     KNOWLEDGE,
@@ -48,6 +51,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
 from retro_speedlab_lakehouse.sources.catalog import (
     GAME_PLAYS,
     HUMAN_DROPOFF,
+    LANGFUSE_DAILY,
     SILVER_DROPOFF,
     SILVER_LAB_COSTS,
     SILVER_NUMBERS,
@@ -84,6 +88,11 @@ def at_least_zero(*columns: str) -> list[Check]:
     return [InRange(column, min_value=0) for column in columns]
 
 
+def host_checks(table: Table) -> list[Check]:
+    shares = [InRange(column, min_value=0, max_value=100) for column in ("disk_percent", "memory_percent")]
+    return [*keyed(table), *shares, *at_least_zero("load_1", "load_5", "load_15"), InRange("cpus", min_value=1)]
+
+
 CHECKS: dict[Table, list[Check]] = {
     LIVE_RUN: [*keyed(LIVE_RUN), *present("game", "event_id", "payload"), RowCount(max_count=1)],
     RUN_VERSIONS: [*keyed(RUN_VERSIONS), *present("game", "received_at"), *at_least_zero("seconds", "frames")],
@@ -91,6 +100,8 @@ CHECKS: dict[Table, list[Check]] = {
     REPORTS: [*keyed(REPORTS), *present("headline", "event_id")],
     LAB_RUNS: [*keyed(LAB_RUNS), AllowedValues("outcome", OUTCOMES), *at_least_zero("minutes", "cost_usd")],
     HIGHSCORES: [*keyed(HIGHSCORES), *present("game", "version"), InRange("frames", min_value=1)],
+    HOST_STATUS: host_checks(HOST_STATUS),
+    HOST_METRICS: host_checks(HOST_METRICS),
     GAMES: [*keyed(GAMES), Unique("number"), *present("title", "version"), RowCount(min_count=1)],
     LAB_PROGRESS: [*keyed(LAB_PROGRESS), *present("progressed", "seconds")],
     SPLITS: [*keyed(SPLITS), *at_least_zero("level_seconds", "first_seconds", "frames")],
@@ -186,6 +197,13 @@ CHECKS: dict[Table, list[Check]] = {
         AllowedValues("window", PLAY_WINDOWS),
         *present("started", "won", "measured_at"),
     ],
+    COCKPIT_DAYS: [*keyed(COCKPIT_DAYS), *present("day", "computed_at"), InRange("days_ago", min_value=0)],
+    SEARCH_HOURS: [
+        *keyed(SEARCH_HOURS),
+        *at_least_zero("attempts", "improvements", "frames_saved", "records", "ppo_rounds"),
+    ],
+    AUDIENCE_HOURS: [*keyed(AUDIENCE_HOURS), *at_least_zero("viewers_peak", "live_minutes", "chat_messages")],
+    LANGFUSE_DAILY: [*keyed(LANGFUSE_DAILY), *at_least_zero("observations", "tokens", "cost_usd")],
     GAME_PLAYS: [
         *keyed(GAME_PLAYS),
         AllowedValues("mode", PLAY_MODES),

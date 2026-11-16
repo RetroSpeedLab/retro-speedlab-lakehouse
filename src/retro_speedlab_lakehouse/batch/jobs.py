@@ -11,6 +11,8 @@ from retro_speedlab_lakehouse.batch.gold import build_gold
 from retro_speedlab_lakehouse.batch.maintenance import maintain, vacuum_live
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
+from retro_speedlab_lakehouse.cockpit.catalog import COCKPIT_TABLES
+from retro_speedlab_lakehouse.cockpit.job import build_cockpit
 from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
 from retro_speedlab_lakehouse.engagement.jobs import build_community, build_engagement, build_engagement_experiments
 from retro_speedlab_lakehouse.experiments.job import build_experiments
@@ -27,7 +29,7 @@ from retro_speedlab_lakehouse.sources.registry import hourly_sources, nightly_so
 from retro_speedlab_lakehouse.videos.mirror import mirror_videos
 
 Job = Callable[[SparkSession, Settings, Gate], int]
-ALL_TABLES: tuple[Table, ...] = CORE_TABLES + MINING_TABLES + SOURCE_TABLES + ENGAGEMENT_TABLES
+ALL_TABLES: tuple[Table, ...] = CORE_TABLES + MINING_TABLES + SOURCE_TABLES + ENGAGEMENT_TABLES + COCKPIT_TABLES
 SUCCESS = "success"
 FAILED = "failed"
 ERROR_LENGTH = 500
@@ -74,6 +76,10 @@ def engagement_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> i
     return build_engagement_experiments(spark, settings, gate, now()) + build_community(spark, settings, gate)
 
 
+def cockpit(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return build_cockpit(spark, settings.lake, gate, now())
+
+
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_platform(spark, ALL_TABLES, settings.lake, gate, now())
 
@@ -99,6 +105,7 @@ JOBS: dict[str, Job] = {
     "videos-nightly": mirror_videos,
     "engagement-hourly": engagement_hourly,
     "engagement-nightly": engagement_nightly,
+    "cockpit": cockpit,
     "platform": platform,
     "maintenance": maintenance,
     "vacuum-live": live_vacuum,

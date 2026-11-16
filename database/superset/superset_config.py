@@ -10,6 +10,8 @@ DISCORD = "discord"
 DISCORD_USER_ID = "712191617095696493"
 ADMIN = "Admin"
 QUERY_SECONDS = 300
+CACHE_SECONDS = 300
+PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
 
 
 def discord_username(user_id: str) -> str:
@@ -90,3 +92,7 @@ SESSION_COOKIE_SAMESITE = "Lax"
 RATELIMIT_STORAGE_URI = "memory://"
 SQLLAB_TIMEOUT = QUERY_SECONDS
 SUPERSET_WEBSERVER_TIMEOUT = QUERY_SECONDS
+DATA_CACHE_CONFIG = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": CACHE_SECONDS}
+EXTRA_CATEGORICAL_COLOR_SCHEMES = [
+    {"id": "retroSpeedlab", "label": "Retro Speedlab", "description": "", "isDefault": True, "colors": PALETTE}
+]

@@ -27,6 +27,7 @@ the order of the backend's outbox.
 | `promotion.drafts` | draft id | `id`, `event`, `kind`, `game`, `channel`, `variant`, `copy`, `facts`, `status`, `url`, `error`, `created`, `decided`, `published` | backend outbox | `bronze.events`, `silver.engagement_events`, `gold.promotion_roi` |
 | `promotion.metrics` | draft id | `draft_id`, `event`, `kind`, `game`, `channel`, `variant`, `copy`, `views`, `likes`, `reposts`, `replies`, `average_view_seconds`, `subscribers_gained`, `measured` | backend outbox | `bronze.events`, `silver.engagement_events`, `gold.promotion_roi` |
 | `promotion.usage` | promotion event | `event`, `kind`, `game`, `channels`, `calls`, `models`, `input_tokens`, `output_tokens`, `cost_usd` of the Claude calls that wrote the copy | backend outbox | `bronze.events`, `silver.engagement_events`, `gold.promotion_roi` |
+| `hosts.metrics` | host (`main`, `home-lab`) | One minute of a server from its collector: `host`, `measured_at`, `disk_percent` and `fullest_disk`, `memory_percent`, `memory_used_bytes`, `memory_total_bytes`, `load_1`, `load_5`, `load_15`, `cpus` | backend outbox, from `PUT /hosts/{host}` | `bronze.events`, `live.host_metrics`, `silver.host_metrics` |
 | `highscores.entries` | highscore id | `id`, `game`, `version`, `name` (the public Discord display name on the board), `frames`, `set_at`, `inputs` (the run's inputs, one byte per frame, base64) | backend outbox | `bronze.events`, `silver.highscores` |
 
 The backend writes a run event only when the run changed apart from `updated_at`, and at least once a minute.

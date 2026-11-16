@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk import DAG, TriggerRule, chain
+
+from retro_speedlab_lakehouse.alerts.airflow import FAILED, SUCCESS, TaskReporter
 
 CONFIG = "/lakehouse/config.yaml"
 NICE = 15
@@ -9,7 +12,7 @@ START = datetime(2026, 11, 15)
 RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
 HOURLY_JOBS = ("api-hourly", "silver", "gold", "vacuum-live", "platform")
-HOURLY_ASIDE = ("sources-hourly", "engagement-hourly")
+HOURLY_ASIDE = ("sources-hourly", "engagement-hourly", "cockpit")
 NIGHTLY_JOBS = (
     "api-nightly",
     "silver",
@@ -46,6 +49,8 @@ def job(name: str, priority: int, timeout: timedelta) -> BashOperator:
         priority_weight=priority,
         weight_rule=ABSOLUTE,
         execution_timeout=timeout,
+        on_failure_callback=TaskReporter(Path(CONFIG), FAILED),
+        on_success_callback=TaskReporter(Path(CONFIG), SUCCESS),
     )
 
 

@@ -139,6 +139,14 @@ def lake_settings(document: Any) -> LakeSettings:
     )
 
 
+def backend_settings(document: Any) -> BackendSettings:
+    return BackendSettings(url=document.backend.url, api_key=secret("UPLOAD_API_KEY"))
+
+
+def load_backend_settings(config: Path) -> BackendSettings:
+    return backend_settings(load_document(config))
+
+
 def load_database_settings(config: Path) -> DatabaseSettings:
     document = load_document(config)
     return DatabaseSettings(lake=lake_settings(document), thrift=ThriftSettings(**document.thrift.to_dict()))
@@ -147,7 +155,7 @@ def load_database_settings(config: Path) -> DatabaseSettings:
 def load_settings(config: Path) -> Settings:
     document = load_document(config)
     return Settings(
-        backend=BackendSettings(url=document.backend.url, api_key=secret("UPLOAD_API_KEY")),
+        backend=backend_settings(document),
         kafka=KafkaSettings(**document.kafka.to_dict()),
         relay=RelaySettings(**document.relay.to_dict()),
         lake=lake_settings(document),

@@ -50,6 +50,21 @@ HIGHSCORE = StructType(
         StructField("set_at", TimestampType(), False),
     ]
 )
+HOST = StructType(
+    [
+        StructField("host", StringType(), False),
+        StructField("measured_at", TimestampType(), False),
+        StructField("disk_percent", DoubleType(), False),
+        StructField("fullest_disk", StringType(), False),
+        StructField("memory_percent", DoubleType(), False),
+        StructField("memory_used_bytes", LongType(), False),
+        StructField("memory_total_bytes", LongType(), False),
+        StructField("load_1", DoubleType(), False),
+        StructField("load_5", DoubleType(), False),
+        StructField("load_15", DoubleType(), False),
+        StructField("cpus", IntegerType(), False),
+    ]
+)
 KAFKA_ROW = StructType(
     [
         StructField("value", BinaryType(), False),
@@ -63,6 +78,7 @@ LIVE_TOPIC = "runs.live"
 REPORTS_TOPIC = "lab.reports"
 LAB_RUNS_TOPIC = "lab.runs"
 HIGHSCORES_TOPIC = "highscores.entries"
+HOSTS_TOPIC = "hosts.metrics"
 LIVE_SLOT = "live"
 STAMP_FORMAT = "yyyy-MM-dd'T'HHmm"
 
@@ -166,3 +182,17 @@ def lab_runs(events: DataFrame) -> DataFrame:
 def highscores(events: DataFrame) -> DataFrame:
     rows = newest(events.where(F.col("topic") == HIGHSCORES_TOPIC), ["key"])
     return rows.select(F.from_json("payload", HIGHSCORE).alias("entry"), "event_id").select("entry.*", "event_id")
+
+
+def host_rows(events: DataFrame) -> DataFrame:
+    rows = events.where(F.col("topic") == HOSTS_TOPIC)
+    parsed = rows.select(F.from_json("payload", HOST).alias("host"), "event_id", F.col("event_at").alias("received_at"))
+    return parsed.select("host.*", "event_id", "received_at")
+
+
+def host_status(events: DataFrame) -> DataFrame:
+    return newest(host_rows(events), ["host"])
+
+
+def host_history(events: DataFrame) -> DataFrame:
+    return newest(host_rows(events), ["host", "measured_at"])

@@ -5,6 +5,7 @@ from statistics import median
 
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
+from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType, TimestampType
 
 from retro_speedlab_lakehouse.lake.catalog import STREAM_STATUS
 from retro_speedlab_lakehouse.lake.write import merge
@@ -13,6 +14,16 @@ from retro_speedlab_lakehouse.settings import Settings
 
 WINDOW = timedelta(minutes=1)
 STREAM = "live"
+STATUS = StructType(
+    [
+        StructField("stream", StringType(), False),
+        StructField("events_per_minute", LongType(), False),
+        StructField("lag_seconds", DoubleType(), False),
+        StructField("lag_max_seconds", DoubleType(), False),
+        StructField("last_event_at", TimestampType(), False),
+        StructField("updated_at", TimestampType(), False),
+    ]
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +72,6 @@ class StreamStatus:
             "last_event_at": stats.last_event_at,
             "updated_at": stats.at,
         }
-        merge(STREAM_STATUS, self.settings.lake, events.sparkSession.createDataFrame([row]), self.gate)
+        merge(STREAM_STATUS, self.settings.lake, events.sparkSession.createDataFrame([row], STATUS), self.gate)
         self.gate.flush(events.sparkSession, self.settings.lake)
         self.written_at = stats.at

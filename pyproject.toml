@@ -55,10 +55,10 @@ typeCheckingMode = "strict"
 pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
-extraPaths = ["database/superset"]
+extraPaths = ["database/superset", "hosts"]
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["database/superset"]
+pythonpath = ["database/superset", "hosts"]

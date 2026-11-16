@@ -58,11 +58,13 @@ is readable only by Superset.
 | `live.policy_pulse` | stream | `game` | The newest PPO round and the last hour's rounds and mean reward |
 | `live.lab_status` | stream | `slot` | The newest lab-run event of the last hour |
 | `live.chat_pulse` | stream | `channel` | The newest minute of chat and the last hour's messages |
+| `live.host_metrics`, `silver.host_metrics` | stream | `host`, `measured_at` | Each server's newest disk, memory and load, and every minute of them |
 | `silver.game_runs`, `silver.run_versions` | stream | `game`, `event_id` | The newest run per game and every reported run |
 | `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and highscore entries |
 | `silver.games`, `silver.lab_run_progress` | `silver` | | The LAB24 collection and the progress after each lab run |
 | `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Level splits, improvement history and game knowledge |
 | `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
+| `silver.langfuse_daily` | `sources-hourly`, `sources-nightly` | `date` | Langfuse's traced steps, tokens and model cost per UTC day |
 | `silver.game_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of human game starts and campaign wins per game |
 | `silver.game_dropoff` | `sources-hourly`, `sources-nightly` | `game` | Umami's campaign runs that ended without a win, per level, and the wins since tracking began |
 | `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | Langfuse's traced steps, tokens and model cost of every lab run's session |
@@ -88,7 +90,9 @@ is readable only by Superset.
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
 | `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform` | | Size and versions per table, and every job run |
-| `gold.quality_reports` | every write | | The data-quality report of every silver, gold and live write |
+| `gold.quality_reports`, `gold.quality_failures` | every write | | The data-quality report of every silver, gold and live write, and the failed ones again |
+| `gold.cockpit_days` | `cockpit` | `metric`, `days_ago` | The cockpit's numbers per 24-hour window ending now, for the last 8 windows |
+| `gold.search_hours`, `gold.audience_hours` | `cockpit` | `hour` | Search, PPO, Twitch and chat per hour of the last 7 days |
 
 Writes use Delta MERGE (newest event wins); the live pulse tables are overwritten. The nightly `maintenance` job runs
 OPTIMIZE, VACUUM and the retention of each layer. The event schemas are in [EVENTS.md](EVENTS.md).
@@ -172,7 +176,7 @@ ratio mismatch. The `chat` process also publishes Helix's viewers and followers 
 
 | DAG | Schedule (UTC) | Jobs |
 |-----|----------------|------|
-| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, `engagement-hourly`, then `platform` |
+| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, `engagement-hourly`, `cockpit`, then `platform` |
 | `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `maintenance`, `sources-nightly`, `videos-nightly`, then `platform` |
 | `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
@@ -207,10 +211,30 @@ flowchart LR
   `database/superset/superset_config.py` gets in, created as Admin on first sign-in. Self-registration is off and the
   public role has no permissions. It shares the backend's Discord app, whose redirects include
   `https://database.retrospeedlab.com/oauth-authorized/discord`.
-- The lake connection forbids DML, CTAS and file uploads. Every start imports the dashboards from
-  `database/superset/assets.py`.
+- The lake connection forbids DML, CTAS and file uploads. Every start imports the cockpit's dashboards, defined in
+  `database/superset/dashboards.py`.
 - Every registered table is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
   refreshes their columns at start and every hour.
+
+## Cockpit and alerts
+
+Four Superset dashboards hold the owner's numbers, every one from the lake:
+
+| Dashboard | What it shows |
+|-----------|---------------|
+| Cockpit | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members, the Claude cost of the last full day, the lab's frames per Claude dollar and the promotion's views |
+| Search and AI | Records per game, frames saved per hour and per game, the bandit's shares and its holdout, PPO reward and loss, the policy now, lab runs, their experiments and their return |
+| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, Discord activity, promotion per network and variant, the engagement ranking and the A/B results |
+| Platform and cost | Stream lag, Airflow runs and failures, average job minutes, source loads, failed quality gates, disk, memory and load per server, the largest tables, the Claude cost per day, errors and uptime |
+
+The heavy numbers come from the hourly `cockpit` job, so a dashboard reads small gold tables; health reads the `live`
+tables directly. A table that does not exist yet shows as a chart error until its first write.
+
+A small collector on each server (`hosts/`) reports disk, memory and load every minute to the backend, which keeps the
+newest values for its alerts and publishes them to `hosts.metrics` for `live.host_metrics` and `silver.host_metrics`.
+
+The backend posts the alerts to a private Discord channel; its rules and thresholds are in its `alerts.yaml`. Every
+Airflow task reports its final state to the backend, so a failed task opens an alert and its next success resolves it.
 
 ## Configuration
 
@@ -247,6 +271,8 @@ bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift
 ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml
 bash dokku/database-deploy.sh # the Thrift Server, Superset and the proxy
+bash dokku/hosts-setup.sh     # once: the collector app on both servers, after the topics exist
+bash dokku/hosts-deploy.sh    # the collectors
 ssh dokku letsencrypt:enable retro-speedlab-database
 ```
 

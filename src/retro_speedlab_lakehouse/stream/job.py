@@ -5,6 +5,8 @@ from retro_speedlab_lakehouse.lake.catalog import (
     EVENTS,
     GAME_RUNS,
     HIGHSCORES,
+    HOST_METRICS,
+    HOST_STATUS,
     LAB_RUNS,
     LIVE_RUN,
     REPORTS,
@@ -13,7 +15,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
 )
 from retro_speedlab_lakehouse.lake.tables import ensure
 from retro_speedlab_lakehouse.lake.write import merge_newer
-from retro_speedlab_lakehouse.quality.gate import Gate
+from retro_speedlab_lakehouse.quality.gate import Gate, QualityFailure, ensure_failures
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.stream import rows, search_rows
 from retro_speedlab_lakehouse.stream.search import search_batch
@@ -70,8 +72,12 @@ def entities_batch(settings: Settings, gate: Gate, events: DataFrame, batch_id: 
         return
     events.persist()
     bronze_append(settings, events, batch_id)
-    for table, transform in SERVED[1:]:
-        write_if_any(table, settings, gate, transform(events))
+    try:
+        for table, transform in SERVED[1:]:
+            write_if_any(table, settings, gate, transform(events))
+    except QualityFailure:
+        gate.flush(events.sparkSession, settings.lake)
+        raise
     gate.flush(events.sparkSession, settings.lake)
     events.unpersist()
 
@@ -83,6 +89,8 @@ SERVED = (
     (REPORTS, rows.reports),
     (LAB_RUNS, rows.lab_runs),
     (HIGHSCORES, rows.highscores),
+    (HOST_STATUS, rows.host_status),
+    (HOST_METRICS, rows.host_history),
 )
 
 
@@ -90,6 +98,7 @@ def ensure_served(spark: SparkSession, settings: Settings) -> None:
     nothing = rows.parsed(spark.createDataFrame([], rows.KAFKA_ROW))
     for table, transform in SERVED:
         ensure(table, settings.lake, transform(nothing))
+    ensure_failures(spark, settings.lake)
 
 
 def start(spark: SparkSession, settings: Settings) -> list[StreamingQuery]:

@@ -5,8 +5,8 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import IntegerType, LongType, StringType, StructField, StructType, TimestampType
 from spark_data_quality import CheckStatus, SuiteReport
 
-from retro_speedlab_lakehouse.lake.catalog import QUALITY_REPORTS, Table
-from retro_speedlab_lakehouse.lake.tables import append_rows
+from retro_speedlab_lakehouse.lake.catalog import QUALITY_FAILURES, QUALITY_REPORTS, Table
+from retro_speedlab_lakehouse.lake.tables import append_rows, ensure
 from retro_speedlab_lakehouse.quality.suites import suite_of
 from retro_speedlab_lakehouse.settings import LakeSettings
 
@@ -24,13 +24,33 @@ REPORT = StructType(
 )
 
 
+STATUS = REPORT.fieldNames().index("status")
+
+
 class QualityFailure(RuntimeError):
     pass
+
+
+def report_row(name: str, run: str, report: SuiteReport, checked_at: datetime) -> tuple[object, ...]:
+    return (
+        name,
+        run,
+        str(report.status),
+        len(report.results),
+        sum(result.status is not CheckStatus.PASS for result in report.results),
+        rows_of(report),
+        checked_at,
+        report.model_dump_json(),
+    )
 
 
 def rows_of(report: SuiteReport) -> int | None:
     counted = [result.total_rows for result in report.results if result.total_rows is not None]
     return counted[0] if counted else None
+
+
+def ensure_failures(spark: SparkSession, lake: LakeSettings) -> None:
+    ensure(QUALITY_FAILURES, lake, spark.createDataFrame([], REPORT))
 
 
 class Gate:
@@ -51,19 +71,10 @@ class Gate:
     def flush(self, spark: SparkSession, lake: LakeSettings) -> None:
         if not self.reports:
             return
-        rows = [
-            (
-                name,
-                self.run,
-                str(report.status),
-                len(report.results),
-                sum(result.status is not CheckStatus.PASS for result in report.results),
-                rows_of(report),
-                checked_at,
-                report.model_dump_json(),
-            )
-            for name, report, checked_at in self.reports
-        ]
+        rows = [report_row(name, self.run, report, checked_at) for name, report, checked_at in self.reports]
         append_rows(QUALITY_REPORTS, lake, spark.createDataFrame(rows, REPORT))
+        failures = [row for row in rows if row[STATUS] != CheckStatus.PASS]
+        if failures:
+            append_rows(QUALITY_FAILURES, lake, spark.createDataFrame(failures, REPORT))
         logger.info(f"Kept {len(rows)} quality reports of {self.run}")
         self.reports = []

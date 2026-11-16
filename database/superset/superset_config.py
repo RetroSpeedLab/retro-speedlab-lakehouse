@@ -8,6 +8,7 @@ from superset.security import SupersetSecurityManager
 
 DISCORD = "discord"
 DISCORD_USER_ID = "712191617095696493"
+ADMIN = "Admin"
 QUERY_SECONDS = 300
 
 
@@ -16,6 +17,8 @@ def discord_username(user_id: str) -> str:
 
 
 class DiscordSecurityManager(SupersetSecurityManager):
+    register_superset_registeruser_view = False
+
     def get_oauth_user_info(self, provider: str, resp: dict[str, Any]) -> dict[str, Any]:
         me = self.oauth_remotes[provider].get("users/@me").json()
         return {"username": discord_username(me["id"]), "first_name": me["username"], "last_name": ""}
@@ -23,7 +26,20 @@ class DiscordSecurityManager(SupersetSecurityManager):
     def auth_user_oauth(self, userinfo: dict[str, Any]) -> Any:
         if userinfo["username"] != discord_username(DISCORD_USER_ID):
             return None
+        if self.find_user(username=userinfo["username"]) is None:
+            self.add_admin(userinfo)
         return super().auth_user_oauth(userinfo)
+
+    def add_admin(self, userinfo: dict[str, Any]) -> None:
+        admin = self.add_user(
+            username=userinfo["username"],
+            first_name=userinfo["first_name"],
+            last_name=userinfo["last_name"],
+            email=f"{userinfo['username']}@discord.invalid",
+            role=self.find_role(ADMIN),
+        )
+        if not admin:
+            raise RuntimeError(f"Superset could not create the admin {userinfo['username']}")
 
 
 def spark_listing(dialect: HiveDialect, connection: Any, command: str, schema: str | None) -> list[Any]:
@@ -63,8 +79,7 @@ SQLALCHEMY_DATABASE_URI = "sqlite:////app/superset_home/superset.db"
 AUTH_TYPE = AUTH_OAUTH
 OAUTH_PROVIDERS = [discord_provider()]
 CUSTOM_SECURITY_MANAGER = DiscordSecurityManager
-AUTH_USER_REGISTRATION = True
-AUTH_USER_REGISTRATION_ROLE = "Admin"
+AUTH_USER_REGISTRATION = False
 AUTH_ROLES_SYNC_AT_LOGIN = False
 PUBLIC_ROLE_LIKE = None
 FAB_API_SWAGGER_UI = False

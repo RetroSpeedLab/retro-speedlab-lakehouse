@@ -186,7 +186,8 @@ on black-omen lives in `/etc/retro-speedlab/database-tunnel` and is only allowed
 User` block: remote forwarding only, no TTY, no agent, no X11). ufw lets only the docker bridge reach that port.
 
 Superset signs in with Discord only, with the scope `identify`, and only the Discord user id `712191617095696493`
-gets in, as Admin; anyone else is turned away and the public role has no permissions. It shares the backend's Discord
+gets in, created as Admin on its first sign-in; anyone else is turned away, self-registration is off, `/register/`
+answers 404 and the public role has no permissions. It shares the backend's Discord
 app: `dokku/database-setup.sh` copies `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` from the backend without
 printing them, and the app lists `https://database.retrospeedlab.com/oauth-authorized/discord` as a redirect beside
 the backend's own.

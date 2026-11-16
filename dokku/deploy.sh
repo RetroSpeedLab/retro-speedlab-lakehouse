@@ -32,7 +32,7 @@ bundle="$(mktemp -d)"
 wheelhouse=""
 cleanup() {
     rm -rf "${bundle}"
-    [[ -z "${wheelhouse}" ]] || on_server "kill ${wheelhouse}"
+    [[ -z "${wheelhouse}" ]] || on_server "! kill -0 ${wheelhouse} 2>/dev/null || kill ${wheelhouse}"
 }
 trap cleanup EXIT
 git -C "${LAKEHOUSE}" archive HEAD | tar -x -C "${bundle}"

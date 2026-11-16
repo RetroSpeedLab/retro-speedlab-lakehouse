@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from box import Box
@@ -81,6 +81,33 @@ class BanditSettings(Frozen):
     draws: PositiveInt
 
 
+class EngagementSurface(Frozen):
+    family: Literal["beta", "gamma"]
+    holdout: bool
+    catalog: bool
+
+
+class EngagementExperiment(Frozen):
+    scope: Literal["visit", "time"]
+    variants: tuple[str, str]
+    goals: tuple[str, ...]
+
+
+class EngagementSettings(Frozen):
+    window_days: PositiveInt
+    backfill_hours: PositiveInt
+    prior_weight: PositiveFloat
+    min_visibility: float = Field(gt=0, lt=1)
+    draws: PositiveInt
+    holdout_share: float = Field(gt=0, lt=0.5)
+    block_minutes: PositiveInt
+    min_exposures: PositiveInt
+    min_hours: PositiveInt
+    min_blocks: PositiveInt
+    surfaces: dict[str, EngagementSurface]
+    experiments: dict[str, EngagementExperiment]
+
+
 class ChatSettings(Frozen):
     channel: str
     ignored: frozenset[str]
@@ -95,6 +122,7 @@ class Settings(Frozen):
     stream: StreamSettings
     mining: MiningSettings
     bandit: BanditSettings
+    engagement: EngagementSettings
     chat: ChatSettings
     sources: Sources
 
@@ -127,6 +155,7 @@ def load_settings(config: Path) -> Settings:
         stream=StreamSettings(**document.stream.to_dict()),
         mining=MiningSettings(**document.mining.to_dict()),
         bandit=BanditSettings(**document.bandit.to_dict()),
+        engagement=EngagementSettings(**document.engagement.to_dict()),
         chat=ChatSettings(channel=secret("TWITCH_CHANNEL").lower(), ignored=frozenset(document.chat.ignored)),
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),

@@ -11,6 +11,9 @@ from retro_speedlab_lakehouse.settings import (
     BackendSettings,
     BanditSettings,
     ChatSettings,
+    EngagementExperiment,
+    EngagementSettings,
+    EngagementSurface,
     KafkaSettings,
     LakeSettings,
     MiningSettings,
@@ -77,6 +80,28 @@ def source_settings() -> Sources:
     )
 
 
+def engagement_settings() -> EngagementSettings:
+    beta = EngagementSurface(family="beta", holdout=True, catalog=True)
+    gamma = EngagementSurface(family="gamma", holdout=True, catalog=False)
+    return EngagementSettings(
+        window_days=28,
+        backfill_hours=2,
+        prior_weight=10,
+        min_visibility=0.3,
+        draws=2000,
+        holdout_share=0.12,
+        block_minutes=30,
+        min_exposures=200,
+        min_hours=3,
+        min_blocks=3,
+        surfaces={"home_games": beta, "stream_scenes": gamma},
+        experiments={
+            "cta_copy": EngagementExperiment(scope="visit", variants=("watch_live", "beat_the_ai"), goals=("click",)),
+            "title_style": EngagementExperiment(scope="time", variants=("facts", "challenge"), goals=()),
+        },
+    )
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(
@@ -108,6 +133,7 @@ def settings(tmp_path: Path) -> Settings:
             live_trigger_seconds=2, silver_trigger_seconds=60, search_trigger_seconds=60, status_seconds=0
         ),
         bandit=BanditSettings(min_share=0.1, days=14, draws=2000),
+        engagement=engagement_settings(),
         chat=ChatSettings(channel="retrospeedlab", ignored=frozenset({"streamelements"})),
         sources=source_settings(),
     )

@@ -31,7 +31,7 @@ flowchart LR
 | Home Lab | `retro-speedlab-kafka` | Kafka in KRaft mode, one broker, topics kept 7 days |
 | Home Lab | `retro-speedlab-lakehouse` `relay` | Moves the backend's outbox events to Kafka every second |
 | Home Lab | `retro-speedlab-lakehouse` `stream` | Spark Structured Streaming: the live run every 2 s, everything else every minute |
-| Home Lab | `retro-speedlab-lakehouse` `chat` | Counts Twitch chat messages and chatters per minute, without keeping names or messages |
+| Home Lab | `retro-speedlab-lakehouse` `chat` | Counts Twitch chat messages and chatters, and reads viewers and followers from Helix, per minute, without keeping names or messages |
 | Home Lab | `retro-speedlab-lakehouse` `airflow` | Airflow 3 (LocalExecutor, one task at a time) running the Spark batch jobs |
 | Main | `retro-speedlab-lake` | Garage, an S3-compatible store with the live, silver and gold tables the site serves |
 
@@ -73,6 +73,10 @@ is readable only by Superset.
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as a before/after experiment |
 | `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind |
 | `gold.search_bandit` | `search-bandit` | `metric` | Bandit turns against held-out static turns |
+| `silver.engagement_events` | `engagement-hourly` | `surface`, `item`, `arm`, `hour` | Exposures and outcomes per item: views and clicks from Umami, stream minutes with the chat they overlapped, promotion posts with their interactions |
+| `silver.community_daily` | `engagement-nightly` | `date` | Discord messages in public channels and joins per day, counts only |
+| `gold.content_ranking` | `engagement-hourly` | `surface`, `item` | Each surface's posterior mean, 90% interval, share and sampled order for the next hour |
+| `gold.engagement_experiments` | `engagement-nightly` | `experiment`, `metric` | Adaptive against holdout and the site and stream A/B tests, with SRM check, Holm and BH |
 | `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The sources' numbers of the last 2 days |
 | `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
 | `gold.level_segments`, `gold.mining_summary`, `gold.level_history` | `mining-gold` | `game` | Frames per level and piece of the newest record, and every change of a level's frames |
@@ -93,7 +97,8 @@ live run. A failing suite stops the write and the job; its report lands in `gold
 ## External sources
 
 The sources jobs load only aggregated, public, non-personal numbers, never a message, a name or a raw response:
-Uptime Kuma, Twitch, Discord, Umami (including the game site's starts and campaign wins per game), Langfuse, W&B,
+Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (including the game site's starts and
+campaign wins per game, and hourly the engagement events), Langfuse, W&B,
 Bugsink and GitHub. Each source loads on its own; one that fails keeps the others and fails the job afterwards.
 
 ## Lab experiments
@@ -125,12 +130,29 @@ them. A fifth of the turns keep the static split as the holdout, and every split
 The nightly `search-bandit` job compares frames saved per hour of bandit and holdout turns with Welch's t-test; with
 fewer than 12 turns on either side it reads `not enough data yet`.
 
+## Engagement learning
+
+The homepage, the games site, the stream, the runner's featured game and the promotion drafts learn what engages
+people. `engagement-hourly` joins exposures with outcomes over `engagement.window_days`: Umami's `rank-view`,
+`rank-click`, `variant-view` and `variant-goal` events per item and arm, the stream's scene and clip exposures with the
+chat minutes they overlap, and promotion posts with their interactions. Click rates are Beta, messages per minute and
+interactions per post Gamma, with a prior worth `prior_weight` exposures at the surface's pooled rate. Thompson draws
+give each item's chance to lead; its share mixes that with `min_visibility`, so every item keeps a floor, and the next
+hour's order draws its leader by share and the rest by one Thompson draw. Catalog games are ranked before they are
+first seen. The backend follows a ranking only while that surface's switch is on, with 12% of visits or hours in random
+order as the holdout.
+
+`engagement-nightly` compares adaptive with holdout per surface, the site A/B tests per goal rate and the stream A/B
+tests per 30-minute block on viewers, chat messages per minute and follows per hour, with experimentation-toolkit, an
+SRM check, Holm and Benjamini-Hochberg. A variant wins only with a clear Holm verdict on its first metric and no sample
+ratio mismatch. The `chat` process also publishes Helix's viewers and followers per minute to `twitch.minutes`.
+
 ## Jobs
 
 | DAG | Schedule (UTC) | Jobs |
 |-----|----------------|------|
-| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, then `platform` |
-| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `maintenance`, `sources-nightly`, `videos-nightly`, then `platform` |
+| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, `engagement-hourly`, then `platform` |
+| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `maintenance`, `sources-nightly`, `videos-nightly`, then `platform` |
 | `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
 The nightly DAG starts after the first lab run of the day. Nightly-only jobs skip when started outside 02:00 to 06:00

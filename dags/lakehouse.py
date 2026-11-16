@@ -9,7 +9,7 @@ START = datetime(2026, 11, 15)
 RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
 HOURLY_JOBS = ("api-hourly", "silver", "gold", "vacuum-live", "platform")
-HOURLY_ASIDE = ("sources-hourly",)
+HOURLY_ASIDE = ("sources-hourly", "engagement-hourly")
 NIGHTLY_JOBS = (
     "api-nightly",
     "silver",
@@ -17,6 +17,7 @@ NIGHTLY_JOBS = (
     "experiments",
     "search-allocation",
     "search-bandit",
+    "engagement-nightly",
     "maintenance",
     "platform",
 )

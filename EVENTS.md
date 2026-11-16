@@ -23,6 +23,8 @@ the order of the backend's outbox.
 | `runs.snapshots` | game slug | The speedrun a slot off stream reports to `PUT /games/{slug}/snapshot` | backend outbox | `bronze.events`, `silver.run_versions`, `silver.game_runs` |
 | `lab.runs` | `{game}/{stamp}` | `game`, `stamp`, `outcome` (`rejected`, `notes`, `deployed`), `cost_usd`, `minutes`, `turns`, `subagents`, `commits`, `tool_errors`, `timeline` | backend outbox | `bronze.events`, `silver.lab_runs` |
 | `lab.reports` | `{game}/{name}` | `id`, `game`, `name`, `headline`, `lines`, `created`, `updated` | backend outbox | `bronze.events`, `silver.reports` |
+| `stream.exposures` | surface | One scene or highlight clip the stream showed: `surface` (`stream_scenes`, `stream_clips`), `item`, `game`, `arm` (`fixed`, `adaptive`, `holdout`), `started_at`, `ended_at`, `variants` | backend outbox, while its `stream_signals` switch is on | `bronze.events`, `silver.engagement_events` |
+| `promotion.drafts`, `promotion.metrics`, `promotion.usage` | draft id or event | A promotion draft (`kind`, `channel`, `status`, `published`, ...), its newest `views`, `likes`, `reposts`, `replies`, and the Claude usage of its drafting | backend outbox | `bronze.events`, `silver.engagement_events` |
 | `highscores.entries` | highscore id | `id`, `game`, `version`, `name` (the public Discord display name on the board), `frames`, `set_at`, `inputs` (the run's inputs, one byte per frame, base64) | backend outbox | `bronze.events`, `silver.highscores` |
 
 The backend writes a run event only when the run changed apart from `updated_at`, and at least once a minute.
@@ -49,3 +51,4 @@ minute.
 | `policy.rounds` | game slug | One PPO round: `run` (W&B run path), `round`, `steps`, `reward`, `exits`, `episodes`, `exit_rate`, `entropy`, `explained_variance`, `loss` | core's policy trainer | `bronze.search_events`, `live.policy_pulse` |
 | `lab.events` | `{game}/{stamp}` | A lab-run step: `stamp`, `kind` (`started`, `judging`, `finished`), and on `finished` its `outcome` and `commits` | the runner's lab job | `bronze.search_events`, `live.lab_status` |
 | `chat.events` | channel | One minute of Twitch chat: `channel`, `minute`, `messages`, `chatters`; never a message or a name | the lakehouse's `chat` process | `bronze.search_events`, `live.chat_pulse` |
+| `twitch.minutes` | channel | One minute of the channel: `channel`, `minute`, `live`, `viewers`, `followers` (totals from Helix) | the lakehouse's `chat` process | `bronze.search_events`, `gold.engagement_experiments` |

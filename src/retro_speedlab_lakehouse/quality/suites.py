@@ -1,5 +1,11 @@
 from spark_data_quality import AllowedValues, Check, InRange, NotNull, QualitySuite, RowCount, Unique, UniqueKey
 
+from retro_speedlab_lakehouse.engagement.catalog import (
+    COMMUNITY_DAILY,
+    CONTENT_RANKING,
+    ENGAGEMENT_EVENTS,
+    ENGAGEMENT_EXPERIMENTS,
+)
 from retro_speedlab_lakehouse.lake.catalog import (
     BOARD_HISTORY,
     CHAT_PULSE,
@@ -49,6 +55,9 @@ LAB_KINDS = frozenset({"started", "judging", "finished"})
 VERDICTS = frozenset({"better", "worse", "no clear change", "not enough data yet"})
 PLAY_MODES = frozenset(MODES)
 PLAY_WINDOWS = frozenset(WINDOWS)
+ENGAGEMENT_VERDICTS = VERDICTS | {"sample ratio mismatch"}
+ARMS = frozenset({"fixed", "adaptive", "holdout"})
+FAMILIES = frozenset({"beta", "gamma"})
 
 
 def present(*columns: str) -> list[Check]:
@@ -140,6 +149,24 @@ CHECKS: dict[Table, list[Check]] = {
         AllowedValues("verdict", VERDICTS),
         *at_least_zero("control_n", "treatment_n"),
         RowCount(max_count=1),
+    ],
+    ENGAGEMENT_EVENTS: [*keyed(ENGAGEMENT_EVENTS), AllowedValues("arm", ARMS), *at_least_zero("exposures", "outcomes")],
+    COMMUNITY_DAILY: [*keyed(COMMUNITY_DAILY), *at_least_zero("discord_messages", "discord_joins")],
+    CONTENT_RANKING: [
+        *keyed(CONTENT_RANKING),
+        AllowedValues("family", FAMILIES),
+        InRange("share", min_value=0, max_value=1),
+        InRange("lead_probability", min_value=0, max_value=1),
+        InRange("sampled_rank", min_value=1),
+        InRange("rank", min_value=1),
+        *at_least_zero("exposures", "outcomes", "mean", "lower", "upper"),
+        *present("period", "computed_at"),
+    ],
+    ENGAGEMENT_EXPERIMENTS: [
+        *keyed(ENGAGEMENT_EXPERIMENTS),
+        AllowedValues("verdict", ENGAGEMENT_VERDICTS),
+        *at_least_zero("control_n", "treatment_n"),
+        *present("primary", "srm_ok", "computed_at"),
     ],
     SILVER_NUMBERS: [*keyed(SILVER_NUMBERS), *present("label", "value", "unit", "window", "measured_at")],
     SOURCE_NUMBERS: [*keyed(SOURCE_NUMBERS), *present("label", "value", "unit", "window", "computed_at")],

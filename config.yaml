@@ -10,6 +10,10 @@ kafka:
     - lab.runs
     - lab.reports
     - highscores.entries
+    - stream.exposures
+    - promotion.drafts
+    - promotion.metrics
+    - promotion.usage
   search_topics:
     - runs.attempts
     - runs.steps
@@ -18,6 +22,7 @@ kafka:
     - lab.events
     - chat.events
     - runs.allocations
+    - twitch.minutes
 
 relay:
   poll_seconds: 1
@@ -53,6 +58,33 @@ bandit:
   min_share: 0.1
   days: 14
   draws: 20000
+
+engagement:
+  window_days: 28
+  backfill_hours: 48
+  prior_weight: 10
+  min_visibility: 0.3
+  draws: 4000
+  holdout_share: 0.12
+  block_minutes: 30
+  min_exposures: 200
+  min_hours: 12
+  min_blocks: 12
+  surfaces:
+    home_games: {family: beta, holdout: true, catalog: true}
+    home_sections: {family: beta, holdout: true, catalog: false}
+    games_cards: {family: beta, holdout: true, catalog: true}
+    stream_scenes: {family: gamma, holdout: true, catalog: false}
+    stream_clips: {family: gamma, holdout: true, catalog: true}
+    stream_games: {family: gamma, holdout: false, catalog: true}
+    promotion: {family: gamma, holdout: false, catalog: false}
+  experiments:
+    cta_copy: {scope: visit, variants: [watch_live, beat_the_ai], goals: [click]}
+    hero_text: {scope: visit, variants: [current, challenge], goals: [click]}
+    win_dialog: {scope: visit, variants: [current, compact], goals: [signin, saved]}
+    title_style: {scope: time, variants: [facts, challenge], goals: []}
+    commentary_style: {scope: time, variants: [current, explainer], goals: []}
+    overlay_emphasis: {scope: time, variants: [balanced, highscore], goals: []}
 
 chat:
   ignored:

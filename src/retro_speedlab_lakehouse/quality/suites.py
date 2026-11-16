@@ -37,7 +37,8 @@ from retro_speedlab_lakehouse.lake.catalog import (
     VERIFIER_SPLITS,
     Table,
 )
-from retro_speedlab_lakehouse.sources.catalog import SILVER_NUMBERS, SOURCE_NUMBERS
+from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, SILVER_NUMBERS, SILVER_PLAYS, SOURCE_NUMBERS
+from retro_speedlab_lakehouse.sources.plays import MODES, WINDOWS
 
 OUTCOMES = frozenset({"rejected", "notes", "deployed"})
 KNOWLEDGE_KINDS = frozenset({"mechanics", "enemies", "powerups", "levels", "ram"})
@@ -46,6 +47,8 @@ REPLAY_STATUSES = frozenset({"verified", "rejected", "unserved", "no_inputs"})
 HUMAN_STATUSES = REPLAY_STATUSES | {"pending"}
 LAB_KINDS = frozenset({"started", "judging", "finished"})
 VERDICTS = frozenset({"better", "worse", "no clear change", "not enough data yet"})
+PLAY_MODES = frozenset(MODES)
+PLAY_WINDOWS = frozenset(WINDOWS)
 
 
 def present(*columns: str) -> list[Check]:
@@ -140,6 +143,19 @@ CHECKS: dict[Table, list[Check]] = {
     ],
     SILVER_NUMBERS: [*keyed(SILVER_NUMBERS), *present("label", "value", "unit", "window", "measured_at")],
     SOURCE_NUMBERS: [*keyed(SOURCE_NUMBERS), *present("label", "value", "unit", "window", "computed_at")],
+    SILVER_PLAYS: [
+        *keyed(SILVER_PLAYS),
+        AllowedValues("mode", PLAY_MODES),
+        AllowedValues("window", PLAY_WINDOWS),
+        *present("started", "won", "measured_at"),
+    ],
+    GAME_PLAYS: [
+        *keyed(GAME_PLAYS),
+        AllowedValues("mode", PLAY_MODES),
+        AllowedValues("window", PLAY_WINDOWS),
+        *at_least_zero("started", "won"),
+        *present("started", "won", "measured_at", "computed_at"),
+    ],
 }
 
 

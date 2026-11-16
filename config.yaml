@@ -77,6 +77,8 @@ sources:
   uptime:
     url: https://uptime.datenwissenschaften.com
     page: retrospeedlab
+  umami:
+    games_website: 5a373581-adde-48eb-a9d1-dd4955f108a7
 
 thrift:
   port: 10000

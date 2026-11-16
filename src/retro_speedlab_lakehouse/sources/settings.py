@@ -34,6 +34,7 @@ class UmamiSettings(SourceSettings):
     username: str
     password: str
     website: str
+    games_website: str
 
 
 class LangfuseSettings(SourceSettings):
@@ -63,7 +64,7 @@ class Sources(SourceSettings):
     bugsink: BugsinkSettings
 
 
-def load_sources(github: GithubSettings, uptime: UptimeSettings) -> Sources:
+def load_sources(github: GithubSettings, uptime: UptimeSettings, games_website: str) -> Sources:
     return Sources(
         github=github,
         uptime=uptime,
@@ -78,6 +79,7 @@ def load_sources(github: GithubSettings, uptime: UptimeSettings) -> Sources:
             username=secret("UMAMI_USERNAME"),
             password=secret("UMAMI_PASSWORD"),
             website=secret("UMAMI_WEBSITE_ID"),
+            games_website=games_website,
         ),
         langfuse=LangfuseSettings(
             url=secret("LANGFUSE_BASE_URL"),

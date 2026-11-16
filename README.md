@@ -52,6 +52,7 @@ their data directories, and Superset's metadata is readable only by Superset.
 | `bronze.api` | `api-hourly`, `api-nightly` | | Snapshots of the public API: `/games`, lab runs, nightly also speedrun, knowledge and the lab insight |
 | `bronze.sources` | `sources-hourly`, `sources-nightly` | | Every load of the external sources' aggregated numbers, with their watermarks in `bronze.source_watermarks` |
 | `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
+| `silver.game_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of human game starts and campaign wins per game, for the last 24 hours, 7 days and all time |
 | `live.live_run` | stream | `slot` | The run on stream, served by `GET /live/speedrun` |
 | `live.stream_status` | stream | `stream` | Events per minute and the lag from the backend's outbox to the Delta commit |
 | `live.search_pulse` | stream | `game` | The last hour of the search: attempts, attempts per minute over the last 10 minutes, crossings, frames saved, improvements and records |
@@ -71,7 +72,8 @@ their data directories, and Superset's metadata is readable only by Superset.
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as an experiment: before against after, with estimates, intervals and Holm and BH adjusted p-values |
 | `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind for each game's next turn, with the posterior of frames saved per worker-second |
 | `gold.search_bandit` | `search-bandit` | `metric` | The turns with the bandit's workers against the held-out turns with the static ones |
-| `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on `/tech-stack#data-platform` |
+| `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on the For engineers page |
+| `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game in `silver.games`, zero where Umami counted none, served on every highscore board |
 | `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform`, every job | | Rows, bytes, files and versions per table; every job run with its duration and status |
 | `gold.quality_reports` | every write | | The pyspark-data-quality report of every silver, gold and live write |
 | `bronze.trace_pieces` | `mine-records` | `game`, `record`, `segment` | Every piece of every verified record mined from the runner's working directories, with its inputs and whether its replay ends on the record's RAM byte for byte |
@@ -96,7 +98,7 @@ The sources jobs load only aggregated, public, non-personal numbers, never a mes
 | Uptime Kuma | Uptime of the last 24 hours and the last response time of every monitor on the public status page |
 | Twitch | Followers, kept videos and their views, clips and their views, viewers while live |
 | Discord | Members and members online |
-| Umami | Visitors, visits and page views of the last 7 days, visitors now |
+| Umami | Visitors, visits and page views of the last 7 days, visitors now; games.retrospeedlab.com's game starts and campaign wins per game and mode (the `plays` stream) |
 | Langfuse | Traced steps, tokens and model cost of the last 7 days |
 | W&B | PPO training runs, the newest run's reward and the versioned policy checkpoints |
 | Bugsink | Projects, open and resolved issues and error events |

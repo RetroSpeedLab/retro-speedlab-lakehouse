@@ -1,3 +1,4 @@
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol
@@ -23,3 +24,18 @@ class Source(Protocol):
     def stream(self) -> str: ...
 
     def fetch(self, watermark: str | None, now: datetime) -> SourcePage: ...
+
+
+class Recorded(Protocol):
+    @property
+    def record(self) -> SourceRecord: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotSource:
+    name: str
+    stream: str
+    read: Callable[[datetime], Sequence[Recorded]]
+
+    def fetch(self, watermark: str | None, now: datetime) -> SourcePage:
+        return SourcePage([item.record for item in self.read(now)], now.isoformat())

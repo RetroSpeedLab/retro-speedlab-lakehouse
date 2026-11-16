@@ -68,7 +68,9 @@ def source_settings() -> Sources:
         uptime=UptimeSettings(url="https://uptime.test", page="retrospeedlab"),
         twitch=TwitchSettings(client_id="id", client_secret="secret", channel="retrospeedlab"),
         discord=DiscordSettings(token="token", channel="1"),
-        umami=UmamiSettings(url="https://umami.test/api", username="user", password="password", website="site"),
+        umami=UmamiSettings(
+            url="https://umami.test/api", username="user", password="password", website="site", games_website="games"
+        ),
         langfuse=LangfuseSettings(url="https://langfuse.test", public_key="public", secret_key="secret"),
         wandb=WandbSettings(api_key="key", project="datenwissenschaften/retro-speedlab"),
         bugsink=BugsinkSettings(url="https://bugsink.test/api", token="token"),

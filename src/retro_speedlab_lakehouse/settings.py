@@ -131,5 +131,6 @@ def load_settings(config: Path) -> Settings:
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),
+            document.sources.umami.games_website,
         ),
     )

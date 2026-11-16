@@ -1,8 +1,6 @@
-from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from datetime import datetime
 
-from retro_speedlab_lakehouse.sources.record import SourcePage, SourceRecord
+from retro_speedlab_lakehouse.sources.record import SourceRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,13 +11,6 @@ class Number:
     unit: str
     window: str
 
-
-@dataclass(frozen=True, slots=True)
-class NumberSource:
-    name: str
-    stream: str
-    read: Callable[[datetime], list[Number]]
-
-    def fetch(self, watermark: str | None, now: datetime) -> SourcePage:
-        records = [SourceRecord(number.metric, asdict(number)) for number in self.read(now)]
-        return SourcePage(records, now.isoformat())
+    @property
+    def record(self) -> SourceRecord:
+        return SourceRecord(self.metric, asdict(self))

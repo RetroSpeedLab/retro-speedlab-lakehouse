@@ -185,14 +185,11 @@ on black-omen lives in `/etc/retro-speedlab/database-tunnel` and is only allowed
 (`restrict,port-forwarding,permitlisten` in its `authorized_keys`, and `database/tunnel/sshd.conf` as a `Match
 User` block: remote forwarding only, no TTY, no agent, no X11). ufw lets only the docker bridge reach that port.
 
-Superset signs in with GitHub only, and only the account `datenwissenschaften` gets in, as Admin; anyone else is
-turned away and the public role has no permissions. Until the OAuth app's credentials are set the login page has no
-provider, so nobody can sign in. Create a GitHub OAuth app with the homepage `https://database.retrospeedlab.com` and
-the callback `https://database.retrospeedlab.com/oauth-authorized/github`, then:
-
-```bash
-ssh dokku-black-omen config:set retro-speedlab-superset GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=...
-```
+Superset signs in with Discord only, with the scope `identify`, and only the Discord user id `712191617095696493`
+gets in, as Admin; anyone else is turned away and the public role has no permissions. It shares the backend's Discord
+app: `dokku/database-setup.sh` copies `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` from the backend without
+printing them, and the app lists `https://database.retrospeedlab.com/oauth-authorized/discord` as a redirect beside
+the backend's own.
 
 The lake connection forbids DML, CTAS and file uploads. Every start imports the `Speedrun records` and `Lakehouse
 platform` dashboards from `database/superset/assets.py`, overwriting their charts.
@@ -204,7 +201,7 @@ cursor, the lake's paths and S3 endpoint, Spark's master and memory, the stream'
 repositories and status page, and the Thrift Server's port, metastore, registration interval and Spark. The secrets
 come from the environment: `UPLOAD_API_KEY` (the backend's events endpoint), `LAKE_ACCESS_KEY_ID` and
 `LAKE_SECRET_ACCESS_KEY` (the lake; the Thrift Server holds its own read-only pair), `AIRFLOW__API_AUTH__JWT_SECRET`,
-Superset's `SUPERSET_SECRET_KEY`, `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`, and the sources' settings, which
+Superset's `SUPERSET_SECRET_KEY`, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, and the sources' settings, which
 `dokku/sources.sh` copies from the backend's and the runner's config without printing them. The event schemas are in
 [EVENTS.md](EVENTS.md).
 

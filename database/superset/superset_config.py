@@ -6,14 +6,22 @@ from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 from superset.security import SupersetSecurityManager
 
-GITHUB = "github"
-GITHUB_USERNAME = "github_datenwissenschaften"
+DISCORD = "discord"
+DISCORD_USER_ID = "712191617095696493"
 QUERY_SECONDS = 300
 
 
-class GitHubSecurityManager(SupersetSecurityManager):
+def discord_username(user_id: str) -> str:
+    return f"{DISCORD}_{user_id}"
+
+
+class DiscordSecurityManager(SupersetSecurityManager):
+    def get_oauth_user_info(self, provider: str, resp: dict[str, Any]) -> dict[str, Any]:
+        me = self.oauth_remotes[provider].get("users/@me").json()
+        return {"username": discord_username(me["id"]), "first_name": me["username"], "last_name": ""}
+
     def auth_user_oauth(self, userinfo: dict[str, Any]) -> Any:
-        if userinfo["username"] != GITHUB_USERNAME:
+        if userinfo["username"] != discord_username(DISCORD_USER_ID):
             return None
         return super().auth_user_oauth(userinfo)
 
@@ -32,19 +40,18 @@ def spark_view_names(dialect: HiveDialect, connection: Any, schema: str | None, 
     return [row.viewName for row in spark_listing(dialect, connection, "SHOW VIEWS", schema)]
 
 
-def github_provider() -> dict[str, Any]:
+def discord_provider() -> dict[str, Any]:
     return {
-        "name": GITHUB,
-        "icon": "fa-github",
+        "name": DISCORD,
+        "icon": "fa-discord",
         "token_key": "access_token",
         "remote_app": {
-            "client_id": os.environ["GITHUB_CLIENT_ID"],
-            "client_secret": os.environ["GITHUB_CLIENT_SECRET"],
-            "api_base_url": "https://api.github.com/",
-            "client_kwargs": {"scope": "read:user"},
-            "access_token_url": "https://github.com/login/oauth/access_token",
-            "authorize_url": "https://github.com/login/oauth/authorize",
-            "request_token_url": None,
+            "client_id": os.environ["DISCORD_CLIENT_ID"],
+            "client_secret": os.environ["DISCORD_CLIENT_SECRET"],
+            "api_base_url": "https://discord.com/api/",
+            "client_kwargs": {"scope": "identify"},
+            "access_token_url": "https://discord.com/api/oauth2/token",
+            "authorize_url": "https://discord.com/oauth2/authorize",
         },
     }
 
@@ -54,8 +61,8 @@ HiveDialect.get_view_names = spark_view_names
 SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
 SQLALCHEMY_DATABASE_URI = "sqlite:////app/superset_home/superset.db"
 AUTH_TYPE = AUTH_OAUTH
-OAUTH_PROVIDERS = [github_provider()] if "GITHUB_CLIENT_ID" in os.environ else []
-CUSTOM_SECURITY_MANAGER = GitHubSecurityManager
+OAUTH_PROVIDERS = [discord_provider()]
+CUSTOM_SECURITY_MANAGER = DiscordSecurityManager
 AUTH_USER_REGISTRATION = True
 AUTH_USER_REGISTRATION_ROLE = "Admin"
 AUTH_ROLES_SYNC_AT_LOGIN = False

@@ -16,6 +16,7 @@ readonly SUPERSET_PORT=18088
 readonly QUERY_TIMEOUT=300s
 
 source "$(dirname "${BASH_SOURCE[0]}")/garage.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/settings.sh"
 
 dokku() {
     ssh "${HOST}" "$@"
@@ -53,6 +54,7 @@ dokku network:set "${SUPERSET}" initial-network "${NETWORK}"
 dokku proxy:disable "${SUPERSET}"
 dokku checks:disable "${SUPERSET}"
 ssh "${SERVER}" "sudo dokku config:set --no-restart ${SUPERSET} SUPERSET_SECRET_KEY=\$(openssl rand -hex 32) >/dev/null"
+copy_settings "${MAIN}" retro-speedlab-backend "${SUPERSET}" DISCORD_CLIENT_ID DISCORD_CLIENT_SECRET
 
 main apps:create "${PROXY}"
 main domains:set "${PROXY}" "${DOMAIN}"

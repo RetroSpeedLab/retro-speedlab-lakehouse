@@ -30,6 +30,7 @@ from datasets import (
     SOURCE_NUMBERS,
     SOURCES_STATUS,
     STREAM_STATUS,
+    TWITCH_CHANNEL_OUTCOMES,
     minutes_since,
 )
 
@@ -394,6 +395,44 @@ AUDIENCE = Dashboard(
                             "winner",
                         ),
                         "experiment",
+                        (),
+                    ),
+                ),
+                charts(
+                    ranked(
+                        TWITCH_CHANNEL_OUTCOMES,
+                        "Twitch new followers per hour by category and title",
+                        "item",
+                        "SUM(new_followers) / SUM(hours)",
+                        (),
+                        (),
+                    ),
+                    ranked(
+                        TWITCH_CHANNEL_OUTCOMES,
+                        "Twitch average viewers by category and title",
+                        "item",
+                        "SUM(average_viewers * hours) / SUM(hours)",
+                        (),
+                        (),
+                    ),
+                ),
+                tables(
+                    table(
+                        TWITCH_CHANNEL_OUTCOMES,
+                        "Twitch channel turns",
+                        (
+                            "started_at",
+                            "item",
+                            "arm",
+                            "game",
+                            "hours",
+                            "average_viewers",
+                            "peak_viewers",
+                            "new_followers",
+                            "followers_per_hour",
+                            "chat_per_viewer_hour",
+                        ),
+                        "-started_at",
                         (),
                     ),
                 ),

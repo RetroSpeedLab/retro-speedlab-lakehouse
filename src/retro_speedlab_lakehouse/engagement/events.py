@@ -4,6 +4,7 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql.types import LongType, MapType, StringType, StructField, StructType
 
+from retro_speedlab_lakehouse.engagement.channel import TWITCH_CHANNEL
 from retro_speedlab_lakehouse.engagement.stream import STREAM_SCENES, exposure_outcomes, exposure_rows
 from retro_speedlab_lakehouse.stream.rows import field, newest
 
@@ -88,9 +89,25 @@ def promotion_events(events: DataFrame) -> DataFrame:
     )
 
 
-def engagement_events(records: DataFrame, events: DataFrame, chat: DataFrame, now: datetime, days: int) -> DataFrame:
+def channel_events(outcomes: DataFrame) -> DataFrame:
+    return (
+        outcomes.withColumns({"surface": F.lit(TWITCH_CHANNEL), "hour": F.date_trunc("hour", "started_at")})
+        .groupBy("surface", "item", "arm", "hour")
+        .agg(F.sum("hours").alias("exposures"), F.sum(F.greatest("new_followers", F.lit(0.0))).alias("outcomes"))
+        .select(*COLUMNS)
+    )
+
+
+def engagement_events(
+    records: DataFrame, events: DataFrame, chat: DataFrame, channel: DataFrame, now: datetime, days: int
+) -> DataFrame:
     since = now - timedelta(days=days)
     recent = events.where(F.col("event_at") >= F.lit(since))
-    watched = exposure_outcomes(exposure_rows(recent), chat)
-    found = umami_events(records).unionByName(stream_events(watched)).unionByName(promotion_events(recent))
+    watched = exposure_outcomes(exposure_rows(recent).where(F.col("surface") != TWITCH_CHANNEL), chat)
+    found = (
+        umami_events(records)
+        .unionByName(stream_events(watched))
+        .unionByName(promotion_events(recent))
+        .unionByName(channel_events(channel))
+    )
     return found.where((F.col("hour") >= F.lit(since)) & (F.col("exposures") > 0))

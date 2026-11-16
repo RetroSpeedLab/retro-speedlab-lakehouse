@@ -10,7 +10,9 @@ from retro_speedlab_lakehouse.engagement.catalog import (
     CONTENT_RANKING,
     ENGAGEMENT_EVENTS,
     ENGAGEMENT_EXPERIMENTS,
+    TWITCH_CHANNEL_OUTCOMES,
 )
+from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.discord import ACTIVITY, DISCORD, DiscordActivity
 from retro_speedlab_lakehouse.engagement.events import engagement_events
 from retro_speedlab_lakehouse.engagement.findings import holdout_findings, site_findings, stream_findings
@@ -60,8 +62,13 @@ def build_engagement(spark: SparkSession, settings: Settings, gate: Gate, now: d
     websites = {WWW: settings.sources.umami.website, GAMES_SITE: settings.sources.umami.games_website}
     ingest(spark, settings.lake, gate, UmamiCells(settings.sources.umami, websites, engagement.backfill_hours))
     records = latest(spark, settings.lake, UMAMI, CELLS)
-    chat = chat_minutes(read(spark, SEARCH_EVENTS, settings.lake))
-    events = engagement_events(records, read(spark, EVENTS, settings.lake), chat, now, engagement.window_days)
+    searched = read(spark, SEARCH_EVENTS, settings.lake)
+    chat = chat_minutes(searched)
+    backend = read(spark, EVENTS, settings.lake)
+    outcomes = channel_outcomes(exposure_rows(backend), twitch_minutes(searched), chat)
+    replace(TWITCH_CHANNEL_OUTCOMES, settings.lake, outcomes, gate)
+    channel = read(spark, TWITCH_CHANNEL_OUTCOMES, settings.lake)
+    events = engagement_events(records, backend, chat, channel, now, engagement.window_days)
     replace(ENGAGEMENT_EVENTS, settings.lake, events, gate)
     catalog = [row["slug"] for row in read(spark, GAMES, settings.lake).select("slug").collect()]
     totals = surface_totals(read(spark, ENGAGEMENT_EVENTS, settings.lake), catalog, engagement)

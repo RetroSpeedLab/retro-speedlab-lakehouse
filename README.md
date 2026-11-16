@@ -83,6 +83,7 @@ is readable only by Superset.
 | `silver.community_daily` | `engagement-nightly` | `date` | Discord messages in public channels and joins per day, counts only |
 | `gold.content_ranking` | `engagement-hourly` | `surface`, `item` | Each surface's posterior mean, 90% interval, share and sampled order for the next hour |
 | `gold.engagement_experiments` | `engagement-nightly` | `experiment`, `metric` | Adaptive against holdout and the site and stream A/B tests, with SRM check, Holm and BH |
+| `gold.twitch_channel_outcomes` | `engagement-hourly` | `item`, `started_at` | Every turn of a Twitch category and title: average and peak viewers, viewer-hours, new followers per hour and chat messages per viewer-hour |
 | `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The sources' numbers of the last 2 days |
 | `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
 | `gold.human_dropoff` | `sources-hourly`, `sources-nightly` | `game`, `level_index` | Per level the campaign runs that reached it, the share that ended there, and the humans' median time against the AI's split |
@@ -166,6 +167,11 @@ give each item's chance to lead; its share mixes that with `min_visibility`, so 
 hour's order draws its leader by share and the rest by one Thompson draw. Catalog games are ranked before they are
 first seen. The backend follows a ranking only while that surface's switch is on, with 12% of visits or hours in random
 order as the holdout.
+
+The Twitch channel learns its category and title the same way: each turn's pair is an item of `twitch_channel`,
+measured in `gold.twitch_channel_outcomes` against the viewers, followers and chat minutes it overlapped. Its reward
+is new followers per hour, Gamma over the turn's hours, because a follow is the growth that lasts: it brings the
+viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in Superset.
 
 `engagement-nightly` compares adaptive with holdout per surface, the site A/B tests per goal rate and the stream A/B
 tests per 30-minute block on viewers, chat messages per minute and follows per hour, with experimentation-toolkit, an

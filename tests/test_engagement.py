@@ -9,10 +9,11 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import LongType, StringType, StructField, StructType, TimestampType
 
 from retro_speedlab_lakehouse.engagement.analysis import AB, HOLDOUT, MISMATCH, Arms, judged_all, rate_finding
+from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.events import engagement_events, umami_events
 from retro_speedlab_lakehouse.engagement.posterior import BETA, GAMMA, Totals, posteriors, ranked
 from retro_speedlab_lakehouse.engagement.ranking import RANKING, ranking_rows, surface_totals
-from retro_speedlab_lakehouse.engagement.stream import chat_minutes
+from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_rows, twitch_minutes
 from retro_speedlab_lakehouse.engagement.umami import hours_to_load
 from retro_speedlab_lakehouse.experiments.analysis import BETTER, TOO_FEW
 from retro_speedlab_lakehouse.settings import Settings
@@ -94,6 +95,15 @@ def chat(minute: str, messages: int) -> tuple[str, str, datetime, dict[str, Any]
     return ("chat.events", "retrospeedlab", NOW, payload)
 
 
+def twitch(minute: str, viewers: int, followers: int) -> tuple[str, str, datetime, dict[str, Any]]:
+    payload = {"minute": f"2026-11-16T{minute}:00+00:00", "live": True, "viewers": viewers, "followers": followers}
+    return ("twitch.minutes", "retrospeedlab", NOW, payload)
+
+
+def channel(shown: DataFrame, searched: DataFrame) -> DataFrame:
+    return channel_outcomes(exposure_rows(shown), twitch_minutes(searched), chat_minutes(searched))
+
+
 def test_exposures_are_joined_with_the_chat_minutes_they_overlap(spark: SparkSession) -> None:
     shown = events(
         spark, [("stream.exposures", "stream_scenes", NOW, exposure("run", "drumfort", "10:00:30", "10:02:00"))]
@@ -102,7 +112,7 @@ def test_exposures_are_joined_with_the_chat_minutes_they_overlap(spark: SparkSes
     records = spark.createDataFrame([], RECORD)
     found = {
         (row["surface"], row["item"]): (row["exposures"], row["outcomes"])
-        for row in engagement_events(records, shown, heard, NOW, 28).collect()
+        for row in engagement_events(records, shown, heard, channel(shown, shown.drop("event_id")), NOW, 28).collect()
     }
     assert found[("stream_scenes", "run")] == pytest.approx((1.5, 8.0))
     assert found[("stream_games", "drumfort")] == pytest.approx((1.5, 8.0))
@@ -136,7 +146,10 @@ def test_promotion_posts_join_their_newest_numbers(spark: SparkSession) -> None:
             ("promotion.metrics", "18", NOW, {"kind": "lab", "likes": 3}),
         ],
     )
-    found = engagement_events(spark.createDataFrame([], RECORD), posted, chat_minutes(posted.drop("event_id")), NOW, 28)
+    searched = posted.drop("event_id")
+    found = engagement_events(
+        spark.createDataFrame([], RECORD), posted, chat_minutes(searched), channel(posted, searched), NOW, 28
+    )
     assert [(row["item"], row["exposures"], row["outcomes"]) for row in found.collect()] == [("record", 1.0, 9.0)]
 
 
@@ -183,5 +196,53 @@ def test_old_exposures_fall_out_of_the_window(spark: SparkSession) -> None:
     shown = events(
         spark, [("stream.exposures", "stream_scenes", old, exposure("run", "drumfort", "10:00:00", "10:01:00"))]
     )
-    found = engagement_events(spark.createDataFrame([], RECORD), shown, chat_minutes(shown.drop("event_id")), NOW, 28)
+    searched = shown.drop("event_id")
+    found = engagement_events(
+        spark.createDataFrame([], RECORD), shown, chat_minutes(searched), channel(shown, searched), NOW, 28
+    )
     assert found.count() == 0
+
+
+def test_a_twitch_channel_turn_gets_its_viewers_followers_and_chat(spark: SparkSession) -> None:
+    turn: dict[str, Any] = {
+        **exposure("science_proof", "drumfort", "10:00:00", "10:03:00"),
+        "surface": "twitch_channel",
+        "variants": {},
+    }
+    shown = events(
+        spark,
+        [
+            ("stream.exposures", "twitch_channel", NOW, turn),
+            ("stream.exposures", "twitch_channel", NOW, turn),
+            ("stream.exposures", "stream_scenes", NOW, exposure("run", "drumfort", "10:00:00", "10:03:00")),
+        ],
+    )
+    searched = events(
+        spark,
+        [
+            twitch("10:00", 10, 100),
+            twitch("10:01", 20, 101),
+            twitch("10:02", 30, 103),
+            twitch("10:03", 90, 140),
+            chat("10:00", 4),
+            chat("10:01", 6),
+            chat("10:02", 2),
+        ],
+    ).drop("event_id")
+    outcomes = channel(shown, searched).collect()
+    assert len(outcomes) == 1
+    measured = outcomes[0].asDict()
+    assert (measured["item"], measured["arm"], measured["game"]) == ("science_proof", "adaptive", "drumfort")
+    assert measured["hours"] == pytest.approx(0.05)
+    assert (measured["average_viewers"], measured["peak_viewers"]) == pytest.approx((20.0, 30.0))
+    assert (measured["new_followers"], measured["followers_per_hour"]) == pytest.approx((3.0, 60.0))
+    assert (measured["chat_messages"], measured["chat_per_viewer_hour"]) == pytest.approx((12.0, 12.0))
+
+    found = {
+        (row["surface"], row["item"]): (row["exposures"], row["outcomes"])
+        for row in engagement_events(
+            spark.createDataFrame([], RECORD), shown, chat_minutes(searched), channel(shown, searched), NOW, 28
+        ).collect()
+    }
+    assert found[("twitch_channel", "science_proof")] == pytest.approx((0.05, 3.0))
+    assert set(found) == {("twitch_channel", "science_proof"), ("stream_scenes", "run"), ("stream_games", "drumfort")}

@@ -427,6 +427,25 @@ ENGAGEMENT_EXPERIMENTS = lake_table(
         ("computed_at", TIMESTAMP),
     ),
 )
+TWITCH_CHANNEL_OUTCOMES = lake_table(
+    "gold",
+    "twitch_channel_outcomes",
+    (
+        ("item", STRING),
+        ("arm", STRING),
+        ("game", STRING),
+        ("started_at", TIMESTAMP),
+        ("ended_at", TIMESTAMP),
+        ("hours", DOUBLE),
+        ("average_viewers", DOUBLE),
+        ("peak_viewers", DOUBLE),
+        ("viewer_hours", DOUBLE),
+        ("new_followers", DOUBLE),
+        ("followers_per_hour", DOUBLE),
+        ("chat_messages", DOUBLE),
+        ("chat_per_viewer_hour", DOUBLE),
+    ),
+)
 QUALITY_REPORTS = lake_table(
     "gold",
     "quality_reports",

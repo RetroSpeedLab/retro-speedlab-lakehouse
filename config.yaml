@@ -79,6 +79,7 @@ engagement:
     stream_clips: {family: gamma, holdout: true, catalog: true}
     stream_games: {family: gamma, holdout: false, catalog: true}
     promotion: {family: gamma, holdout: false, catalog: false}
+    twitch_channel: {family: gamma, holdout: false, catalog: false}
   experiments:
     cta_copy: {scope: visit, variants: [watch_live, beat_the_ai], goals: [click]}
     hero_text: {scope: visit, variants: [current, challenge], goals: [click]}

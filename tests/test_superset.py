@@ -18,8 +18,10 @@ from retro_speedlab_lakehouse.batch.jobs import ALL_TABLES
 from retro_speedlab_lakehouse.batch.platform import JOB_RUN, TABLE_STATS
 from retro_speedlab_lakehouse.cockpit.days import SEARCH_METRICS, dense, search_days
 from retro_speedlab_lakehouse.cockpit.hours import audience_hours, search_hours
+from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.jobs import RESULT as ENGAGEMENT
 from retro_speedlab_lakehouse.engagement.ranking import RANKING
+from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_rows, twitch_minutes
 from retro_speedlab_lakehouse.experiments.job import RESULT as EXPERIMENTS
 from retro_speedlab_lakehouse.experiments.roi import ROI
 from retro_speedlab_lakehouse.lake.catalog import Layer
@@ -90,6 +92,9 @@ def code_tables(spark: SparkSession) -> dict[str, DataFrame]:
         "gold.search_bandit": spark.createDataFrame([], BANDIT),
         "gold.content_ranking": spark.createDataFrame([], RANKING),
         "gold.engagement_experiments": spark.createDataFrame([], ENGAGEMENT),
+        "gold.twitch_channel_outcomes": channel_outcomes(
+            exposure_rows(backend), twitch_minutes(search), chat_minutes(search)
+        ),
         "gold.lab_experiments": spark.createDataFrame([], EXPERIMENTS),
         "gold.lab_roi": spark.createDataFrame([], ROI),
         "gold.promotion_roi": spark.createDataFrame([], PROMOTION),

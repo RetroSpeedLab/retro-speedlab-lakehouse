@@ -6,6 +6,7 @@ from retro_speedlab_lakehouse.engagement.catalog import (
     CONTENT_RANKING,
     ENGAGEMENT_EVENTS,
     ENGAGEMENT_EXPERIMENTS,
+    TWITCH_CHANNEL_OUTCOMES,
 )
 from retro_speedlab_lakehouse.lake.catalog import (
     BOARD_HISTORY,
@@ -188,6 +189,12 @@ CHECKS: dict[Table, list[Check]] = {
         AllowedValues("verdict", ENGAGEMENT_VERDICTS),
         *at_least_zero("control_n", "treatment_n"),
         *present("primary", "srm_ok", "computed_at"),
+    ],
+    TWITCH_CHANNEL_OUTCOMES: [
+        *keyed(TWITCH_CHANNEL_OUTCOMES),
+        AllowedValues("arm", ARMS),
+        *present("ended_at", "hours", "new_followers", "followers_per_hour"),
+        *at_least_zero("hours", "average_viewers", "peak_viewers", "viewer_hours", "chat_messages"),
     ],
     SILVER_NUMBERS: [*keyed(SILVER_NUMBERS), *present("label", "value", "unit", "window", "measured_at")],
     SOURCE_NUMBERS: [*keyed(SOURCE_NUMBERS), *present("label", "value", "unit", "window", "computed_at")],

@@ -195,6 +195,13 @@ the backend's own.
 The lake connection forbids DML, CTAS and file uploads. Every start imports the `Speedrun records` and `Lakehouse
 platform` dashboards from `database/superset/assets.py`, overwriting their charts.
 
+Every table the Thrift Server registers in `bronze`, `silver`, `gold` and `live` is a dataset with a one-line
+description of its layer. `database/superset/sync_datasets.py` creates the missing ones and refreshes their columns
+from the tables when Superset starts and every hour after, so a new table gets its dataset within the hour. A layer or
+table that is not in the lake yet is skipped and named in one log line. The starter dashboards' datasets keep the fixed
+columns their charts need. On SQLite, Superset's metadata keeps datasets unique by table name alone, so each start
+drops that constraint first and two layers can share a table name.
+
 ## Configuration
 
 `config.yaml` holds everything but the secrets: the backend URL, Kafka's address and topics, the relay's poll and

@@ -1,12 +1,11 @@
 import json
-import uuid
 from dataclasses import dataclass
 from typing import Any
 
 import yaml
+from lake_datasets import LakeDataset, stable_uuid
 from superset.app import create_app
 
-NAMESPACE = uuid.UUID("5d0e4a8c-7f62-4c1b-9b8e-2f4a6d1c3e70")
 VERSION = "1.0.0"
 DATABASE = "Retro Speedlab Lake"
 SQLALCHEMY_URI = "hive://retro-speedlab-thrift:10000/default?auth=NOSASL"
@@ -21,13 +20,8 @@ COUNT = {"metric_name": "count", "verbose_name": "COUNT(*)", "metric_type": "cou
 
 @dataclass(frozen=True, slots=True)
 class Dataset:
-    schema: str
-    table: str
+    lake: LakeDataset
     columns: tuple[tuple[str, str], ...]
-
-    @property
-    def uuid(self) -> str:
-        return stable_uuid(f"dataset/{self.schema}.{self.table}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,10 +41,6 @@ class Dashboard:
     title: str
     slug: str
     rows: tuple[tuple[Chart, ...], ...]
-
-
-def stable_uuid(name: str) -> str:
-    return str(uuid.uuid5(NAMESPACE, name))
 
 
 def sql_metric(expression: str, label: str) -> dict[str, Any]:
@@ -117,8 +107,7 @@ def bar(dataset: Dataset, name: str, x_axis: str, metric: dict[str, Any]) -> Cha
 
 
 GAME_SUMMARY = Dataset(
-    "gold",
-    "game_summary",
+    LakeDataset("gold", "game_summary"),
     (
         ("game", "STRING"),
         ("title", "STRING"),
@@ -145,8 +134,7 @@ GAME_SUMMARY = Dataset(
     ),
 )
 RECORDS_DAILY = Dataset(
-    "gold",
-    "records_daily",
+    LakeDataset("gold", "records_daily"),
     (
         ("game", "STRING"),
         ("date", "DATE"),
@@ -156,11 +144,10 @@ RECORDS_DAILY = Dataset(
     ),
 )
 IMPROVEMENT_CURVE = Dataset(
-    "gold", "improvement_curve", (("game", "STRING"), ("hour", "TIMESTAMP"), ("seconds", "DOUBLE"))
+    LakeDataset("gold", "improvement_curve"), (("game", "STRING"), ("hour", "TIMESTAMP"), ("seconds", "DOUBLE"))
 )
 LEVEL_COSTS = Dataset(
-    "gold",
-    "level_costs",
+    LakeDataset("gold", "level_costs"),
     (
         ("game", "STRING"),
         ("level", "STRING"),
@@ -174,8 +161,7 @@ LEVEL_COSTS = Dataset(
     ),
 )
 LAB_OUTCOMES = Dataset(
-    "gold",
-    "lab_outcomes",
+    LakeDataset("gold", "lab_outcomes"),
     (
         ("game", "STRING"),
         ("outcome", "STRING"),
@@ -186,8 +172,7 @@ LAB_OUTCOMES = Dataset(
     ),
 )
 PLATFORM_TABLES = Dataset(
-    "gold",
-    "platform_tables",
+    LakeDataset("gold", "platform_tables"),
     (
         ("table", "STRING"),
         ("layer", "STRING"),
@@ -201,8 +186,7 @@ PLATFORM_TABLES = Dataset(
     ),
 )
 PLATFORM_JOBS = Dataset(
-    "gold",
-    "platform_jobs",
+    LakeDataset("gold", "platform_jobs"),
     (
         ("dag", "STRING"),
         ("run_id", "STRING"),
@@ -322,13 +306,14 @@ def column_config(name: str, column_type: str) -> dict[str, Any]:
 def dataset_config(dataset: Dataset) -> dict[str, Any]:
     temporal = [name for name, column_type in dataset.columns if column_type in TEMPORAL_TYPES]
     return {
-        "table_name": dataset.table,
-        "schema": dataset.schema,
+        "table_name": dataset.lake.table,
+        "schema": dataset.lake.schema,
+        "description": dataset.lake.description,
         "main_dttm_col": temporal[0] if temporal else None,
         "sql": None,
         "params": None,
         "filter_select_enabled": True,
-        "uuid": dataset.uuid,
+        "uuid": dataset.lake.uuid,
         "columns": [column_config(name, column_type) for name, column_type in dataset.columns],
         "metrics": [COUNT],
         "version": VERSION,
@@ -345,7 +330,7 @@ def chart_config(chart: Chart) -> dict[str, Any]:
         "cache_timeout": None,
         "uuid": chart.uuid,
         "version": VERSION,
-        "dataset_uuid": chart.dataset.uuid,
+        "dataset_uuid": chart.dataset.lake.uuid,
     }
 
 
@@ -395,15 +380,21 @@ def dashboard_config(dashboard: Dashboard) -> dict[str, Any]:
     }
 
 
+def starter_charts() -> dict[str, Chart]:
+    return {chart.uuid: chart for dashboard in DASHBOARDS for row in dashboard.rows for chart in row}
+
+
+def starter_datasets() -> dict[str, Dataset]:
+    return {chart.dataset.lake.uuid: chart.dataset for chart in starter_charts().values()}
+
+
 def bundle() -> dict[str, str]:
-    charts = {chart.uuid: chart for dashboard in DASHBOARDS for row in dashboard.rows for chart in row}
-    datasets = {chart.dataset.uuid: chart.dataset for chart in charts.values()}
     configs: dict[str, dict[str, Any]] = {
         "metadata.yaml": {"version": VERSION, "type": "Dashboard", "timestamp": TIMESTAMP},
         "databases/lake.yaml": database_config(),
     }
-    configs |= {f"datasets/lake/{dataset.table}.yaml": dataset_config(dataset) for dataset in datasets.values()}
-    configs |= {f"charts/{chart.uuid}.yaml": chart_config(chart) for chart in charts.values()}
+    configs |= {f"datasets/{key}.yaml": dataset_config(dataset) for key, dataset in starter_datasets().items()}
+    configs |= {f"charts/{chart.uuid}.yaml": chart_config(chart) for chart in starter_charts().values()}
     configs |= {f"dashboards/{dashboard.slug}.yaml": dashboard_config(dashboard) for dashboard in DASHBOARDS}
     return {path: yaml.safe_dump(config) for path, config in configs.items()}
 

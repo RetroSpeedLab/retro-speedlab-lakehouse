@@ -211,7 +211,7 @@ flowchart LR
 - `retro-speedlab-thrift` runs the Spark Thrift Server with Delta and registers every catalog table as
   `<layer>.<table>` at start and every hour. Only Superset can reach it.
 - `retro-speedlab-superset` listens on localhost only and is reached through a reverse SSH tunnel to Main, held by a
-  systemd service. The tunnel's user has no shell, and its key may only open that one remote forward
+  systemd service. The tunnel's user has no shell, and its key may only open the owner tools' remote forwards
   (`database/tunnel/sshd.conf`).
 - Superset signs in with Discord only (scope `identify`), and only the Discord user `DISCORD_USER_ID` in
   `database/superset/superset_config.py` gets in, created as Admin on first sign-in. Self-registration is off and the
@@ -221,6 +221,29 @@ flowchart LR
   `database/superset/dashboards.py`.
 - Every registered table is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
   refreshes their columns at start and every hour.
+
+## Owner tools
+
+GrowthBook and Listmonk run on the Home Lab and reach the web the same way as Superset: each listens on localhost, the
+database tunnel forwards its port to Main's docker bridge, and a socat proxy on Main (`database/proxy`, its target
+port in `TUNNEL_PORT`) serves its domain with TLS from Let's Encrypt.
+
+| URL | Home Lab apps | Main proxy | Tunnel port |
+|-----|---------------|------------|-------------|
+| [growthbook.retrospeedlab.com](https://growthbook.retrospeedlab.com) | `retro-speedlab-growthbook`, `retro-speedlab-growthbook-mongo` | `retro-speedlab-growthbook-ui` | 18089 |
+| [growthbook-api.retrospeedlab.com](https://growthbook-api.retrospeedlab.com) | `retro-speedlab-growthbook` | `retro-speedlab-growthbook-api` | 18090 |
+| [newsletter.retrospeedlab.com](https://newsletter.retrospeedlab.com) | `retro-speedlab-listmonk`, `retro-speedlab-listmonk-postgres` | `retro-speedlab-newsletter` | 18091 |
+
+- Images are pinned by version and digest in `dokku/growthbook-setup.sh`, `dokku/newsletter-setup.sh` and
+  `database/listmonk/Dockerfile`; data lives in `/mnt/fastdata/growthbook` and `/mnt/fastdata/newsletter`.
+- Every password and key is generated on the server once and kept only in the apps' dokku config.
+- GrowthBook's setup creates its only admin, `owner@retrospeedlab.com`, and the API proxy refuses `/auth/register` and
+  `/auth/firsttime` (`database/growthbook/registration.conf`), so nobody else can sign up. A second account needs that
+  block lifted while an invite is accepted.
+- Listmonk creates its admin `owner` on first start. Sending is not configured until an SMTP provider is chosen.
+
+Read the admin passwords with `ssh dokku-black-omen config:get retro-speedlab-growthbook GROWTHBOOK_ADMIN_PASSWORD`
+and `ssh dokku-black-omen config:get retro-speedlab-listmonk LISTMONK_ADMIN_PASSWORD`.
 
 ## Cockpit and alerts
 
@@ -271,8 +294,10 @@ ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
 bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
-bash dokku/database-setup.sh  # once: the Thrift Server, Superset and the proxy on Main
-bash dokku/database-tunnel.sh # once: the tunnel's user, key, sshd block, firewall rule and service
+bash dokku/database-setup.sh  # once: the Thrift Server, Superset and the proxy on Main with TLS
+bash dokku/database-tunnel.sh # the tunnel's user, key, sshd block, firewall rules and service
+bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB, both proxies and the admin; rerun after a pin bump
+bash dokku/newsletter-setup.sh # Listmonk, its Postgres and the proxy; rerun after a pin bump
 bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift
@@ -280,7 +305,6 @@ ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakeh
 bash dokku/database-deploy.sh # the Thrift Server, Superset and the proxy
 bash dokku/hosts-setup.sh     # once: the collector app on both servers, after the topics exist
 bash dokku/hosts-deploy.sh    # the collectors
-ssh dokku letsencrypt:enable retro-speedlab-database
 ```
 
 ## Checks

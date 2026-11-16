@@ -15,6 +15,7 @@ readonly KEY=database
 readonly SUPERSET_PORT=18088
 readonly QUERY_TIMEOUT=300s
 
+source "$(dirname "${BASH_SOURCE[0]}")/apps.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/garage.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/settings.sh"
 
@@ -57,9 +58,6 @@ dokku checks:disable "${SUPERSET}"
 ssh "${SERVER}" "sudo dokku config:set --no-restart ${SUPERSET} SUPERSET_SECRET_KEY=\$(openssl rand -hex 32) >/dev/null"
 copy_settings "${MAIN}" retro-speedlab-backend "${SUPERSET}" DISCORD_CLIENT_ID DISCORD_CLIENT_SECRET
 
-main apps:create "${PROXY}"
-main domains:set "${PROXY}" "${DOMAIN}"
-main ports:set "${PROXY}" http:80:8088
+owner_proxy "${PROXY}" "${DOMAIN}" "${SUPERSET_PORT}"
 main nginx:set "${PROXY}" proxy-read-timeout "${QUERY_TIMEOUT}"
-main resource:limit --memory 32m --cpu 0.25 "${PROXY}"
-echo "Then: bash dokku/database-tunnel.sh; bash dokku/database-deploy.sh; ssh ${MAIN} letsencrypt:enable ${PROXY}"
+echo "Then: bash dokku/database-tunnel.sh; bash dokku/database-deploy.sh"

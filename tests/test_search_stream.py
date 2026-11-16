@@ -54,3 +54,12 @@ def test_the_search_stream_keeps_every_event_and_counts_the_last_hour(spark: Spa
     assert lab is not None and (lab["game"], lab["kind"]) == ("comet_courier", "judging")
     chat = read(spark, CHAT_PULSE, settings.lake).first()
     assert chat is not None and (chat["messages_last_minute"], chat["chatters_last_minute"]) == (4, 2)
+
+
+def test_a_round_with_an_undefined_value_still_counts(spark: SparkSession, settings: Settings) -> None:
+    now = datetime.now(UTC)
+    payload = {"game": "saltskid", "round": 884, "reward": 1174.0, "explained_variance": float("nan")}
+    rows = [(json.dumps(runner_event("policy.rounds", "saltskid", payload, now)).encode("utf-8"), 0, 0, now)]
+    search_batch(settings, Gate("search"), search_rows.parsed(spark.createDataFrame(rows, KAFKA_ROW)), 0)
+    policy = read(spark, POLICY_PULSE, settings.lake).first()
+    assert policy is not None and (policy["round"], policy["reward"]) == (884, 1174.0)

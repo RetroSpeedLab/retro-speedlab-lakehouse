@@ -37,7 +37,7 @@ dokku ps:set "${THRIFT}" procfile-path database/Procfile
 dokku app-json:set "${THRIFT}" appjson-path database/app.json
 dokku ps:set "${THRIFT}" restart-policy unless-stopped
 dokku docker-options:add "${THRIFT}" build "--network host"
-dokku docker-options:add "${THRIFT}" deploy "--cpu-shares 256 --init --network-alias ${THRIFT}"
+dokku docker-options:add "${THRIFT}" deploy "--cpu-shares 2048 --init --network-alias ${THRIFT}"
 dokku resource:limit --process-type thrift --memory 1280m --cpu 1 "${THRIFT}"
 dokku network:set "${THRIFT}" initial-network "${NETWORK}"
 dokku proxy:disable "${THRIFT}"
@@ -49,7 +49,7 @@ store_key "${KEY}" "${HOST}" "${THRIFT}"
 dokku apps:create "${SUPERSET}"
 dokku storage:mount "${SUPERSET}" "${DATA}/superset:/app/superset_home"
 dokku ps:set "${SUPERSET}" restart-policy unless-stopped
-dokku docker-options:add "${SUPERSET}" deploy "--cpu-shares 256 --publish 127.0.0.1:${SUPERSET_PORT}:8088"
+dokku docker-options:add "${SUPERSET}" deploy "--cpu-shares 2048 --publish 127.0.0.1:${SUPERSET_PORT}:8088"
 dokku resource:limit --memory 768m --cpu 1 "${SUPERSET}"
 dokku network:set "${SUPERSET}" initial-network "${NETWORK}"
 dokku proxy:disable "${SUPERSET}"

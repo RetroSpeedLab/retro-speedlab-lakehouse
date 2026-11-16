@@ -7,6 +7,7 @@ readonly MAIN_ADDRESS
 readonly SERVER=black-omen
 readonly TUNNEL=database-tunnel
 readonly SERVICE=retro-speedlab-database-tunnel
+readonly WATCHDOG=${SERVICE}-watchdog
 readonly LISTEN=172.17.0.1:18088
 readonly KEYS=/etc/retro-speedlab/database-tunnel
 readonly TUNNEL_HOME=/var/lib/database-tunnel
@@ -33,3 +34,5 @@ ssh "${SERVER}" "echo '${MAIN_ADDRESS} ${host_key}' | sudo tee ${KEYS}/known_hos
 sed "s/{{MAIN_ADDRESS}}/${MAIN_ADDRESS}/" "${TUNNEL_FILES}/${SERVICE}.service" | ssh "${SERVER}" "cat > /tmp/${SERVICE}.service"
 ssh "${SERVER}" "sudo install -m 644 /tmp/${SERVICE}.service /etc/systemd/system/${SERVICE}.service \
     && rm /tmp/${SERVICE}.service && sudo systemctl daemon-reload && sudo systemctl enable --now ${SERVICE}"
+scp -q "${TUNNEL_FILES}/${WATCHDOG}.service" "${TUNNEL_FILES}/${WATCHDOG}.timer" "${SERVER}:/tmp/"
+ssh "${SERVER}" "sudo install -m 644 /tmp/${WATCHDOG}.service /tmp/${WATCHDOG}.timer /etc/systemd/system/     && rm /tmp/${WATCHDOG}.service /tmp/${WATCHDOG}.timer && sudo systemctl daemon-reload     && sudo systemctl enable --now ${WATCHDOG}.timer"

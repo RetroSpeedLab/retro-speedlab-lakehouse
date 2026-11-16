@@ -81,10 +81,15 @@ HIGHSCORES_TOPIC = "highscores.entries"
 HOSTS_TOPIC = "hosts.metrics"
 LIVE_SLOT = "live"
 STAMP_FORMAT = "yyyy-MM-dd'T'HHmm"
+NON_FINITE = r":\s*-?(NaN|Infinity)\b"
+
+
+def strict_json(value: Column) -> Column:
+    return F.regexp_replace(value, NON_FINITE, ": null")
 
 
 def parsed(kafka_rows: DataFrame) -> DataFrame:
-    value = F.col("value").cast("string")
+    value = strict_json(F.col("value").cast("string"))
     return kafka_rows.select(
         F.from_json(value, ENVELOPE).alias("event"),
         F.get_json_object(value, "$.payload").alias("payload"),

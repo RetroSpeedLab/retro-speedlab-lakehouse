@@ -1,0 +1,7 @@
+[Unit]
+Description=Retro Speedlab database tunnel watchdog: restart the tunnel when Superset is slow or unreachable through it
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'for try in 1 2; do curl -fsS -o /dev/null --max-time 5 https://database.retrospeedlab.com/health && exit 0; done; echo "Superset was slow or unreachable twice through the tunnel, restarting it"; systemctl restart retro-speedlab-database-tunnel.service'

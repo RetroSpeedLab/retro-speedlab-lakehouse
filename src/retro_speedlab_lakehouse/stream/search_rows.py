@@ -4,6 +4,8 @@ from pyspark.sql import Column, DataFrame, Window
 from pyspark.sql import functions as F
 from pyspark.sql.types import StringType, StructField, StructType, TimestampType
 
+from retro_speedlab_lakehouse.stream.rows import strict_json
+
 ATTEMPTS = "runs.attempts"
 STEPS = "runs.steps"
 RECORDS = "runs.records"
@@ -27,7 +29,7 @@ ENVELOPE = StructType(
 
 
 def parsed(kafka_rows: DataFrame) -> DataFrame:
-    value = F.col("value").cast("string")
+    value = strict_json(F.col("value").cast("string"))
     return kafka_rows.select(
         F.from_json(value, ENVELOPE).alias("event"),
         F.get_json_object(value, "$.payload").alias("payload"),

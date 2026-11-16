@@ -2,7 +2,8 @@
 set -euo pipefail
 
 readonly MAIN=jumphost
-readonly MAIN_ADDRESS=178.104.84.157
+MAIN_ADDRESS="$(ssh -G "${MAIN}" | awk '/^hostname /{print $2}')"
+readonly MAIN_ADDRESS
 readonly SERVER=black-omen
 readonly TUNNEL=database-tunnel
 readonly SERVICE=retro-speedlab-database-tunnel
@@ -29,6 +30,6 @@ ssh "${MAIN}" "sudo ufw allow in on docker0 from 172.17.0.0/16 to ${LISTEN%:*} p
     comment 'Retro Speedlab database tunnel'"
 
 ssh "${SERVER}" "echo '${MAIN_ADDRESS} ${host_key}' | sudo tee ${KEYS}/known_hosts >/dev/null"
-scp -q "${TUNNEL_FILES}/${SERVICE}.service" "${SERVER}:/tmp/${SERVICE}.service"
+sed "s/{{MAIN_ADDRESS}}/${MAIN_ADDRESS}/" "${TUNNEL_FILES}/${SERVICE}.service" | ssh "${SERVER}" "cat > /tmp/${SERVICE}.service"
 ssh "${SERVER}" "sudo install -m 644 /tmp/${SERVICE}.service /etc/systemd/system/${SERVICE}.service \
     && rm /tmp/${SERVICE}.service && sudo systemctl daemon-reload && sudo systemctl enable --now ${SERVICE}"

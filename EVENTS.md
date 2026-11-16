@@ -29,16 +29,16 @@ The backend writes a run event only when the run changed apart from `updated_at`
 
 ## Search topics
 
-The runner on black-omen publishes these straight to Kafka through core's event sink, and the lakehouse's `chat`
-process publishes `chat.events`. Their envelope has no outbox `id`; the Kafka offset orders them:
+The runner publishes these straight to Kafka through core's event sink, and the lakehouse's `chat` process
+publishes `chat.events`. Their envelope has no outbox `id`; the Kafka offset orders them:
 
 ```json
 {"topic": "runs.attempts", "key": "comet_courier", "at": "2026-11-15T12:00:00.000+00:00", "payload": {}}
 ```
 
 Every payload carries `game` (except `chat.events`) and `at`. All of them land in `bronze.search_events`; the
-`search` query of the stream counts the last hour into the `live` tables after every micro-batch: it triggers every
-minute, and on the busy Home Lab a batch takes about five minutes.
+`search` query of the stream counts the last hour into the `live` tables after every micro-batch, triggered every
+minute.
 
 | Topic | Key | Payload | Producer | Delta tables |
 |-------|-----|---------|----------|--------------|

@@ -1,23 +1,23 @@
 # Retro Speedlab Lakehouse
 
-The data platform of [Retro Speedlab](https://www.retrospeedlab.com). It ingests the backend's data and the
-project's external sources into Delta Lake, so that the backend can serve the homepage's values from Delta. The live
-run streams through Kafka and Spark Structured Streaming; Airflow runs the batch medallion jobs every hour and in full
-at night. Spark runs in local mode (`local[2]`) on black-omen next to the search, capped and niced so it never
+The data platform of [Retro Speedlab](https://www.retrospeedlab.com). It ingests the backend's data, the TAS search's
+events and the project's external sources into Delta Lake, and the backend serves the site's numbers from it. The
+live run streams through Kafka and Spark Structured Streaming; Airflow runs the batch medallion jobs hourly and in
+full at night. Spark runs in local mode on the Home Lab server next to the search, capped and niced so it never
 starves it.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    runner[Runner on black-omen] -->|PUT snapshots, lab runs, reports| backend[Backend on the main server]
+    runner[Runner on Home Lab] -->|PUT snapshots, lab runs, reports| backend[Backend on Main]
     runner -->|attempts, steps, records, PPO rounds, lab events| kafka
     chat[Twitch chat counter] -->|messages per minute| kafka
     backend --> outbox[(Outbox in Postgres)]
     outbox -->|GET /lakehouse/events| relay[Relay]
     relay --> kafka[Kafka KRaft]
     kafka --> stream[Spark Structured Streaming]
-    stream --> bronze[(Bronze Delta on black-omen)]
+    stream --> bronze[(Bronze Delta on Home Lab)]
     stream --> lake[(Live and silver Delta in the Garage lake)]
     api[Public API and external sources] --> airflow[Airflow batch jobs]
     airflow --> bronze
@@ -26,242 +26,195 @@ flowchart LR
     backend --> site[www.retrospeedlab.com]
 ```
 
-| Where | What |
-|-------|------|
-| black-omen `retro-speedlab-kafka` | Kafka 4.3 in KRaft mode, one broker, 768 MB heap, data on `/mnt/fastdata/lakehouse/kafka`, 7 days or 1 GB per topic |
-| black-omen `retro-speedlab-lakehouse` `relay` | Moves the backend's outbox events to Kafka every second |
-| black-omen `retro-speedlab-lakehouse` `stream` | Spark Structured Streaming: the live run every 2 s, everything else every minute |
-| black-omen `retro-speedlab-lakehouse` `chat` | Counts the Twitch chat's messages and chatters per minute, anonymously and without keeping a name or a message |
-| black-omen `retro-speedlab-lakehouse` `airflow` | Airflow 3 (LocalExecutor, SQLite, one task at a time) running the Spark batch jobs with `nice -n 15` |
-| black-omen `/mnt/fastdata/lakehouse/data/bronze` | Bronze Delta tables: the complete raw history, kept 12 months |
-| main server `retro-speedlab-lake` | Garage, an S3-compatible store, with the live, silver and gold Delta tables the site serves |
+| Server | App | Role |
+|--------|-----|------|
+| Home Lab | `retro-speedlab-kafka` | Kafka in KRaft mode, one broker, topics kept 7 days |
+| Home Lab | `retro-speedlab-lakehouse` `relay` | Moves the backend's outbox events to Kafka every second |
+| Home Lab | `retro-speedlab-lakehouse` `stream` | Spark Structured Streaming: the live run every 2 s, everything else every minute |
+| Home Lab | `retro-speedlab-lakehouse` `chat` | Counts Twitch chat messages and chatters per minute, without keeping names or messages |
+| Home Lab | `retro-speedlab-lakehouse` `airflow` | Airflow 3 (LocalExecutor, one task at a time) running the Spark batch jobs |
+| Main | `retro-speedlab-lake` | Garage, an S3-compatible store with the live, silver and gold tables the site serves |
 
-Bronze stays on black-omen, which has the disk; only what the site serves goes to the lake on the main server.
-Spark writes it over HTTPS with s3a and its own key; the backend reads it with a read-only key over the dokku
-network with delta-rs. No console and no Airflow or Spark UI is public. No browser reads the lake, so its proxy
-drops Garage's wildcard CORS headers. The lakehouse and Thrift Server run as an unprivileged user that owns
-their data directories, and Superset's metadata is readable only by Superset.
+Bronze keeps the complete raw history for 12 months and stays on the Home Lab server; only what the site serves goes
+to the lake on Main. Spark writes the lake over HTTPS with s3a; the backend reads it with a read-only key and
+delta-rs. No console and no Airflow or Spark UI is public, and the lake's proxy drops Garage's wildcard CORS
+headers. The lakehouse and the Thrift Server run as an unprivileged user that owns their data; Superset's metadata
+is readable only by Superset.
 
 ## Tables
 
-| Table | Written by | Keys | What |
-|-------|------------|------|------|
-| `bronze.events` | stream | `event_id` | Every outbox event as it came from Kafka |
+| Table | Written by | Keys | Content |
+|-------|------------|------|---------|
+| `bronze.events` | stream | `event_id` | Every outbox event from Kafka |
 | `bronze.search_events` | stream | `topic`, `partition`, `offset` | Every event the runner and the chat counter published |
-| `bronze.videos` | `videos-nightly` | `game`, `name`, `version` | Every version of the backend's per-game videos the mirror copied; the newest file of each is in `/mnt/fastdata/lakehouse/data/bronze/videos/<game>/` |
-| `bronze.api` | `api-hourly`, `api-nightly` | | Snapshots of the public API: `/games`, lab runs, nightly also speedrun, knowledge and the lab insight |
-| `bronze.sources` | `sources-hourly`, `sources-nightly` | | Every load of the external sources' aggregated numbers, with their watermarks in `bronze.source_watermarks` |
-| `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
-| `silver.game_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of human game starts and campaign wins per game, for the last 24 hours, 7 days and all time |
+| `bronze.videos` | `videos-nightly` | `game`, `name`, `version` | Every version of the backend's per-game videos |
+| `bronze.api` | `api-hourly`, `api-nightly` | | Snapshots of the public API |
+| `bronze.sources` | `sources-hourly`, `sources-nightly` | | Every load of the external sources, with watermarks in `bronze.source_watermarks` |
+| `bronze.trace_pieces` | `mine-records` | `game`, `record`, `segment` | Every piece of every verified record, with its inputs and whether its replay matches the record's RAM |
+| `bronze.frame_traces` | `mine-records` | `game`, `frame` | The newest record per game replayed frame by frame |
 | `live.live_run` | stream | `slot` | The run on stream, served by `GET /live/speedrun` |
-| `live.stream_status` | stream | `stream` | Events per minute and the lag from the backend's outbox to the Delta commit |
-| `live.search_pulse` | stream | `game` | The last hour of the search: attempts, attempts per minute over the last 10 minutes, crossings, frames saved, improvements and records |
-| `live.policy_pulse` | stream | `game` | The newest PPO round (reward, loss, entropy, exit rate) and the rounds and mean reward of the last hour |
+| `live.stream_status` | stream | `stream` | Events per minute and the lag from the outbox to the Delta commit |
+| `live.search_pulse` | stream | `game` | The last hour of the search: attempts, crossings, frames saved, improvements, records |
+| `live.policy_pulse` | stream | `game` | The newest PPO round and the last hour's rounds and mean reward |
 | `live.lab_status` | stream | `slot` | The newest lab-run event of the last hour |
-| `live.chat_pulse` | stream | `channel` | The newest minute of chat and the messages of the last hour |
-| `silver.game_runs` | stream | `game` | The newest reported run per game |
-| `silver.run_versions` | stream | `event_id` | Every reported run: the attempts history |
-| `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and the highscore boards' entries |
-| `silver.games`, `silver.lab_run_progress` | `silver` | | The LAB24 collection and the backend's measured progress after each lab run |
-| `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Each run's level splits, its improvement history and what the AI learned |
-| `gold.game_summary` | `gold` | `game` | Record, levels cleared, seconds saved since the first clears, costliest level, lab runs, change since yesterday |
+| `live.chat_pulse` | stream | `channel` | The newest minute of chat and the last hour's messages |
+| `silver.game_runs`, `silver.run_versions` | stream | `game`, `event_id` | The newest run per game and every reported run |
+| `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and highscore entries |
+| `silver.games`, `silver.lab_run_progress` | `silver` | | The LAB24 collection and the progress after each lab run |
+| `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Level splits, improvement history and game knowledge |
+| `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
+| `silver.game_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of human game starts and campaign wins per game |
+| `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Human highscore runs and the AI's newest records replayed through the served game's verifier |
+| `gold.game_summary` | `gold` | `game` | Record, levels cleared, seconds saved, costliest level, lab runs, change since yesterday |
 | `gold.level_costs` | `gold` | `game`, `level` | Frames and share of the run per level |
-| `gold.improvement_curve` | `gold` | `game`, `hour` | The proven run's length, hour by hour |
-| `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day and the seconds it saved |
+| `gold.improvement_curve` | `gold` | `game`, `hour` | The proven run's length per hour |
+| `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
-| `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as an experiment: before against after, with estimates, intervals and Holm and BH adjusted p-values |
-| `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind for each game's next turn, with the posterior of frames saved per worker-second |
-| `gold.search_bandit` | `search-bandit` | `metric` | The turns with the bandit's workers against the held-out turns with the static ones |
-| `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on the For engineers page |
-| `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game in `silver.games`, zero where Umami counted none, served on every highscore board |
-| `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform`, every job | | Rows, bytes, files and versions per table; every job run with its duration and status |
-| `gold.quality_reports` | every write | | The pyspark-data-quality report of every silver, gold and live write |
-| `bronze.trace_pieces` | `mine-records` | `game`, `record`, `segment` | Every piece of every verified record mined from the runner's working directories, with its inputs and whether its replay ends on the record's RAM byte for byte |
-| `bronze.frame_traces` | `mine-records` | `game`, `frame` | The newest record per game replayed frame by frame: level, position and the RAM values the game shows |
-| `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Every human highscore run and the AI's newest records replayed through the verifier in the game's served `game.pyxapp`, and the frames each level took |
-| `gold.level_segments`, `gold.mining_summary` | `mining-gold` | `game` | Frames per level and piece of the newest record, its costliest level and piece |
-| `gold.level_history` | `mining-gold` | `game`, `level`, `at` | Every change of a level's frames in the won runs the search reported |
-| `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per value of each shown RAM label, per level |
-| `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Every improvement of the best human and the AI, each human run against the AI, per-level frames of verified human runs against the AI's, and the replays' verdicts |
+| `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as a before/after experiment |
+| `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind |
+| `gold.search_bandit` | `search-bandit` | `metric` | Bandit turns against held-out static turns |
+| `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The sources' numbers of the last 2 days |
+| `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
+| `gold.level_segments`, `gold.mining_summary`, `gold.level_history` | `mining-gold` | `game` | Frames per level and piece of the newest record, and every change of a level's frames |
+| `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
+| `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
+| `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform` | | Size and versions per table, and every job run |
+| `gold.quality_reports` | every write | | The data-quality report of every silver, gold and live write |
 
-Writes use Delta MERGE (newest event wins), the live pulse tables a plain overwrite of their few rows, `gold.game_summary` compares with itself a day ago by time travel,
-and the nightly `maintenance` job runs OPTIMIZE (ZORDER for the run versions and history), VACUUM and the
-retention: live tables keep 1 hour of old files and 1 day of log, silver and gold 2 days and 7 days, bronze 7 days
-and 30 days with rows kept 12 months.
+Writes use Delta MERGE (newest event wins); the live pulse tables are overwritten. The nightly `maintenance` job runs
+OPTIMIZE, VACUUM and the retention of each layer. The event schemas are in [EVENTS.md](EVENTS.md).
+
+## Quality gate
+
+Every silver, gold and live write first passes a [pyspark-data-quality](https://pypi.org/project/pyspark-data-quality/)
+suite (`quality/suites.py`): keys present and unique, allowed outcomes, non-negative times and frames, at most one
+live run. A failing suite stops the write and the job; its report lands in `gold.quality_reports` either way.
 
 ## External sources
 
 The sources jobs load only aggregated, public, non-personal numbers, never a message, a name or a raw response:
-
-| Source | Numbers |
-|--------|---------|
-| Uptime Kuma | Uptime of the last 24 hours and the last response time of every monitor on the public status page |
-| Twitch | Followers, kept videos and their views, clips and their views, viewers while live |
-| Discord | Members and members online |
-| Umami | Visitors, visits and page views of the last 7 days, visitors now; games.retrospeedlab.com's game starts and campaign wins per game and mode (the `plays` stream) |
-| Langfuse | Traced steps, tokens and model cost of the last 7 days |
-| W&B | PPO training runs, the newest run's reward and the versioned policy checkpoints |
-| Bugsink | Projects, open and resolved issues and error events |
-| GitHub | Repositories, commits of the last 7 days, stars and forks of the public ones (nightly) |
-
-Each source loads on its own: one that fails keeps the others and fails the job afterwards, so
-`/tech-stack#data-platform` shows it. `platform` runs either way.
+Uptime Kuma, Twitch, Discord, Umami (including the game site's starts and campaign wins per game), Langfuse, W&B,
+Bugsink and GitHub. Each source loads on its own; one that fails keeps the others and fails the job afterwards.
 
 ## Lab experiments
 
-The nightly `experiments` job treats every deployed lab run as an experiment on its game, with
-[experimentation-toolkit](https://pypi.org/project/experimentation-toolkit/). Control is the searched hours before the
-change (since the change before it, at most 72), treatment the searched hours after it (from 30 minutes after the lab
-run ended, to allow for the deploy, until the next change, at most 72). A searched hour is one with at least one
-search attempt in `bronze.search_events`. The metrics:
+The nightly `experiments` job treats every deployed lab change as an experiment on its game, using
+[experimentation-toolkit](https://pypi.org/project/experimentation-toolkit/). Control is the searched hours before
+the change, treatment the searched hours after it (each at most 72).
 
 | Metric | Better | Analysis |
 |--------|--------|----------|
-| `frames_saved_per_hour` | higher | Welch's t on the frames the improvements saved per searched hour |
-| `crossing_rate` | higher | Score test and Newcombe interval on the attempts that crossed into a new state |
-| `record_hour_rate` | higher | The same on the searched hours with a new record from power-on |
-| `verify_failure_rate` | lower | The same on the won runs that did not replay from power-on, of all won runs offered |
+| `frames_saved_per_hour` | higher | Welch's t-test on frames saved per searched hour |
+| `crossing_rate` | higher | Score test and Newcombe interval on attempts that crossed into a new state |
+| `record_hour_rate` | higher | The same on searched hours with a new record |
+| `verify_failure_rate` | lower | The same on won runs that did not replay from power-on |
 
-A metric is analyzed only with at least 12 searched hours on both sides, and for the rates at least 30 trials on
-both sides; otherwise it reads `not enough data yet`. The p-values of one change are adjusted with Holm (the verdict)
-and Benjamini-Hochberg (reported). The verdict is `better` or `worse` only when the Holm-adjusted p is at most 0.05
-and the 95% interval of the effect excludes zero on that side; otherwise `no clear change`.
+A metric needs at least 12 searched hours on both sides, and rates at least 30 trials. The verdict is `better` or
+`worse` only when the Holm-adjusted p-value is at most 0.05 and the 95 % interval excludes zero on that side;
+Benjamini-Hochberg adjusted p-values are reported alongside.
 
 ## Search bandit
 
-The search has five worker kinds (`scout`, `backtracker`, `beam-scout`, `vision-scout`, `polisher`). Every attempt
-says which kind ran it and for how many worker-seconds, and every improvement which kind found it and how many frames
-it saved. The nightly `search-allocation` job sums both per game and kind over the last `bandit.days` and models
-frames saved per worker-second as Gamma-Poisson, with the game's pooled rate as the prior and the counts deflated by
-the mean frames per improvement, since frames come in clumps. Thompson sampling with `bandit.draws` draws gives each
-kind's chance of being the best; its share is `bandit.min_share` plus that chance times the rest, so every kind keeps
-exploring.
+The search has five worker kinds (`scout`, `backtracker`, `beam-scout`, `vision-scout`, `polisher`). The nightly
+`search-allocation` job models each game's frames saved per worker-second and kind over the last `bandit.days` as
+Gamma-Poisson, with the game's pooled rate as the prior. Thompson sampling (`bandit.draws`) gives each kind's chance
+of being the best; its share is `bandit.min_share` plus that chance times the rest, so every kind keeps exploring.
 
-The runner reads the shares through `GET /lakehouse/allocation/{slug}` at the start of a turn and splits the same
-total of workers by them, at least one per kind the static configuration enables. A fifth of the turns, drawn per
-game and turn, keep the static split as the holdout; each turn's split is published to `runs.allocations`. The nightly
-`search-bandit` job compares the frames saved per hour of the finished bandit turns against the holdout turns with
-Welch's t and its 95% interval; with fewer than 12 turns on either side it reads `not enough data yet`.
-
-## Quality gate
-
-Every silver, gold and live write passes a [pyspark-data-quality](https://pypi.org/project/pyspark-data-quality/)
-suite first (`quality/suites.py`: keys present and unique, composite keys unique together with `UniqueKey`, allowed
-outcomes, non-negative times and frames, at most one live run). A failing suite stops the write and the job; its report
-lands in `gold.quality_reports` either way.
+The runner reads the shares from `GET /lakehouse/allocation/{slug}` at the start of a turn and splits its workers by
+them. A fifth of the turns keep the static split as the holdout, and every split is published to `runs.allocations`.
+The nightly `search-bandit` job compares frames saved per hour of bandit and holdout turns with Welch's t-test; with
+fewer than 12 turns on either side it reads `not enough data yet`.
 
 ## Jobs
 
-| DAG | When (UTC) | Jobs |
-|-----|------------|------|
-| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`; beside them `sources-hourly`; then `platform` |
-| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `maintenance`; beside them `sources-nightly` and `videos-nightly`; then `platform` |
-| `lakehouse_mining` | 03:30, done by 06:00 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
+| DAG | Schedule (UTC) | Jobs |
+|-----|----------------|------|
+| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`, `sources-hourly`, then `platform` |
+| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `maintenance`, `sources-nightly`, `videos-nightly`, then `platform` |
+| `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
-Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the
-first one ends. The nightly-only jobs (`api-nightly`, `experiments`, `search-allocation`, `search-bandit`, `maintenance`, `sources-nightly`,
-`videos-nightly`) run only between 02:00 and 06:00 UTC: started at any other time, by a catch-up or a retry, they
-log that and skip. Airflow runs one task at a time; hourly tasks go first (priority 10 against 1), a nightly task
-ends after 40 minutes and an hourly one after 25, so the hourly DAG never waits long behind the nightly one. `videos-nightly` copies the backend's per-game videos over its public API, only those whose ETag
-changed, and keeps the newest file of each next to `bronze.videos`.
+The nightly DAG starts after the first lab run of the day. Nightly-only jobs skip when started outside 02:00 to 06:00
+UTC, and hourly tasks take priority over nightly ones.
 
-## Mining
-
-`mine-records` reads the runner's working directories read-only (`/runner`), and only records it has not mined yet.
-The image carries retro-speedlab-core, retro-speedlab-engine and retro-speedlab-games under `speedlab/`, side by side
-as `dokku/deploy.sh` archives them; each Spark task replays its pieces, partitioned by game and piece, in one
-`python -m datenwissenschaften.speedrun.trace` process. `verify-replays` downloads each game's served `game.pyxapp`
-once per task and runs its bundled verifier exactly as the backend does, then `datenwissenschaften.speedrun.level_clock`
-on the same cartridge for the level splits. Both jobs refuse to start with less than `mining.min_available_mb`
-available on black-omen and run in the Airflow container, capped at 2 cores and 3.5 GB and niced.
+`mine-records` reads the runner's working directories read-only and replays each new record's pieces with
+retro-speedlab-core, retro-speedlab-engine and retro-speedlab-games bundled in the image. `verify-replays` runs each
+game's served verifier exactly as the backend does. Both refuse to start below `mining.min_available_mb` of available
+memory.
 
 ## Database
 
-[database.retrospeedlab.com](https://database.retrospeedlab.com) is Apache Superset's SQL Lab and dashboards on the
-lake, for the maintainer only.
+[database.retrospeedlab.com](https://database.retrospeedlab.com) serves Apache Superset's SQL Lab and dashboards on
+the lake, for the maintainer only.
 
 ```mermaid
 flowchart LR
-    browser[Browser] -->|HTTPS| nginx[nginx and letsencrypt on the main server]
-    nginx --> proxy[retro-speedlab-database: socat]
-    proxy -->|172.17.0.1:18088| sshd[sshd on the main server]
-    sshd -->|reverse SSH tunnel| superset[retro-speedlab-superset on black-omen]
-    superset -->|PyHive, port 10000| thrift[retro-speedlab-thrift on black-omen]
+    browser[Browser] -->|HTTPS| proxy[retro-speedlab-database on Main]
+    proxy -->|reverse SSH tunnel| superset[retro-speedlab-superset on Home Lab]
+    superset -->|PyHive| thrift[retro-speedlab-thrift on Home Lab]
     thrift -->|s3a, read-only key| lake[(Garage lake)]
     thrift -->|read-only mount| bronze[(Bronze Delta)]
 ```
 
-| Where | What |
-|-------|------|
-| black-omen `retro-speedlab-thrift` | The lakehouse image running the Spark Thrift Server in local mode: Delta, an embedded Derby metastore on `/mnt/fastdata/database/thrift`, the lake's read-only `database` key and bronze mounted read-only; 512 MB heap, 1.25 GB and 1 CPU, cpu-shares 256 |
-| black-omen `retro-speedlab-superset` | Superset 6.1 with one gunicorn worker, its metadata in SQLite on `/mnt/fastdata/database/superset`, published only on `127.0.0.1:18088`; 768 MB and 1 CPU, cpu-shares 256 |
-| black-omen `retro-speedlab-database-tunnel` | A systemd service holding `ssh -R 172.17.0.1:18088:127.0.0.1:18088` to the main server, restarted whenever it drops |
-| main server `retro-speedlab-database` | socat from the app's nginx to the tunnel's end on the docker bridge, behind letsencrypt |
-
-The Thrift Server registers every table of the catalog that exists as `<layer>.<table>` (`CREATE TABLE IF NOT EXISTS
-... USING DELTA LOCATION ...`) when it starts and every hour, so a deploy or a new table needs nothing else. Nothing
-publishes its port: only Superset reaches it, over the `retro-speedlab-database` network.
-
-The tunnel logs in as `database-tunnel` on the main server, a system user without a shell or password. Its key
-on black-omen lives in `/etc/retro-speedlab/database-tunnel` and is only allowed to listen on `172.17.0.1:18088`
-(`restrict,port-forwarding,permitlisten` in its `authorized_keys`, and `database/tunnel/sshd.conf` as a `Match
-User` block: remote forwarding only, no TTY, no agent, no X11). ufw lets only the docker bridge reach that port.
-
-Superset signs in with Discord only, with the scope `identify`, and only the Discord user id `712191617095696493`
-gets in, created as Admin on its first sign-in; anyone else is turned away, self-registration is off, `/register/`
-answers 404 and the public role has no permissions. It shares the backend's Discord
-app: `dokku/database-setup.sh` copies `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` from the backend without
-printing them, and the app lists `https://database.retrospeedlab.com/oauth-authorized/discord` as a redirect beside
-the backend's own.
-
-The lake connection forbids DML, CTAS and file uploads. Every start imports the `Speedrun records` and `Lakehouse
-platform` dashboards from `database/superset/assets.py`, overwriting their charts.
-
-Every table the Thrift Server registers in `bronze`, `silver`, `gold` and `live` is a dataset with a one-line
-description of its layer. `database/superset/sync_datasets.py` creates the missing ones and refreshes their columns
-from the tables when Superset starts and every hour after, so a new table gets its dataset within the hour. A layer or
-table that is not in the lake yet is skipped and named in one log line. The starter dashboards' datasets keep the fixed
-columns their charts need. On SQLite, Superset's metadata keeps datasets unique by table name alone, so each start
-drops that constraint first and two layers can share a table name.
+- `retro-speedlab-thrift` runs the Spark Thrift Server with Delta and registers every catalog table as
+  `<layer>.<table>` at start and every hour. Only Superset can reach it.
+- `retro-speedlab-superset` listens on localhost only and is reached through a reverse SSH tunnel to Main, held by a
+  systemd service. The tunnel's user has no shell, and its key may only open that one remote forward
+  (`database/tunnel/sshd.conf`).
+- Superset signs in with Discord only (scope `identify`), and only the Discord user `DISCORD_USER_ID` in
+  `database/superset/superset_config.py` gets in, created as Admin on first sign-in. Self-registration is off and the
+  public role has no permissions. It shares the backend's Discord app, whose redirects include
+  `https://database.retrospeedlab.com/oauth-authorized/discord`.
+- The lake connection forbids DML, CTAS and file uploads. Every start imports the dashboards from
+  `database/superset/assets.py`.
+- Every registered table is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
+  refreshes their columns at start and every hour.
 
 ## Configuration
 
-`config.yaml` holds everything but the secrets: the backend URL, Kafka's address and topics, the relay's poll and
-cursor, the lake's paths and S3 endpoint, Spark's master and memory, the stream's triggers, the sources' GitHub
-repositories and status page, and the Thrift Server's port, metastore, registration interval and Spark. The secrets
-come from the environment: `UPLOAD_API_KEY` (the backend's events endpoint), `LAKE_ACCESS_KEY_ID` and
-`LAKE_SECRET_ACCESS_KEY` (the lake; the Thrift Server holds its own read-only pair), `AIRFLOW__API_AUTH__JWT_SECRET`,
-Superset's `SUPERSET_SECRET_KEY`, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, and the sources' settings, which
-`dokku/sources.sh` copies from the backend's and the runner's config without printing them. The event schemas are in
-[EVENTS.md](EVENTS.md).
+`config.yaml` holds everything except secrets: backend URL, Kafka topics, relay, lake paths and endpoint, Spark,
+stream triggers, sources and the Thrift Server. Secrets come from the environment:
+
+| Variable | Purpose |
+|----------|---------|
+| `UPLOAD_API_KEY` | The backend's events endpoint |
+| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; the Thrift Server holds its own read-only pair |
+| `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
+| `SUPERSET_SECRET_KEY`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | Superset and its Discord login |
+
+`dokku/sources.sh` copies the sources' credentials from the backend's and the runner's config, and
+`dokku/database-setup.sh` copies the Discord app's, without printing them.
 
 ## Deploy
 
-Run it all from WSL. The image installs every wheel, the Spark jars and the Java runtime from black-omen's
-`/mnt/fastdata/wheelhouse`, hash-checked against `uv.lock`, `jars.lock` and `java.lock`.
+The scripts use the SSH aliases `dokku` (Main), `dokku-black-omen` and `black-omen` (Home Lab). The image installs
+every wheel, the Spark jars and the Java runtime from a wheelhouse on the Home Lab server, hash-checked against
+`uv.lock`, `jars.lock` and `java.lock`.
 
 ```bash
-bash dokku/lake-setup.sh     # once, main server: the Garage app, its storage, domain and network
-bash dokku/lake-deploy.sh    # main server: Garage
+bash dokku/lake-setup.sh      # once, Main: the Garage app, storage, domain and network
+bash dokku/lake-deploy.sh     # Main: Garage
 ssh dokku letsencrypt:enable retro-speedlab-lake
-bash dokku/kafka-setup.sh    # once, black-omen: Kafka
-bash dokku/setup.sh          # once, black-omen: the lakehouse app, storage, limits and upload key
-bash dokku/lake-keys.sh      # once: bucket and keys, the writer key to the lakehouse, the reader key to the backend
-bash dokku/database-setup.sh # once: the Thrift Server, Superset, their read-only lake key and the main server's proxy
+bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
+bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
+bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
+bash dokku/database-setup.sh  # once: the Thrift Server, Superset and the proxy on Main
 bash dokku/database-tunnel.sh # once: the tunnel's user, key, sshd block, firewall rule and service
-bash dokku/sources.sh        # whenever a source's credentials change
-bash dokku/wheelhouse.sh     # whenever uv.lock, jars.lock or java.lock change
+bash dokku/sources.sh         # whenever a source's credentials change
+bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift
 ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml
 bash dokku/database-deploy.sh # the Thrift Server, Superset and the proxy
 ssh dokku letsencrypt:enable retro-speedlab-database
 ```
 
-## Development
+## Checks
 
 Tests run PySpark in local mode and need Java 17 or newer.
 
 ```bash
 uv sync
-uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+uv run pytest -q
 ```

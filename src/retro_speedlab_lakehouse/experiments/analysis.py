@@ -89,12 +89,12 @@ def enough(metric: Metric, before: Arm, after: Arm) -> bool:
     return searched and metric.samples(before) >= metric.minimum and metric.samples(after) >= metric.minimum
 
 
-def verdict(metric: Metric, result: AnalysisResult, adjusted: float) -> str:
+def verdict(better: str, result: AnalysisResult, adjusted: float) -> str:
     lower, upper = result.confidence_interval.lower, result.confidence_interval.upper
     if adjusted > ALPHA or lower is None or upper is None:
         return UNCLEAR
-    improved = lower > 0 if metric.better == HIGHER else upper < 0
-    worsened = upper < 0 if metric.better == HIGHER else lower > 0
+    improved = lower > 0 if better == HIGHER else upper < 0
+    worsened = upper < 0 if better == HIGHER else lower > 0
     return BETTER if improved else WORSE if worsened else UNCLEAR
 
 
@@ -113,7 +113,7 @@ def analyzed(before: Arm, after: Arm) -> list[Outcome]:
         if metric.name not in holm:
             outcomes.append(Outcome(metric, *sizes, result, None, None, UNCLEAR))
             continue
-        judged = verdict(metric, result, holm[metric.name])
+        judged = verdict(metric.better, result, holm[metric.name])
         outcomes.append(Outcome(metric, *sizes, result, holm[metric.name], bh[metric.name], judged))
     return outcomes
 

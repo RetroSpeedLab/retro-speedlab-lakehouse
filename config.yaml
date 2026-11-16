@@ -17,6 +17,7 @@ kafka:
     - policy.rounds
     - lab.events
     - chat.events
+    - runs.allocations
 
 relay:
   poll_seconds: 1
@@ -47,6 +48,11 @@ mining:
   speedlab: /lakehouse/speedlab
   games_url: https://games.retrospeedlab.com
   min_available_mb: 6300
+
+bandit:
+  min_share: 0.1
+  days: 14
+  draws: 20000
 
 chat:
   ignored:

@@ -42,8 +42,9 @@ minute, and on the busy Home Lab a batch takes about five minutes.
 
 | Topic | Key | Payload | Producer | Delta tables |
 |-------|-----|---------|----------|--------------|
-| `runs.attempts` | game slug | One finished search job: `state`, `seed`, `role`, `seconds`, `outcome` (`crossing`, `checkpoint`, `nothing`), `crossings`, `frames`, `reached` | core's searcher | `bronze.search_events`, `live.search_pulse` |
-| `runs.steps` | game slug | One search step: `kind` (`found`, `checkpoint`, `stuck`, `improved`, `lab`, `unverified`), `state`, `frames`, `saved` | core's search | `bronze.search_events`, `live.search_pulse` |
+| `runs.attempts` | game slug | One finished search or polisher job: `state`, `seed`, `role`, `seconds`, `worker_seconds`, `outcome` (`crossing`, `checkpoint`, `nothing`), `crossings`, `frames`, `reached` | core's searcher | `bronze.search_events`, `live.search_pulse`, `gold.search_allocation` |
+| `runs.steps` | game slug | One search step: `kind` (`found`, `checkpoint`, `stuck`, `improved`, `lab`, `unverified`), `state`, `frames`, `saved`, and the `role` and `worker_seconds` of the job a `found` or `improved` step took its crossing from | core's search | `bronze.search_events`, `live.search_pulse`, `gold.search_allocation` |
+| `runs.allocations` | game slug | The workers of one game's turn while the search bandit is on: `turn`, `arm` (`bandit`, `holdout`, `static`), `workers` per kind, `recommended_at`, `turn_started_at`, `turn_ends_at` | the runner | `bronze.search_events`, `gold.search_bandit` |
 | `runs.records` | game slug | A new record from power-on that replays: `version`, `frames`, `seconds`, `pieces`, `previous_frames` | core's record | `bronze.search_events`, `live.search_pulse` |
 | `policy.rounds` | game slug | One PPO round: `run` (W&B run path), `round`, `steps`, `reward`, `exits`, `episodes`, `exit_rate`, `entropy`, `explained_variance`, `loss` | core's policy trainer | `bronze.search_events`, `live.policy_pulse` |
 | `lab.events` | `{game}/{stamp}` | A lab-run step: `stamp`, `kind` (`started`, `judging`, `finished`), and on `finished` its `outcome` and `commits` | the runner's lab job | `bronze.search_events`, `live.lab_status` |

@@ -3,7 +3,7 @@ from typing import Any
 
 import yaml
 from box import Box
-from pydantic import BaseModel, ConfigDict, NonNegativeInt, PositiveFloat, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveFloat, PositiveInt
 
 from retro_speedlab_lakehouse.environment import secret
 from retro_speedlab_lakehouse.sources.settings import GithubSettings, Sources, UptimeSettings, load_sources
@@ -75,6 +75,12 @@ class MiningSettings(Frozen):
     min_available_mb: PositiveInt
 
 
+class BanditSettings(Frozen):
+    min_share: float = Field(gt=0, lt=1)
+    days: PositiveInt
+    draws: PositiveInt
+
+
 class ChatSettings(Frozen):
     channel: str
     ignored: frozenset[str]
@@ -88,6 +94,7 @@ class Settings(Frozen):
     spark: SparkSettings
     stream: StreamSettings
     mining: MiningSettings
+    bandit: BanditSettings
     chat: ChatSettings
     sources: Sources
 
@@ -119,6 +126,7 @@ def load_settings(config: Path) -> Settings:
         spark=SparkSettings(**document.spark.to_dict()),
         stream=StreamSettings(**document.stream.to_dict()),
         mining=MiningSettings(**document.mining.to_dict()),
+        bandit=BanditSettings(**document.bandit.to_dict()),
         chat=ChatSettings(channel=secret("TWITCH_CHANNEL").lower(), ignored=frozenset(document.chat.ignored)),
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),

@@ -67,6 +67,8 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 | `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day and the seconds it saved |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as an experiment: before against after, with estimates, intervals and Holm and BH adjusted p-values |
+| `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind for each game's next turn, with the posterior of frames saved per worker-second |
+| `gold.search_bandit` | `search-bandit` | `metric` | The turns with the bandit's workers against the held-out turns with the static ones |
 | `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on `/tech-stack#data-platform` |
 | `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform`, every job | | Rows, bytes, files and versions per table; every job run with its duration and status |
 | `gold.quality_reports` | every write | | The pyspark-data-quality report of every silver, gold and live write |
@@ -121,6 +123,22 @@ both sides; otherwise it reads `not enough data yet`. The p-values of one change
 and Benjamini-Hochberg (reported). The verdict is `better` or `worse` only when the Holm-adjusted p is at most 0.05
 and the 95% interval of the effect excludes zero on that side; otherwise `no clear change`.
 
+## Search bandit
+
+The search has five worker kinds (`scout`, `backtracker`, `beam-scout`, `vision-scout`, `polisher`). Every attempt
+says which kind ran it and for how many worker-seconds, and every improvement which kind found it and how many frames
+it saved. The nightly `search-allocation` job sums both per game and kind over the last `bandit.days` and models
+frames saved per worker-second as Gamma-Poisson, with the game's pooled rate as the prior and the counts deflated by
+the mean frames per improvement, since frames come in clumps. Thompson sampling with `bandit.draws` draws gives each
+kind's chance of being the best; its share is `bandit.min_share` plus that chance times the rest, so every kind keeps
+exploring.
+
+The runner reads the shares through `GET /lakehouse/allocation/{slug}` at the start of a turn and splits the same
+total of workers by them, at least one per kind the static configuration enables. A fifth of the turns, drawn per
+game and turn, keep the static split as the holdout; each turn's split is published to `runs.allocations`. The nightly
+`search-bandit` job compares the frames saved per hour of the finished bandit turns against the holdout turns with
+Welch's t and its 95% interval; with fewer than 12 turns on either side it reads `not enough data yet`.
+
 ## Quality gate
 
 Every silver, gold and live write passes a [pyspark-data-quality](https://pypi.org/project/pyspark-data-quality/)
@@ -133,11 +151,11 @@ lands in `gold.quality_reports` either way.
 | DAG | When (UTC) | Jobs |
 |-----|------------|------|
 | `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `vacuum-live`; beside them `sources-hourly`; then `platform` |
-| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `experiments`, `maintenance`; beside them `sources-nightly` and `videos-nightly`; then `platform` |
+| `lakehouse_nightly` | 02:30, after the 01:35 lab run | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `maintenance`; beside them `sources-nightly` and `videos-nightly`; then `platform` |
 | `lakehouse_mining` | 03:30, done by 06:00 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 
 Lab runs start at 01:35, 07:35, 13:35 and 19:35 and last up to 45 minutes, so the night run starts after the
-first one ends. The nightly-only jobs (`api-nightly`, `experiments`, `maintenance`, `sources-nightly`,
+first one ends. The nightly-only jobs (`api-nightly`, `experiments`, `search-allocation`, `search-bandit`, `maintenance`, `sources-nightly`,
 `videos-nightly`) run only between 02:00 and 06:00 UTC: started at any other time, by a catch-up or a retry, they
 log that and skip. Airflow runs one task at a time; hourly tasks go first (priority 10 against 1), a nightly task
 ends after 40 minutes and an hourly one after 25, so the hourly DAG never waits long behind the nightly one. `videos-nightly` copies the backend's per-game videos over its public API, only those whose ETag

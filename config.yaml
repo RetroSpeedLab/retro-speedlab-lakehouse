@@ -55,7 +55,7 @@ chat:
 
 sources:
   github:
-    owner: datenwissenschaften
+    owner: RetroSpeedLab
     repositories:
       - retro-speedlab-core
       - retro-speedlab-engine

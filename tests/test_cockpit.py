@@ -111,14 +111,17 @@ def test_a_failed_gate_also_lands_in_the_quality_failures(spark: SparkSession, s
 
 @respx.mock
 def test_langfuse_costs_are_loaded_per_utc_day() -> None:
-    totals = {"data": [{"count_count": 3, "sum_totalTokens": 900, "sum_totalCost": 0.25}]}
-    route = respx.get("https://langfuse.test/api/public/v2/metrics").mock(return_value=httpx.Response(200, json=totals))
+    queries: list[dict[str, Any]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        queries.append(json.loads(request.url.params["query"]))
+        return httpx.Response(200, json={"data": [{"count_count": 3, "sum_totalTokens": 900, "sum_totalCost": 0.25}]})
+
+    respx.get("https://langfuse.test/api/public/v2/metrics").mock(side_effect=answer)
     days = langfuse_days(source_settings().langfuse, NOW)
     assert [day.date.isoformat() for day in days[:2]] == ["2026-11-16", "2026-11-15"]
     assert days[0].record.body == {"date": "2026-11-16", "observations": 3, "tokens": 900, "cost_usd": 0.25}
-    request: httpx.Request = route.calls[0].request
-    first = json.loads(request.url.params["query"])
-    assert (first["fromTimestamp"], first["toTimestamp"]) == ("2026-11-16T00:00:00Z", "2026-11-16T12:30:00Z")
+    assert (queries[0]["fromTimestamp"], queries[0]["toTimestamp"]) == ("2026-11-16T00:00:00Z", "2026-11-16T12:30:00Z")
 
 
 class TaskInstance:

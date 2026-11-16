@@ -41,6 +41,10 @@ NO_REFRESH = 0
 WEEK = ("hour >= current_timestamp() - INTERVAL 7 DAYS",)
 JOB_MINUTES = "(unix_timestamp(finished_at) - unix_timestamp(started_at)) / 60"
 SAVED_SINCE_FIRST_CLEAR = "saved_since_first_clear_seconds"
+LAB_PER_DOLLAR = "MAX(total_frames_per_dollar)"
+PROMOTION_PER_DOLLAR = "try_divide(SUM(views), SUM(cost_usd))"
+LAB_RUN_PER_DOLLAR = "try_divide(SUM(frames_saved), SUM(cost_usd))"
+SEARCH_PER_CPU_HOUR = "try_divide(SUM(saved), SUM(worker_seconds) / 3600)"
 COMPARISON = ("control_n", "treatment_n", "control_estimate", "treatment_estimate", "effect", "ci_lower", "ci_upper")
 
 
@@ -151,8 +155,17 @@ OVERVIEW = Dashboard(
                         "SUM(cost_usd)",
                         ("date < current_date()",),
                     ),
-                    number(LAB_ROI, "Lab frames saved per Claude dollar", "MAX(total_frames_per_dollar)", ()),
-                    number(PROMOTION_ROI, "Promotion views", "SUM(views)", ()),
+                ),
+            ),
+        ),
+        Section(
+            "Return on cost",
+            (
+                tiles(
+                    number(LAB_ROI, "Lab frames saved per Claude dollar", LAB_PER_DOLLAR, ()),
+                    number(PROMOTION_ROI, "Promotion views per Claude dollar", PROMOTION_PER_DOLLAR, ()),
+                    number(SEARCH_ALLOCATION, "Search frames saved per CPU-hour", SEARCH_PER_CPU_HOUR, ()),
+                    number(LAB_ROI, "Lab changes flagged as harmful", "COUNT_IF(harm_flagged)", ()),
                 ),
             ),
         ),
@@ -294,21 +307,6 @@ SEARCH_AI = Dashboard(
                         "-changed_at",
                         (),
                     ),
-                    table(
-                        LAB_ROI,
-                        "Lab return on Claude cost",
-                        (
-                            "finished_at",
-                            "game",
-                            "outcome",
-                            "cost_usd",
-                            "frames_saved",
-                            "frames_per_dollar",
-                            "harm_flagged",
-                        ),
-                        "-finished_at",
-                        (),
-                    ),
                 ),
             ),
         ),
@@ -369,16 +367,9 @@ AUDIENCE = Dashboard(
             ),
         ),
         Section(
-            "Promotion and engagement",
+            "Engagement",
             (
                 tables(
-                    table(
-                        PROMOTION_ROI,
-                        "Promotion per network and variant",
-                        ("channel", "variant", "drafts", "views", "likes", "follows", "cost_usd", "views_per_dollar"),
-                        "-views",
-                        (),
-                    ),
                     table(
                         CONTENT_RANKING,
                         "Engagement ranking",
@@ -550,4 +541,124 @@ PLATFORM_COST = Dashboard(
         ),
     ),
 )
-DASHBOARDS = (OVERVIEW, SEARCH_AI, AUDIENCE, PLATFORM_COST)
+RETURN_ON_COST = Dashboard(
+    "Return on cost",
+    "return-on-cost",
+    NO_REFRESH,
+    (
+        Section(
+            "Lab: frames saved per Claude dollar",
+            (
+                tiles(
+                    number(LAB_ROI, "Lab frames saved, counted runs", "MAX(total_frames_saved)", ()),
+                    number(LAB_ROI, "Lab Claude cost, counted runs (USD)", "MAX(total_cost_usd)", ()),
+                    number(PROMOTION_ROI, "Promotion views", "SUM(views)", ()),
+                    number(PROMOTION_ROI, "Promotion Claude cost (USD)", "SUM(cost_usd)", ()),
+                ),
+                charts(
+                    ranked(
+                        LAB_ROI,
+                        "Lab frames saved per Claude dollar per game",
+                        "game",
+                        LAB_RUN_PER_DOLLAR,
+                        (),
+                        ("counted = true",),
+                    ),
+                    table(
+                        LAB_ROI,
+                        "Lab runs with their return",
+                        (
+                            "finished_at",
+                            "game",
+                            "outcome",
+                            "cost_usd",
+                            "frames_saved",
+                            "frames_saved_lower",
+                            "frames_saved_upper",
+                            "frames_per_dollar",
+                            "counted",
+                            "harm_flagged",
+                            "harm_after_hours",
+                        ),
+                        "-finished_at",
+                        (),
+                    ),
+                ),
+            ),
+        ),
+        Section(
+            "Promotion: views per Claude dollar",
+            (
+                charts(
+                    ranked(
+                        PROMOTION_ROI,
+                        "Promotion views per Claude dollar per network",
+                        "channel",
+                        PROMOTION_PER_DOLLAR,
+                        (),
+                        (),
+                    ),
+                    table(
+                        PROMOTION_ROI,
+                        "Promotion per network and variant",
+                        (
+                            "channel",
+                            "variant",
+                            "drafts",
+                            "cost_usd",
+                            "views",
+                            "views_per_dollar",
+                            "views_lower",
+                            "views_upper",
+                            "likes",
+                            "likes_per_dollar",
+                            "likes_lower",
+                            "likes_upper",
+                            "follows",
+                        ),
+                        "-views_per_dollar",
+                        (),
+                    ),
+                ),
+            ),
+        ),
+        Section(
+            "Search: frames saved per CPU-hour",
+            (
+                charts(
+                    ranked(
+                        SEARCH_ALLOCATION,
+                        "Frames saved per CPU-hour per worker kind",
+                        "role",
+                        SEARCH_PER_CPU_HOUR,
+                        (),
+                        (),
+                    ),
+                    ranked(
+                        SEARCH_ALLOCATION, "Frames saved per CPU-hour per game", "game", SEARCH_PER_CPU_HOUR, (), ()
+                    ),
+                ),
+                tables(
+                    table(
+                        SEARCH_ALLOCATION,
+                        "Search return per game and worker kind",
+                        (
+                            "game",
+                            "role",
+                            "saved",
+                            "worker_seconds",
+                            "rate_mean",
+                            "rate_lower",
+                            "rate_upper",
+                            "share",
+                            "days",
+                        ),
+                        "game",
+                        (),
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+DASHBOARDS = (OVERVIEW, RETURN_ON_COST, SEARCH_AI, AUDIENCE, PLATFORM_COST)

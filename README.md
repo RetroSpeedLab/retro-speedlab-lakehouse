@@ -218,13 +218,14 @@ flowchart LR
 
 ## Cockpit and alerts
 
-Four Superset dashboards hold the owner's numbers, every one from the lake:
+Five Superset dashboards hold the owner's numbers, every one from the lake and none of them public:
 
 | Dashboard | What it shows |
 |-----------|---------------|
-| Cockpit | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members, the Claude cost of the last full day, the lab's frames per Claude dollar and the promotion's views |
-| Search and AI | Records per game, frames saved per hour and per game, the bandit's shares and its holdout, PPO reward and loss, the policy now, lab runs, their experiments and their return |
-| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, Discord activity, promotion per network and variant, the engagement ranking and the A/B results |
+| Cockpit | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members and the Claude cost of the last full day. Then the return on cost: the lab's frames saved per Claude dollar, the promotion's views per Claude dollar, the search's frames saved per CPU-hour and the lab changes flagged as harmful |
+| Return on cost | The lab's frames saved per Claude dollar per game and per run, with intervals and harm flags; the promotion's views and likes per Claude dollar per network and variant, with intervals; the search's frames saved per CPU-hour per worker kind and per game |
+| Search and AI | Records per game, frames saved per hour and per game, the bandit's shares and its holdout, PPO reward and loss, the policy now, lab runs and their experiments |
+| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, Discord activity, the engagement ranking and the A/B results |
 | Platform and cost | Stream lag, Airflow runs and failures, average job minutes, source loads, failed quality gates, disk, memory and load per server, the largest tables, the Claude cost per day, errors and uptime |
 
 The heavy numbers come from the hourly `cockpit` job, so a dashboard reads small gold tables; health reads the `live`

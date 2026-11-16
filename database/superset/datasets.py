@@ -312,6 +312,7 @@ LAB_ROI = lake_table(
         ("total_frames_saved", DOUBLE),
         ("total_frames_per_dollar", DOUBLE),
         ("harm_flagged", BOOLEAN),
+        ("harm_after_hours", BIGINT),
         ("computed_at", TIMESTAMP),
     ),
 )
@@ -327,7 +328,11 @@ PROMOTION_ROI = lake_table(
         ("likes", BIGINT),
         ("follows", BIGINT),
         ("views_per_dollar", DOUBLE),
+        ("views_lower", DOUBLE),
+        ("views_upper", DOUBLE),
         ("likes_per_dollar", DOUBLE),
+        ("likes_lower", DOUBLE),
+        ("likes_upper", DOUBLE),
         ("computed_at", TIMESTAMP),
     ),
 )

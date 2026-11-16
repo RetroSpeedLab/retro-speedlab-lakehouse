@@ -67,7 +67,7 @@ network with delta-rs. No console and no Airflow or Spark UI is public.
 | `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day and the seconds it saved |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as an experiment: before against after, with estimates, intervals and Holm and BH adjusted p-values |
-| `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on /data |
+| `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers measured in the last 2 days, served on `/tech-stack#data-platform` |
 | `gold.platform_tables`, `gold.platform_jobs`, `gold.sources_status` | `platform`, every job | | Rows, bytes, files and versions per table; every job run with its duration and status |
 | `gold.quality_reports` | every write | | The pyspark-data-quality report of every silver, gold and live write |
 | `bronze.trace_pieces` | `mine-records` | `game`, `record`, `segment` | Every piece of every verified record mined from the runner's working directories, with its inputs and whether its replay ends on the record's RAM byte for byte |
@@ -98,8 +98,8 @@ The sources jobs load only aggregated, public, non-personal numbers, never a mes
 | Bugsink | Projects, open and resolved issues and error events |
 | GitHub | Repositories, commits of the last 7 days, stars and forks of the public ones (nightly) |
 
-Each source loads on its own: one that fails keeps the others and fails the job afterwards, so `/data` shows it.
-`platform` runs either way.
+Each source loads on its own: one that fails keeps the others and fails the job afterwards, so
+`/tech-stack#data-platform` shows it. `platform` runs either way.
 
 ## Lab experiments
 

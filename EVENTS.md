@@ -37,7 +37,8 @@ process publishes `chat.events`. Their envelope has no outbox `id`; the Kafka of
 ```
 
 Every payload carries `game` (except `chat.events`) and `at`. All of them land in `bronze.search_events`; the
-`search` query of the stream counts the last hour into the `live` tables every minute.
+`search` query of the stream counts the last hour into the `live` tables after every micro-batch: it triggers every
+minute, and on the busy Home Lab a batch takes about five minutes.
 
 | Topic | Key | Payload | Producer | Delta tables |
 |-------|-----|---------|----------|--------------|

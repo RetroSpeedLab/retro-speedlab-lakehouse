@@ -34,7 +34,6 @@ def connect() -> duckdb.DuckDBPyConnection:
             "memory_limit": MEMORY_LIMIT,
             "temp_directory": SPILL,
             "threads": READ_THREADS,
-            "enable_http_metadata_cache": True,
             "enable_external_file_cache": False,
             "preserve_insertion_order": False,
         }

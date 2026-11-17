@@ -42,7 +42,7 @@ dokku config:set --no-restart "${MONGO}" MONGO_INITDB_ROOT_USERNAME="${DATABASE_
 set_once "${MONGO}" MONGO_INITDB_ROOT_PASSWORD "openssl rand -hex 24"
 deploy_image "${MONGO}" "${MONGO_IMAGE}"
 
-home_app "${GROWTHBOOK}" "${NETWORK}" 1280m 1 \
+home_app "${GROWTHBOOK}" "${NETWORK}" 896m 1 \
     "--publish 127.0.0.1:${UI_PORT}:3000 --publish 127.0.0.1:${API_PORT}:3100"
 ensure_mount "${GROWTHBOOK}" "${DATA}/uploads" /usr/local/src/app/packages/back-end/uploads
 dokku config:set --no-restart "${GROWTHBOOK}" NODE_ENV=production BACKEND_PORT=3100 \

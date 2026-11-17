@@ -32,9 +32,9 @@ dokku config:set --no-restart "${APP}" \
     KAFKA_LOG_DIRS=/var/lib/kafka/data \
     KAFKA_LOG_RETENTION_HOURS=168 \
     KAFKA_LOG_RETENTION_BYTES=1073741824 >/dev/null
-dokku config:set --no-restart --encoded "${APP}" KAFKA_HEAP_OPTS="$(printf '%s' '-Xms768m -Xmx768m' | base64 -w0)" >/dev/null
+dokku config:set --no-restart --encoded "${APP}" KAFKA_HEAP_OPTS="$(printf '%s' '-Xms128m -Xmx384m' | base64 -w0)" >/dev/null
 dokku proxy:disable "${APP}"
-dokku resource:limit --memory 1280m --cpu 1 "${APP}"
+dokku resource:limit --memory 768m --cpu 1 "${APP}"
 dokku docker-options:add "${APP}" deploy "--cpu-shares 512"
 dokku network:create "${NETWORK}"
 dokku network:set "${APP}" attach-post-deploy "${NETWORK}"

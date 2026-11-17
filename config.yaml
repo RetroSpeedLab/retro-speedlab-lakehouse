@@ -44,10 +44,10 @@ spark:
   packages: []
 
 stream:
-  live_trigger_seconds: 2
-  silver_trigger_seconds: 60
-  search_trigger_seconds: 60
-  status_seconds: 30
+  live_trigger_seconds: 30
+  silver_trigger_seconds: 300
+  search_trigger_seconds: 300
+  status_seconds: 60
 
 mining:
   working: /runner

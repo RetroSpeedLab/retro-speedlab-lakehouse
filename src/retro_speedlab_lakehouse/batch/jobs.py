@@ -8,8 +8,8 @@ from retro_speedlab_lakehouse.bandit.allocation import build_allocation
 from retro_speedlab_lakehouse.bandit.holdout import build_bandit_comparison
 from retro_speedlab_lakehouse.batch.api import ingest_api_hourly, ingest_api_nightly
 from retro_speedlab_lakehouse.batch.gold import build_gold
-from retro_speedlab_lakehouse.batch.maintenance import maintain, vacuum_live
-from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
+from retro_speedlab_lakehouse.batch.maintenance import maintain
+from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, build_sources_status, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.cockpit.catalog import COCKPIT_TABLES
 from retro_speedlab_lakehouse.cockpit.job import build_cockpit
@@ -84,12 +84,12 @@ def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_platform(spark, ALL_TABLES, settings.lake, gate, now())
 
 
+def sources_status(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return build_sources_status(spark, settings.lake, gate)
+
+
 def maintenance(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return maintain(spark, ALL_TABLES, settings.lake, now())
-
-
-def live_vacuum(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return vacuum_live(spark, ALL_TABLES, settings.lake)
 
 
 JOBS: dict[str, Job] = {
@@ -107,8 +107,8 @@ JOBS: dict[str, Job] = {
     "engagement-nightly": engagement_nightly,
     "cockpit": cockpit,
     "platform": platform,
+    "sources-status": sources_status,
     "maintenance": maintenance,
-    "vacuum-live": live_vacuum,
     "mine-records": mine_records,
     "verify-replays": verify_replays,
     "mining-gold": build_mining_gold,

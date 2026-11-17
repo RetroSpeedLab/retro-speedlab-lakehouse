@@ -11,7 +11,7 @@ NICE = 15
 START = datetime(2026, 11, 15)
 RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
-HOURLY_JOBS = ("api-hourly", "silver", "gold", "vacuum-live", "platform")
+HOURLY_JOBS = ("api-hourly", "silver", "gold", "sources-status")
 HOURLY_ASIDE = ("sources-hourly", "engagement-hourly", "cockpit")
 NIGHTLY_JOBS = (
     "api-nightly",
@@ -21,20 +21,19 @@ NIGHTLY_JOBS = (
     "search-allocation",
     "search-bandit",
     "engagement-nightly",
-    "maintenance",
     "platform",
 )
-NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly")
+NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance")
 MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
-LAST = "platform"
 HOURLY_PRIORITY = 10
 NIGHTLY_PRIORITY = 1
 TASK_TIMEOUT = timedelta(minutes=40)
+NIGHTLY_TASK_TIMEOUT = timedelta(minutes=90)
 MINING_TIMEOUT = timedelta(hours=2, minutes=30)
 ABSOLUTE = "absolute"
 
 
-def job(name: str, priority: int, timeout: timedelta) -> BashOperator:
+def job(name: str, priority: int, timeout: timedelta, trigger_rule: TriggerRule) -> BashOperator:
     command = (
         f"nice -n {NICE} python -m retro_speedlab_lakehouse job {name} {CONFIG} "
         "--dag {{ dag.dag_id }} --run-id {{ run_id }}"
@@ -44,7 +43,7 @@ def job(name: str, priority: int, timeout: timedelta) -> BashOperator:
         bash_command=command,
         retries=RETRIES,
         retry_delay=RETRY_DELAY,
-        trigger_rule=TriggerRule.ALL_DONE if name == LAST else TriggerRule.ALL_SUCCESS,
+        trigger_rule=trigger_rule,
         priority_weight=priority,
         weight_rule=ABSOLUTE,
         execution_timeout=timeout,
@@ -72,9 +71,10 @@ def chained(
         dagrun_timeout=timeout,
         tags=["lakehouse"],
     ) as dag:
-        tasks = [job(name, priority, task_timeout) for name in jobs]
-        chain(*tasks)
-        tasks[-1].set_upstream([job(name, priority, task_timeout) for name in aside])
+        tasks = [job(name, priority, task_timeout, TriggerRule.ALL_SUCCESS) for name in jobs[:-1]]
+        last = job(jobs[-1], priority, task_timeout, TriggerRule.ALL_DONE)
+        chain(*tasks, last)
+        last.set_upstream([job(name, priority, task_timeout, TriggerRule.ALL_SUCCESS) for name in aside])
     return dag
 
 
@@ -94,6 +94,6 @@ nightly = chained(
     NIGHTLY_ASIDE,
     timedelta(hours=3),
     NIGHTLY_PRIORITY,
-    TASK_TIMEOUT,
+    NIGHTLY_TASK_TIMEOUT,
 )
 mining = chained("lakehouse_mining", "30 3 * * *", MINING_JOBS, (), MINING_TIMEOUT, NIGHTLY_PRIORITY, MINING_TIMEOUT)

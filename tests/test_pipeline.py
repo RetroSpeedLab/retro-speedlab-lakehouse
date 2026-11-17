@@ -8,7 +8,7 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.batch.api import SNAPSHOT
 from retro_speedlab_lakehouse.batch.gold import build_gold
-from retro_speedlab_lakehouse.batch.maintenance import maintain, vacuum_live
+from retro_speedlab_lakehouse.batch.maintenance import maintain
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.lake.catalog import (
@@ -166,7 +166,6 @@ def test_platform_measures_tables_and_records_jobs(spark: SparkSession, settings
     assert tables["live.live_run"]["store"] == "lake"
     assert read(spark, PLATFORM_JOBS, settings.lake).count() == 1
     assert maintain(spark, CORE_TABLES, settings.lake, START) >= 8
-    assert vacuum_live(spark, CORE_TABLES, settings.lake) == 3
 
 
 def test_the_gate_blocks_a_failing_write_and_keeps_its_report(spark: SparkSession, settings: Settings) -> None:

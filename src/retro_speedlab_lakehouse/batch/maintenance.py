@@ -11,7 +11,6 @@ from retro_speedlab_lakehouse.lake.catalog import (
     RAW_DAYS,
     RETENTION_HOURS,
     Layer,
-    Retention,
     Table,
 )
 from retro_speedlab_lakehouse.lake.tables import exists
@@ -51,10 +50,3 @@ def maintain(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings,
         vacuum(spark, table, lake)
         logger.info(f"Maintained {table.full_name}")
     return len(kept)
-
-
-def vacuum_live(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings) -> int:
-    live = [table for table in tables if table.retention is Retention.LIVE and exists(spark, table, lake)]
-    for table in live:
-        vacuum(spark, table, lake)
-    return len(live)

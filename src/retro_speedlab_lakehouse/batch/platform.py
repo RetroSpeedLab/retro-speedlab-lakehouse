@@ -99,17 +99,20 @@ def sources_status(spark: SparkSession, lake: LakeSettings) -> DataFrame:
     return state.join(totals, ["source", "stream"], "left").fillna(0, ["total_records"])
 
 
+def build_sources_status(spark: SparkSession, lake: LakeSettings, gate: Gate) -> int:
+    if not (exists(spark, WATERMARKS, lake) and exists(spark, SOURCES, lake)):
+        return 0
+    status = sources_status(spark, lake)
+    replace(SOURCES_STATUS, lake, status, gate)
+    return status.count()
+
+
 def build_platform(
     spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, gate: Gate, now: datetime
 ) -> int:
     stats = platform_tables(spark, tables, lake, now)
     replace(PLATFORM_TABLES, lake, stats, gate)
-    written = stats.count()
-    if exists(spark, WATERMARKS, lake) and exists(spark, SOURCES, lake):
-        status = sources_status(spark, lake)
-        replace(SOURCES_STATUS, lake, status, gate)
-        written += status.count()
-    return written
+    return stats.count() + build_sources_status(spark, lake, gate)
 
 
 def record_job(spark: SparkSession, lake: LakeSettings, gate: Gate, run: JobRun) -> None:

@@ -27,6 +27,8 @@ from datasets import (
     PLATFORM_JOBS,
     PLATFORM_TABLES,
     POLICY_PULSE,
+    PROMOTION_DECISIONS,
+    PROMOTION_PREFERENCES,
     PROMOTION_ROI,
     QUALITY_REPORTS,
     SEARCH_ALLOCATION,
@@ -52,6 +54,7 @@ JOB_MINUTES = "(epoch(finished_at) - epoch(started_at)) / 60"
 SAVED_SINCE_FIRST_CLEAR = "saved_since_first_clear_seconds"
 LAB_PER_DOLLAR = "MAX(total_frames_per_dollar)"
 PROMOTION_PER_DOLLAR = "SUM(views) / NULLIF(SUM(cost_usd), 0)"
+APPROVAL_RATE = "SUM(approved) / SUM(decisions)"
 LAB_RUN_PER_DOLLAR = "SUM(frames_saved) / NULLIF(SUM(cost_usd), 0)"
 SEARCH_PER_CPU_HOUR = "SUM(saved) / NULLIF(SUM(worker_seconds) / 3600, 0)"
 COMPARISON = ("control_n", "treatment_n", "control_estimate", "treatment_estimate", "effect", "ci_lower", "ci_upper")
@@ -375,6 +378,45 @@ AUDIENCE = Dashboard(
                     ),
                     columns_over_time(
                         COMMUNITY_DAILY, "Discord joins per day", "date", "P1D", "SUM(discord_joins)", (), ()
+                    ),
+                ),
+            ),
+        ),
+        Section(
+            "Your promotion picks",
+            (
+                charts(
+                    ranked(
+                        PROMOTION_PREFERENCES,
+                        "Approval rate by kind",
+                        "value",
+                        APPROVAL_RATE,
+                        ("channel",),
+                        ("feature = 'kind'",),
+                    ),
+                    ranked(
+                        PROMOTION_PREFERENCES,
+                        "Approval rate by variant",
+                        "value",
+                        APPROVAL_RATE,
+                        ("channel",),
+                        ("feature = 'variant'",),
+                    ),
+                ),
+                tables(
+                    table(
+                        PROMOTION_PREFERENCES,
+                        "Approval by text feature",
+                        ("channel", "feature", "value", "decisions", "approved", "approval_rate", "lower", "upper"),
+                        "feature",
+                        (),
+                    ),
+                    table(
+                        PROMOTION_DECISIONS,
+                        "Recent promotion decisions",
+                        ("decided_at", "channel", "kind", "game", "variant", "approved", "text"),
+                        "-decided_at",
+                        (),
                     ),
                 ),
             ),

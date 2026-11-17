@@ -41,6 +41,8 @@ from retro_speedlab_lakehouse.lake.catalog import (
     MINING_SUMMARY,
     POLICY_PULSE,
     POSITION_HEATMAP,
+    PROMOTION_DECISIONS,
+    PROMOTION_PREFERENCES,
     PROMOTION_ROI,
     RAM_HEATMAP,
     RECORDS_DAILY,
@@ -274,6 +276,18 @@ CHECKS: dict[Table, list[Check]] = {
         *keyed(PROMOTION_ROI),
         InRange("drafts", min_value=1),
         *at_least_zero("cost_usd", "likes", "views", "follows"),
+    ],
+    PROMOTION_DECISIONS: [
+        *keyed(PROMOTION_DECISIONS),
+        *present("channel", "kind", "variant", "text", "approved", "decided_at"),
+        *at_least_zero("length", "numbers"),
+    ],
+    PROMOTION_PREFERENCES: [
+        *keyed(PROMOTION_PREFERENCES),
+        InRange("decisions", min_value=1),
+        *at_least_zero("approved", "rejected"),
+        *(InRange(column, min_value=0, max_value=1) for column in ("approval_rate", "lower", "upper")),
+        *present("computed_at"),
     ],
 }
 

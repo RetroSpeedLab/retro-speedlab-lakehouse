@@ -79,6 +79,8 @@ are readable only by Superset.
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as a before/after experiment |
 | `gold.lab_roi` | `experiments` | `game`, `stamp` | Every lab run's Langfuse cost, the frames its change saved with an interval, frames per dollar, running totals and the early harm flag |
 | `gold.promotion_roi` | `gold` | `channel`, `variant` | Claude cost, views, likes and follows of the published drafts, with views and likes per dollar and their intervals |
+| `silver.promotion_decisions` | `gold` | `draft` | Every approved or rejected promotion draft: network, kind, game, variant, text, when, and its length, numbers, opening and tone |
+| `gold.promotion_preferences` | `gold` | `channel`, `feature`, `value` | The maintainer's approval rate per network and kind, variant and text feature, with counts and a 90% interval |
 | `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind |
 | `gold.search_bandit` | `search-bandit` | `metric` | Bandit turns against held-out static turns |
 | `silver.engagement_events` | `engagement-hourly` | `surface`, `item`, `arm`, `hour` | Exposures and outcomes per item: views and clicks from Umami, stream minutes with the chat they overlapped, promotion posts with their interactions |
@@ -178,6 +180,12 @@ The Twitch channel learns its category and title the same way: each turn's pair 
 measured in `gold.twitch_channel_outcomes` against the viewers, followers and chat minutes it overlapped. Its reward
 is new followers per hour, Gamma over the turn's hours, because a follow is the growth that lasts: it brings the
 viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in Superset.
+
+The promotion drafts also learn what the maintainer approves. Every approved or rejected draft is an item
+`network:variant` of `promotion_variants`, Beta over decisions with approvals as the outcome, so the backend favours
+the variant that gets approved while the floor and the holdout keep trying the other. `gold.promotion_preferences`
+shows the approval rate per kind, variant, opening, tone, length and count of numbers with its counts and interval,
+in the Audience dashboard's "Your promotion picks".
 
 `engagement-nightly` compares adaptive with holdout per surface, the site A/B tests per goal rate and the stream A/B
 tests per 30-minute block on viewers, chat messages per minute and follows per hour, with experimentation-toolkit, an

@@ -6,6 +6,7 @@ from pyspark.sql.types import LongType, MapType, StringType, StructField, Struct
 
 from retro_speedlab_lakehouse.engagement.channel import TWITCH_CHANNEL
 from retro_speedlab_lakehouse.engagement.stream import STREAM_SCENES, exposure_outcomes, exposure_rows
+from retro_speedlab_lakehouse.promotion.preferences import promotion_decisions
 from retro_speedlab_lakehouse.stream.rows import field, newest
 
 ARMS = ("fixed", "adaptive", "holdout")
@@ -15,6 +16,7 @@ STREAM_GAMES = "stream_games"
 PROMOTION = "promotion"
 PROMOTION_DRAFTS = "promotion.drafts"
 PROMOTION_METRICS = "promotion.metrics"
+PROMOTION_VARIANTS = "promotion_variants"
 FIXED = "fixed"
 SEPARATOR = r"\|"
 CELLS = StructType(
@@ -89,6 +91,22 @@ def promotion_events(events: DataFrame) -> DataFrame:
     )
 
 
+def decision_events(decisions: DataFrame) -> DataFrame:
+    return (
+        decisions.withColumns(
+            {
+                "surface": F.lit(PROMOTION_VARIANTS),
+                "item": F.concat_ws(":", "channel", F.col("variant").cast("string")),
+                "arm": F.lit(FIXED),
+                "hour": F.date_trunc("hour", "decided_at"),
+            }
+        )
+        .groupBy("surface", "item", "arm", "hour")
+        .agg(F.count("*").cast("double").alias("exposures"), F.sum(F.col("approved").cast("double")).alias("outcomes"))
+        .select(*COLUMNS)
+    )
+
+
 def channel_events(outcomes: DataFrame) -> DataFrame:
     return (
         outcomes.withColumns({"surface": F.lit(TWITCH_CHANNEL), "hour": F.date_trunc("hour", "started_at")})
@@ -108,6 +126,7 @@ def engagement_events(
         umami_events(records)
         .unionByName(stream_events(watched))
         .unionByName(promotion_events(recent))
+        .unionByName(decision_events(promotion_decisions(recent)))
         .unionByName(channel_events(channel))
     )
     return found.where((F.col("hour") >= F.lit(since)) & (F.col("exposures") > 0))

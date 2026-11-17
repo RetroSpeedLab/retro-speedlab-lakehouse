@@ -355,6 +355,40 @@ PROMOTION_ROI = lake_table(
         ("computed_at", TIMESTAMPTZ),
     ),
 )
+PROMOTION_DECISIONS = lake_table(
+    "silver",
+    "promotion_decisions",
+    (
+        ("draft", VARCHAR),
+        ("kind", VARCHAR),
+        ("game", VARCHAR),
+        ("channel", VARCHAR),
+        ("variant", INTEGER),
+        ("text", VARCHAR),
+        ("approved", BOOLEAN),
+        ("decided_at", TIMESTAMPTZ),
+        ("length", INTEGER),
+        ("numbers", INTEGER),
+        ("opening", VARCHAR),
+        ("tone", VARCHAR),
+    ),
+)
+PROMOTION_PREFERENCES = lake_table(
+    "gold",
+    "promotion_preferences",
+    (
+        ("channel", VARCHAR),
+        ("feature", VARCHAR),
+        ("value", VARCHAR),
+        ("decisions", BIGINT),
+        ("approved", BIGINT),
+        ("rejected", BIGINT),
+        ("approval_rate", DOUBLE),
+        ("lower", DOUBLE),
+        ("upper", DOUBLE),
+        ("computed_at", TIMESTAMPTZ),
+    ),
+)
 SEARCH_ALLOCATION = lake_table(
     "gold",
     "search_allocation",

@@ -28,6 +28,7 @@ from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_ro
 from retro_speedlab_lakehouse.experiments.job import RESULT as EXPERIMENTS
 from retro_speedlab_lakehouse.experiments.roi import ROI
 from retro_speedlab_lakehouse.lake.catalog import Layer
+from retro_speedlab_lakehouse.promotion.preferences import PREFERENCES, promotion_decisions
 from retro_speedlab_lakehouse.promotion.roi import PROMOTION
 from retro_speedlab_lakehouse.quality.gate import REPORT
 from retro_speedlab_lakehouse.sources.bronze import RECORD
@@ -115,6 +116,8 @@ def code_tables(spark: SparkSession) -> dict[str, DataFrame]:
         "gold.lab_experiments": spark.createDataFrame([], EXPERIMENTS),
         "gold.lab_roi": spark.createDataFrame([], ROI),
         "gold.promotion_roi": spark.createDataFrame([], PROMOTION),
+        "silver.promotion_decisions": promotion_decisions(backend),
+        "gold.promotion_preferences": spark.createDataFrame([], PREFERENCES),
         "gold.cockpit_findings": spark.createDataFrame([], FINDING),
         "gold.cockpit_days": dense(spark, [search_days(search, NOW)], list(SEARCH_METRICS), NOW),
         "gold.search_hours": search_hours(search, NOW),

@@ -102,6 +102,8 @@ SEARCH_ALLOCATION = table(Layer.GOLD, "search_allocation", ("game", "role"))
 SEARCH_BANDIT = table(Layer.GOLD, "search_bandit", ("metric",))
 LAB_ROI = table(Layer.GOLD, "lab_roi", ("game", "stamp"))
 PROMOTION_ROI = table(Layer.GOLD, "promotion_roi", ("channel", "variant"))
+PROMOTION_DECISIONS = table(Layer.SILVER, "promotion_decisions", ("draft",))
+PROMOTION_PREFERENCES = table(Layer.GOLD, "promotion_preferences", ("channel", "feature", "value"))
 PLATFORM_TABLES = table(Layer.GOLD, "platform_tables", ("table",))
 PLATFORM_JOBS = table(Layer.GOLD, "platform_jobs", ("run_id", "job"))
 SOURCES_STATUS = table(Layer.GOLD, "sources_status", ("source", "stream"))
@@ -157,6 +159,8 @@ CORE_TABLES = (
     SEARCH_BANDIT,
     LAB_ROI,
     PROMOTION_ROI,
+    PROMOTION_DECISIONS,
+    PROMOTION_PREFERENCES,
     PLATFORM_TABLES,
     PLATFORM_JOBS,
     SOURCES_STATUS,

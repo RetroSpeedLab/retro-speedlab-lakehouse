@@ -35,6 +35,7 @@ def connect() -> duckdb.DuckDBPyConnection:
             "temp_directory": SPILL,
             "threads": READ_THREADS,
             "enable_http_metadata_cache": True,
+            "enable_external_file_cache": False,
         }
     )
     secret = {"key_id": os.environ["LAKE_ACCESS_KEY_ID"], "secret": os.environ["LAKE_SECRET_ACCESS_KEY"]}

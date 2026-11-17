@@ -8,7 +8,7 @@ ROW_LIMIT = 10000
 RANKED_LIMIT = 25
 PAGE_LENGTH = 25
 COLOR_SCHEME = "retroSpeedlab"
-VIRTUAL_SCHEMA = "default"
+VIRTUAL_SCHEMA = "main"
 COMPARED = "vs the 24 h before"
 NO_FILTER = "No filter"
 

@@ -11,10 +11,9 @@ from loguru import logger
 from retro_speedlab_lakehouse.batch.jobs import run_job
 from retro_speedlab_lakehouse.batch.night import NIGHT_END, NIGHT_START, outside_the_night
 from retro_speedlab_lakehouse.chat.watch import watch_chat
-from retro_speedlab_lakehouse.database.thrift import serve
 from retro_speedlab_lakehouse.relay.producer import relay as run_relay
 from retro_speedlab_lakehouse.relay.topics import create_topics
-from retro_speedlab_lakehouse.settings import load_database_settings, load_settings
+from retro_speedlab_lakehouse.settings import load_settings
 from retro_speedlab_lakehouse.spark.session import spark_session
 from retro_speedlab_lakehouse.stream.job import start
 
@@ -53,11 +52,6 @@ def stream(config: Path) -> None:
     spark = spark_session("lakehouse-stream", settings.spark, settings.lake)
     start(spark, settings)
     spark.streams.awaitAnyTermination()
-
-
-@app.command()
-def thrift(config: Path) -> None:
-    serve(load_database_settings(config))
 
 
 @app.command()

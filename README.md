@@ -38,8 +38,8 @@ flowchart LR
 Bronze keeps the complete raw history for 12 months and stays on the Home Lab server; only what the site serves goes
 to the lake on Main. Spark writes the lake over HTTPS with s3a; the backend reads it with a read-only key and
 delta-rs. No console and no Airflow or Spark UI is public, and the lake's proxy drops Garage's wildcard CORS
-headers. The lakehouse and the Thrift Server run as an unprivileged user that owns their data; Superset's metadata
-is readable only by Superset.
+headers. The lakehouse runs as an unprivileged user that owns its data; Superset's metadata and its copy of the lake
+are readable only by Superset.
 
 ## Tables
 
@@ -209,20 +209,23 @@ flowchart LR
     browser[Browser on the LAN] -->|HTTPS| nginx[nginx on Home Lab]
     nginx -->|auth_request| sso[Owner sign-in on Main]
     nginx -->|X-Gate-User| superset[retro-speedlab-superset]
-    superset -->|PyHive| thrift[retro-speedlab-thrift]
-    thrift -->|s3a, read-only key| lake[(Garage lake)]
-    thrift -->|read-only mount| bronze[(Bronze Delta)]
+    superset -->|duckdb-engine| snapshot[(DuckDB copy of the lake)]
+    snapshot -->|delta, read-only key, every minute| lake[(Garage lake)]
+    snapshot -->|delta views, read-only mount| bronze[(Bronze Delta)]
 ```
 
-- `retro-speedlab-thrift` runs the Spark Thrift Server with Delta and registers every catalog table as
-  `<layer>.<table>` at start and every hour. Only Superset can reach it.
+- Superset queries a local DuckDB file instead of the lake, because every read of the lake crosses to Main and
+  costs seconds. `database/superset/lake_snapshot.py` rebuilds the file a minute after the last build: every live,
+  silver and gold table that `gold.platform_tables` lists is copied as `<layer>.<table>`, from the lake only when its
+  Delta log has a new commit, and every bronze table is a view on the read-only bronze mount. The new file replaces
+  the old one in one rename, so the dashboards show the lake as of about two minutes ago.
 - Superset signs in the user the owner sign-in names in `X-Gate-User`; nginx sets that header after the sign-in and
   overrides any a client sends. Its own database login stays as break-glass: its only admin, `owner`, gets the password
   in `SUPERSET_ADMIN_PASSWORD` at every start (`database/superset/owner.py`). Self-registration is off and the public
   role has no permissions.
-- The lake connection forbids DML, CTAS and file uploads. Every start imports the cockpit's dashboards, defined in
-  `database/superset/dashboards.py`.
-- Every registered table is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
+- Superset opens the DuckDB file read-only and forbids DML, CTAS and file uploads. Every start imports the cockpit's
+  dashboards, defined in `database/superset/dashboards.py`.
+- Every table in the DuckDB file is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
   refreshes their columns at start and every hour.
 
 ## Owner tools on the LAN
@@ -300,12 +303,12 @@ Airflow task reports its final state to the backend, so a failed task opens an a
 ## Configuration
 
 `config.yaml` holds everything except secrets: backend URL, Kafka topics, relay, lake paths and endpoint, Spark,
-stream triggers, sources and the Thrift Server. Secrets come from the environment:
+stream triggers and sources. Secrets come from the environment:
 
 | Variable | Purpose |
 |----------|---------|
 | `UPLOAD_API_KEY` | The backend's events endpoint |
-| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; the Thrift Server holds its own read-only pair |
+| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; Superset holds its own read-only pair |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
 | `SUPERSET_SECRET_KEY` | Superset's session key |
 | `SUPERSET_ADMIN_PASSWORD` | Superset's `owner` login |
@@ -325,15 +328,15 @@ ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
 bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
-bash dokku/database-setup.sh  # once: the Thrift Server and Superset
+bash dokku/database-setup.sh  # Superset, its mounts and its read-only lake key; safe to rerun
 bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB and the admin; rerun after a pin bump
 bash dokku/lan-setup.sh       # the LAN proxy, its sign-in, its certificate and Main's default site; safe to rerun
 bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main; no APP only syncs its hosts
 bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
-bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift
+bash dokku/deploy.sh retro-speedlab-lakehouse
 ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml
-bash dokku/database-deploy.sh # the Thrift Server and Superset
+bash dokku/database-deploy.sh # Superset
 bash dokku/hosts-setup.sh     # once: the collector app on both servers, after the topics exist
 bash dokku/hosts-deploy.sh    # the collectors
 ```

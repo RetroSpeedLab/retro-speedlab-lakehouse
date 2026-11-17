@@ -42,13 +42,13 @@ CHART_HEIGHT = 50
 TABLE_HEIGHT = 60
 REFRESH_SECONDS = 300
 NO_REFRESH = 0
-WEEK = ("hour >= current_timestamp() - INTERVAL 7 DAYS",)
-JOB_MINUTES = "(unix_timestamp(finished_at) - unix_timestamp(started_at)) / 60"
+WEEK = ("hour >= current_timestamp - INTERVAL 7 DAYS",)
+JOB_MINUTES = "(epoch(finished_at) - epoch(started_at)) / 60"
 SAVED_SINCE_FIRST_CLEAR = "saved_since_first_clear_seconds"
 LAB_PER_DOLLAR = "MAX(total_frames_per_dollar)"
-PROMOTION_PER_DOLLAR = "try_divide(SUM(views), SUM(cost_usd))"
-LAB_RUN_PER_DOLLAR = "try_divide(SUM(frames_saved), SUM(cost_usd))"
-SEARCH_PER_CPU_HOUR = "try_divide(SUM(saved), SUM(worker_seconds) / 3600)"
+PROMOTION_PER_DOLLAR = "SUM(views) / NULLIF(SUM(cost_usd), 0)"
+LAB_RUN_PER_DOLLAR = "SUM(frames_saved) / NULLIF(SUM(cost_usd), 0)"
+SEARCH_PER_CPU_HOUR = "SUM(saved) / NULLIF(SUM(worker_seconds) / 3600, 0)"
 COMPARISON = ("control_n", "treatment_n", "control_estimate", "treatment_estimate", "effect", "ci_lower", "ci_upper")
 
 
@@ -157,7 +157,7 @@ OVERVIEW = Dashboard(
                         "Claude cost per full day (USD)",
                         "date",
                         "SUM(cost_usd)",
-                        ("date < current_date()",),
+                        ("date < current_date",),
                     ),
                 ),
             ),
@@ -300,7 +300,7 @@ SEARCH_AI = Dashboard(
                         "Lab runs, last 14 days",
                         ("started_at", "game", "outcome", "minutes", "cost_usd", "commits"),
                         "-started_at",
-                        ("started_at >= current_timestamp() - INTERVAL 14 DAYS",),
+                        ("started_at >= current_timestamp - INTERVAL 14 DAYS",),
                     ),
                 ),
                 tables(
@@ -356,7 +356,7 @@ AUDIENCE = Dashboard(
                         "game",
                         "SUM(started)",
                         (),
-                        ("`window` = 'last_week'",),
+                        ("\"window\" = 'last_week'",),
                     ),
                     numbers_table("Site and channel numbers", "'umami', 'itch', 'twitch', 'discord'"),
                 ),
@@ -385,7 +385,7 @@ AUDIENCE = Dashboard(
                         "game",
                         "SUM(started)",
                         (),
-                        ("`window` = 'last_week'",),
+                        ("\"window\" = 'last_week'",),
                     ),
                     columns_over_time(
                         ITCH_DAILY, "itch.io game starts per day", "date", "P1D", "SUM(campaign + endless)", (), ()
@@ -514,7 +514,7 @@ PLATFORM_COST = Dashboard(
                         "P1D",
                         "COUNT(*)",
                         ("status",),
-                        ("started_at >= current_timestamp() - INTERVAL 14 DAYS",),
+                        ("started_at >= current_timestamp - INTERVAL 14 DAYS",),
                     ),
                     ranked(PLATFORM_JOBS, "Average job minutes", "job", f"AVG({JOB_MINUTES})", (), ()),
                 ),
@@ -545,7 +545,7 @@ PLATFORM_COST = Dashboard(
                         "Quality gate fails, 7 days",
                         ("checked_at", "table", "run", "failed", "checks"),
                         "-checked_at",
-                        ("status <> 'PASS'", "checked_at >= current_timestamp() - INTERVAL 7 DAYS"),
+                        ("status <> 'PASS'", "checked_at >= current_timestamp - INTERVAL 7 DAYS"),
                     ),
                 ),
             ),

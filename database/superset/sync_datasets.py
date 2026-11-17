@@ -1,11 +1,23 @@
 from typing import Any
 from uuid import UUID
 
+import duckdb
 from bundle import DATABASE
 from lake_datasets import LAYERS, LakeDataset, lake_datasets
+from lake_snapshot import SNAPSHOT
 from loguru import logger
-from sqlalchemy.exc import OperationalError
 from superset.app import create_app
+
+LAKE_TABLES = "SELECT table_schema, table_name FROM information_schema.tables WHERE list_contains(?, table_schema)"
+
+
+def listing() -> dict[str, list[str]]:
+    with duckdb.connect(SNAPSHOT, read_only=True) as connection:
+        rows = connection.execute(LAKE_TABLES, [list(LAYERS)]).fetchall()
+    tables: dict[str, list[str]] = {}
+    for schema, table in rows:
+        tables.setdefault(schema, []).append(table)
+    return tables
 
 
 class DatasetSync:
@@ -13,18 +25,6 @@ class DatasetSync:
         self.session = session
         self.database = database
         self.model = model
-        self.skipped: list[str] = []
-
-    def listing(self) -> dict[str, list[str]]:
-        tables: dict[str, list[str]] = {}
-        for schema in LAYERS:
-            try:
-                names = self.database.get_all_table_names_in_schema(catalog=None, schema=schema, cache=False)
-            except OperationalError:
-                self.skipped.append(schema)
-                continue
-            tables[schema] = [name for name, _, _ in names]
-        return tables
 
     def dataset(self, lake: LakeDataset) -> Any:
         existing = (
@@ -38,23 +38,17 @@ class DatasetSync:
         self.session.add(created)
         return created
 
-    def sync(self, lake: LakeDataset) -> bool:
+    def sync(self, lake: LakeDataset) -> None:
         dataset = self.dataset(lake)
         dataset.description = lake.description
-        try:
-            dataset.fetch_metadata()
-        except OperationalError:
-            self.session.rollback()
-            self.skipped.append(f"{lake.schema}.{lake.table}")
-            return False
+        dataset.fetch_metadata()
         self.session.commit()
-        return True
 
     def run(self) -> None:
-        synced = [lake for lake in lake_datasets(self.listing()) if self.sync(lake)]
-        logger.info(f"{len(synced)} lake datasets are in sync")
-        if self.skipped:
-            logger.warning(f"Not in the lake yet, skipped: {', '.join(self.skipped)}")
+        datasets = lake_datasets(listing())
+        for lake in datasets:
+            self.sync(lake)
+        logger.info(f"{len(datasets)} lake datasets are in sync")
 
 
 def main() -> None:

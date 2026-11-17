@@ -115,15 +115,3 @@ sources:
     games_website: 5a373581-adde-48eb-a9d1-dd4955f108a7
     itch_website: 9f79bbcd-8016-43c5-958a-589d149354b5
     dropoff_since: 2026-11-16T10:00:00Z
-
-thrift:
-  port: 10000
-  metastore: /database/metastore
-  warehouse: /database/warehouse
-  register_seconds: 3600
-  spark:
-    master: local[2]
-    driver_memory: 512m
-    shuffle_partitions: 4
-    jars_dir: /opt/spark-jars
-    packages: []

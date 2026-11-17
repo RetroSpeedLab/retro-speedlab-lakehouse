@@ -2,13 +2,14 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
+import duckdb
 import pytest
 import yaml
 from bundle import GRID_COLUMNS, bundle, cockpit_charts, cockpit_datasets
 from charts import Chart, Dataset
 from dashboards import DASHBOARDS
+from datasets import BIGINT, BOOLEAN, DATE, DOUBLE, INTEGER, TIMESTAMPTZ, VARCHAR
 from lake_datasets import LAYERS, lake_datasets
-from pyspark.errors import AnalysisException
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
@@ -33,6 +34,15 @@ from retro_speedlab_lakehouse.stream import rows, search_rows
 from retro_speedlab_lakehouse.stream.status import STATUS
 
 NOW = datetime(2026, 11, 16, 12, 0, tzinfo=UTC)
+SPARK_TYPES = {
+    VARCHAR: "STRING",
+    INTEGER: "INT",
+    TIMESTAMPTZ: "TIMESTAMP",
+    DOUBLE: DOUBLE,
+    BIGINT: BIGINT,
+    BOOLEAN: BOOLEAN,
+    DATE: DATE,
+}
 
 
 def test_every_catalog_table_gets_one_described_dataset() -> None:
@@ -106,11 +116,12 @@ def code_tables(spark: SparkSession) -> dict[str, DataFrame]:
 
 
 def declared(spark: SparkSession, dataset: Dataset) -> DataFrame:
-    return spark.createDataFrame([], ", ".join(f"`{name}` {column_type}" for name, column_type in dataset.columns))
+    columns = ", ".join(f"`{name}` {SPARK_TYPES[kind]}" for name, kind in dataset.columns)
+    return spark.createDataFrame([], columns)
 
 
-def columns_of(frame: DataFrame) -> dict[str, str]:
-    return {field.name: field.dataType.simpleString().upper() for field in frame.schema.fields}
+def columns_of(lake: duckdb.DuckDBPyConnection, query: str) -> dict[str, str]:
+    return {name: kind for name, kind, *_ in lake.execute(f"DESCRIBE {query}").fetchall()}
 
 
 def physical(dataset: Dataset) -> str:
@@ -118,28 +129,27 @@ def physical(dataset: Dataset) -> str:
 
 
 @pytest.fixture
-def lake_tables(spark: SparkSession, tmp_path: Path) -> Iterator[dict[str, DataFrame]]:
+def lake(spark: SparkSession, tmp_path: Path) -> Iterator[duckdb.DuckDBPyConnection]:
     tables = code_tables(spark)
     for dataset in cockpit_datasets().values():
         if dataset.sql is None and physical(dataset) not in tables:
             tables[physical(dataset)] = declared(spark, dataset)
-    for name, frame in tables.items():
-        location = str(tmp_path / name)
-        frame.write.format("delta").save(location)
-        spark.sql(f"CREATE DATABASE IF NOT EXISTS {name.split('.')[0]}")
-        spark.sql(f"DROP TABLE IF EXISTS {name}")
-        spark.sql(f"CREATE TABLE {name} USING DELTA LOCATION '{location}'")
-    yield tables
-    for name in tables:
-        spark.sql(f"DROP TABLE IF EXISTS {name}")
+    with duckdb.connect() as connection:
+        connection.install_extension("delta")
+        for name, frame in tables.items():
+            location = tmp_path / name
+            frame.write.format("delta").save(str(location))
+            connection.execute(f"CREATE SCHEMA IF NOT EXISTS {name.split('.')[0]}")
+            connection.execute(f"CREATE VIEW {name} AS SELECT * FROM delta_scan('{location}')")
+        yield connection
 
 
 def source(dataset: Dataset) -> str:
     return physical(dataset) if dataset.sql is None else f"({dataset.sql}) AS dataset"
 
 
-def compile_chart(spark: SparkSession, chart: Chart) -> None:
-    named = ", ".join(f"`{column}`" for column in chart.columns) or "1"
+def compile_chart(lake: duckdb.DuckDBPyConnection, chart: Chart) -> None:
+    named = ", ".join(f'"{column}"' for column in chart.columns) or "1"
     metrics = ", ".join(chart.metrics) or "1"
     filters = " AND ".join(f"({expression})" for expression in chart.filters) or "true"
     for query in (
@@ -147,18 +157,16 @@ def compile_chart(spark: SparkSession, chart: Chart) -> None:
         f"SELECT {metrics} FROM {source(chart.dataset)} WHERE {filters}",
     ):
         try:
-            spark.sql(f"{query} LIMIT 0").collect()
-        except AnalysisException as error:
+            lake.execute(f"{query} LIMIT 0")
+        except duckdb.Error as error:
             raise AssertionError(f"{chart.name}: {query}") from error
 
 
-def test_every_dataset_and_chart_runs_on_the_lake_schemas(
-    spark: SparkSession, lake_tables: dict[str, DataFrame]
-) -> None:
+def test_every_dataset_and_chart_runs_on_the_lake_schemas(lake: duckdb.DuckDBPyConnection) -> None:
     for dataset in cockpit_datasets().values():
         if dataset.sql is not None:
-            assert columns_of(spark.sql(dataset.sql)) == dict(dataset.columns), dataset.name
+            assert columns_of(lake, dataset.sql) == dict(dataset.columns), dataset.name
         else:
-            assert dict(dataset.columns).items() <= columns_of(lake_tables[physical(dataset)]).items(), dataset.name
+            assert dict(dataset.columns).items() <= columns_of(lake, physical(dataset)).items(), dataset.name
     for chart in cockpit_charts().values():
-        compile_chart(spark, chart)
+        compile_chart(lake, chart)

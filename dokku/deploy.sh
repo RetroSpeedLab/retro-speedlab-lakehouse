@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -eq 0 ]]; then
-    echo "Name the apps to deploy: retro-speedlab-lakehouse, retro-speedlab-thrift or both" >&2
+    echo "Name the apps to deploy: retro-speedlab-lakehouse" >&2
     exit 1
 fi
 readonly APPS=("$@")

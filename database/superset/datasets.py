@@ -1,11 +1,11 @@
 from charts import Columns, lake_table, virtual
 
-STRING = "STRING"
+VARCHAR = "VARCHAR"
 DOUBLE = "DOUBLE"
 BIGINT = "BIGINT"
-INT = "INT"
+INTEGER = "INTEGER"
 BOOLEAN = "BOOLEAN"
-TIMESTAMP = "TIMESTAMP"
+TIMESTAMPTZ = "TIMESTAMP WITH TIME ZONE"
 DATE = "DATE"
 RUNNER_MINUTES = 5
 STREAM_LAG_MINUTES = 10
@@ -13,18 +13,18 @@ JOB_GAP_MINUTES = 90
 UPTIME_PERCENT = 99
 DISK_PERCENT = 85
 HOST_MINUTES = 5
-LAST_DAY = "current_timestamp() - INTERVAL 24 HOURS"
+LAST_DAY = "current_timestamp - INTERVAL 24 HOURS"
 UNION = "\n    UNION ALL\n    "
 
 
 def minutes_since(column: str) -> str:
-    return f"(unix_timestamp(current_timestamp()) - unix_timestamp({column})) / 60"
+    return f"(epoch(current_timestamp) - epoch({column})) / 60"
 
 
 def check(item: str, value: str, unit: str, detail: str, as_of: str, alert: str, source: str) -> str:
     return (
         f"SELECT '{item}' AS item, CAST({value} AS DOUBLE) AS value, '{unit}' AS unit, "
-        f"CAST({detail} AS STRING) AS detail, {as_of} AS as_of, {alert} AS alert FROM {source}"
+        f"CAST({detail} AS VARCHAR) AS detail, {as_of} AS as_of, {alert} AS alert FROM {source}"
     )
 
 
@@ -33,9 +33,7 @@ SEARCHED = minutes_since("max(last_event_at)")
 LAG = f"greatest(max(lag_seconds) / 60, {minutes_since('max(updated_at)')})"
 LAST_JOB = minutes_since("max(finished_at)")
 FAILED_JOBS = f"count_if(status = 'failed' AND finished_at >= {LAST_DAY})"
-FAILED_JOB_NAMES = (
-    f"array_join(collect_set(CASE WHEN status = 'failed' AND finished_at >= {LAST_DAY} THEN job END), ', ')"
-)
+FAILED_JOB_NAMES = f"string_agg(DISTINCT CASE WHEN status = 'failed' AND finished_at >= {LAST_DAY} THEN job END, ', ')"
 CHECKS = (
     check(
         "Runner reported",
@@ -86,7 +84,7 @@ CHECKS = (
         "Quality gate fails, 24 h",
         f"count_if(checked_at >= {LAST_DAY})",
         "reports",
-        f"array_join(collect_set(CASE WHEN checked_at >= {LAST_DAY} THEN `table` END), ', ')",
+        f"string_agg(DISTINCT CASE WHEN checked_at >= {LAST_DAY} THEN \"table\" END, ', ')",
         "max(checked_at)",
         f"count_if(checked_at >= {LAST_DAY}) > 0",
         "gold.quality_failures",
@@ -127,13 +125,13 @@ HEALTH = virtual(
     "cockpit_health",
     HEALTH_SQL,
     (
-        ("severity_order", INT),
-        ("state", STRING),
-        ("item", STRING),
+        ("severity_order", INTEGER),
+        ("state", VARCHAR),
+        ("item", VARCHAR),
         ("value", DOUBLE),
-        ("unit", STRING),
-        ("detail", STRING),
-        ("as_of", TIMESTAMP),
+        ("unit", VARCHAR),
+        ("detail", VARCHAR),
+        ("as_of", TIMESTAMPTZ),
     ),
     "One row per health check of the runner, the stream, Airflow, the quality gates and the monitors, alerts first.",
 )
@@ -141,14 +139,14 @@ HOSTS = virtual(
     "cockpit_hosts",
     HOSTS_SQL,
     (
-        ("state", STRING),
-        ("host", STRING),
+        ("state", VARCHAR),
+        ("host", VARCHAR),
         ("disk_percent", DOUBLE),
-        ("fullest_disk", STRING),
+        ("fullest_disk", VARCHAR),
         ("memory_percent", DOUBLE),
         ("load_per_core", DOUBLE),
         ("reported_minutes_ago", DOUBLE),
-        ("measured_at", TIMESTAMP),
+        ("measured_at", TIMESTAMPTZ),
     ),
     "The newest disk, memory and load of every server.",
 )
@@ -168,14 +166,14 @@ COMPARISON: Columns = (
 COCKPIT_DAYS = lake_table(
     "gold",
     "cockpit_days",
-    (("day", DATE), ("days_ago", INT), ("metric", STRING), ("value", DOUBLE), ("computed_at", TIMESTAMP)),
+    (("day", DATE), ("days_ago", INTEGER), ("metric", VARCHAR), ("value", DOUBLE), ("computed_at", TIMESTAMPTZ)),
 )
 SEARCH_HOURS = lake_table(
     "gold",
     "search_hours",
     (
-        ("hour", TIMESTAMP),
-        ("game", STRING),
+        ("hour", TIMESTAMPTZ),
+        ("game", VARCHAR),
         ("attempts", BIGINT),
         ("improvements", BIGINT),
         ("frames_saved", DOUBLE),
@@ -183,21 +181,21 @@ SEARCH_HOURS = lake_table(
         ("ppo_rounds", BIGINT),
         ("ppo_reward_sum", DOUBLE),
         ("ppo_loss_sum", DOUBLE),
-        ("computed_at", TIMESTAMP),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 AUDIENCE_HOURS = lake_table(
     "gold",
     "audience_hours",
     (
-        ("hour", TIMESTAMP),
+        ("hour", TIMESTAMPTZ),
         ("viewers_peak", DOUBLE),
         ("viewers_mean", DOUBLE),
         ("live_minutes", BIGINT),
         ("followers", DOUBLE),
         ("chat_messages", DOUBLE),
         ("chatters_peak", DOUBLE),
-        ("computed_at", TIMESTAMP),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 LANGFUSE_DAILY = lake_table(
@@ -208,71 +206,71 @@ LANGFUSE_DAILY = lake_table(
         ("observations", BIGINT),
         ("tokens", BIGINT),
         ("cost_usd", DOUBLE),
-        ("measured_at", TIMESTAMP),
+        ("measured_at", TIMESTAMPTZ),
     ),
 )
 HOST_METRICS = lake_table(
     "silver",
     "host_metrics",
     (
-        ("host", STRING),
-        ("measured_at", TIMESTAMP),
+        ("host", VARCHAR),
+        ("measured_at", TIMESTAMPTZ),
         ("disk_percent", DOUBLE),
-        ("fullest_disk", STRING),
+        ("fullest_disk", VARCHAR),
         ("memory_percent", DOUBLE),
         ("memory_used_bytes", BIGINT),
         ("memory_total_bytes", BIGINT),
         ("load_1", DOUBLE),
         ("load_5", DOUBLE),
         ("load_15", DOUBLE),
-        ("cpus", INT),
+        ("cpus", INTEGER),
         ("event_id", BIGINT),
-        ("received_at", TIMESTAMP),
+        ("received_at", TIMESTAMPTZ),
     ),
 )
 STREAM_STATUS = lake_table(
     "live",
     "stream_status",
     (
-        ("stream", STRING),
+        ("stream", VARCHAR),
         ("events_per_minute", BIGINT),
         ("lag_seconds", DOUBLE),
         ("lag_max_seconds", DOUBLE),
-        ("last_event_at", TIMESTAMP),
-        ("updated_at", TIMESTAMP),
+        ("last_event_at", TIMESTAMPTZ),
+        ("updated_at", TIMESTAMPTZ),
     ),
 )
 POLICY_PULSE = lake_table(
     "live",
     "policy_pulse",
     (
-        ("game", STRING),
-        ("run", STRING),
+        ("game", VARCHAR),
+        ("run", VARCHAR),
         ("round", BIGINT),
         ("reward", DOUBLE),
         ("loss", DOUBLE),
         ("entropy", DOUBLE),
         ("exit_rate", DOUBLE),
-        ("last_event_at", TIMESTAMP),
+        ("last_event_at", TIMESTAMPTZ),
         ("rounds_last_hour", BIGINT),
         ("reward_mean_last_hour", DOUBLE),
-        ("updated_at", TIMESTAMP),
+        ("updated_at", TIMESTAMPTZ),
     ),
 )
 LAB_RUNS = lake_table(
     "silver",
     "lab_runs",
     (
-        ("game", STRING),
-        ("stamp", STRING),
-        ("started_at", TIMESTAMP),
-        ("outcome", STRING),
+        ("game", VARCHAR),
+        ("stamp", VARCHAR),
+        ("started_at", TIMESTAMPTZ),
+        ("outcome", VARCHAR),
         ("cost_usd", DOUBLE),
         ("minutes", DOUBLE),
-        ("turns", INT),
-        ("subagents", INT),
-        ("commits", INT),
-        ("tool_errors", INT),
+        ("turns", INTEGER),
+        ("subagents", INTEGER),
+        ("commits", INTEGER),
+        ("tool_errors", INTEGER),
         ("event_id", BIGINT),
     ),
 )
@@ -280,26 +278,26 @@ LAB_EXPERIMENTS = lake_table(
     "gold",
     "lab_experiments",
     (
-        ("game", STRING),
-        ("stamp", STRING),
-        ("changed_at", TIMESTAMP),
-        ("metric", STRING),
-        ("better", STRING),
+        ("game", VARCHAR),
+        ("stamp", VARCHAR),
+        ("changed_at", TIMESTAMPTZ),
+        ("metric", VARCHAR),
+        ("better", VARCHAR),
         *COMPARISON,
         ("holm_p", DOUBLE),
         ("bh_p", DOUBLE),
-        ("verdict", STRING),
-        ("computed_at", TIMESTAMP),
+        ("verdict", VARCHAR),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 LAB_ROI = lake_table(
     "gold",
     "lab_roi",
     (
-        ("game", STRING),
-        ("stamp", STRING),
-        ("outcome", STRING),
-        ("finished_at", TIMESTAMP),
+        ("game", VARCHAR),
+        ("stamp", VARCHAR),
+        ("outcome", VARCHAR),
+        ("finished_at", TIMESTAMPTZ),
         ("cost_usd", DOUBLE),
         ("reported_cost_usd", DOUBLE),
         ("searched_hours", BIGINT),
@@ -313,15 +311,15 @@ LAB_ROI = lake_table(
         ("total_frames_per_dollar", DOUBLE),
         ("harm_flagged", BOOLEAN),
         ("harm_after_hours", BIGINT),
-        ("computed_at", TIMESTAMP),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 PROMOTION_ROI = lake_table(
     "gold",
     "promotion_roi",
     (
-        ("channel", STRING),
-        ("variant", INT),
+        ("channel", VARCHAR),
+        ("variant", INTEGER),
         ("drafts", BIGINT),
         ("cost_usd", DOUBLE),
         ("views", BIGINT),
@@ -333,15 +331,15 @@ PROMOTION_ROI = lake_table(
         ("likes_per_dollar", DOUBLE),
         ("likes_lower", DOUBLE),
         ("likes_upper", DOUBLE),
-        ("computed_at", TIMESTAMP),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 SEARCH_ALLOCATION = lake_table(
     "gold",
     "search_allocation",
     (
-        ("game", STRING),
-        ("role", STRING),
+        ("game", VARCHAR),
+        ("role", VARCHAR),
         ("share", DOUBLE),
         ("best_probability", DOUBLE),
         ("saved", BIGINT),
@@ -351,36 +349,36 @@ SEARCH_ALLOCATION = lake_table(
         ("rate_lower", DOUBLE),
         ("rate_upper", DOUBLE),
         ("days", BIGINT),
-        ("computed_at", TIMESTAMP),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 SEARCH_BANDIT = lake_table(
     "gold",
     "search_bandit",
-    (("metric", STRING), ("better", STRING), *COMPARISON, ("verdict", STRING), ("computed_at", TIMESTAMP)),
+    (("metric", VARCHAR), ("better", VARCHAR), *COMPARISON, ("verdict", VARCHAR), ("computed_at", TIMESTAMPTZ)),
 )
 SOURCE_NUMBERS = lake_table(
     "gold",
     "source_numbers",
     (
-        ("source", STRING),
-        ("metric", STRING),
-        ("label", STRING),
+        ("source", VARCHAR),
+        ("metric", VARCHAR),
+        ("label", VARCHAR),
         ("value", DOUBLE),
-        ("unit", STRING),
-        ("window", STRING),
-        ("measured_at", TIMESTAMP),
-        ("computed_at", TIMESTAMP),
+        ("unit", VARCHAR),
+        ("window", VARCHAR),
+        ("measured_at", TIMESTAMPTZ),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 PLAY_COLUMNS = (
-    ("game", STRING),
-    ("mode", STRING),
-    ("window", STRING),
+    ("game", VARCHAR),
+    ("mode", VARCHAR),
+    ("window", VARCHAR),
     ("started", BIGINT),
     ("won", BIGINT),
-    ("measured_at", TIMESTAMP),
-    ("computed_at", TIMESTAMP),
+    ("measured_at", TIMESTAMPTZ),
+    ("computed_at", TIMESTAMPTZ),
 )
 GAME_PLAYS = lake_table("gold", "game_plays", PLAY_COLUMNS)
 ITCH_PLAYS = lake_table("gold", "itch_plays", PLAY_COLUMNS)
@@ -388,34 +386,34 @@ ITCH_DAILY = lake_table(
     "gold",
     "itch_daily",
     (
-        ("game", STRING),
+        ("game", VARCHAR),
         ("date", DATE),
         ("views", BIGINT),
         ("campaign", BIGINT),
         ("endless", BIGINT),
         ("cleared", BIGINT),
         ("won", BIGINT),
-        ("measured_at", TIMESTAMP),
-        ("computed_at", TIMESTAMP),
+        ("measured_at", TIMESTAMPTZ),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 ITCH_VISITS = lake_table(
     "silver",
     "itch_daily",
-    (("date", DATE), ("pageviews", BIGINT), ("visitors", BIGINT), ("measured_at", TIMESTAMP)),
+    (("date", DATE), ("pageviews", BIGINT), ("visitors", BIGINT), ("measured_at", TIMESTAMPTZ)),
 )
 COMMUNITY_DAILY = lake_table(
     "silver",
     "community_daily",
-    (("date", DATE), ("discord_messages", BIGINT), ("discord_joins", BIGINT), ("measured_at", TIMESTAMP)),
+    (("date", DATE), ("discord_messages", BIGINT), ("discord_joins", BIGINT), ("measured_at", TIMESTAMPTZ)),
 )
 CONTENT_RANKING = lake_table(
     "gold",
     "content_ranking",
     (
-        ("surface", STRING),
-        ("item", STRING),
-        ("family", STRING),
+        ("surface", VARCHAR),
+        ("item", VARCHAR),
+        ("family", VARCHAR),
         ("exposures", DOUBLE),
         ("outcomes", DOUBLE),
         ("mean", DOUBLE),
@@ -424,36 +422,36 @@ CONTENT_RANKING = lake_table(
         ("lead_probability", DOUBLE),
         ("share", DOUBLE),
         ("rank", BIGINT),
-        ("computed_at", TIMESTAMP),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 ENGAGEMENT_EXPERIMENTS = lake_table(
     "gold",
     "engagement_experiments",
     (
-        ("experiment", STRING),
-        ("kind", STRING),
-        ("metric", STRING),
+        ("experiment", VARCHAR),
+        ("kind", VARCHAR),
+        ("metric", VARCHAR),
         ("primary", BOOLEAN),
-        ("control", STRING),
-        ("treatment", STRING),
+        ("control", VARCHAR),
+        ("treatment", VARCHAR),
         *COMPARISON,
         ("holm_p", DOUBLE),
         ("srm_ok", BOOLEAN),
-        ("verdict", STRING),
-        ("winner", STRING),
-        ("computed_at", TIMESTAMP),
+        ("verdict", VARCHAR),
+        ("winner", VARCHAR),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 TWITCH_CHANNEL_OUTCOMES = lake_table(
     "gold",
     "twitch_channel_outcomes",
     (
-        ("item", STRING),
-        ("arm", STRING),
-        ("game", STRING),
-        ("started_at", TIMESTAMP),
-        ("ended_at", TIMESTAMP),
+        ("item", VARCHAR),
+        ("arm", VARCHAR),
+        ("game", VARCHAR),
+        ("started_at", TIMESTAMPTZ),
+        ("ended_at", TIMESTAMPTZ),
         ("hours", DOUBLE),
         ("average_viewers", DOUBLE),
         ("peak_viewers", DOUBLE),
@@ -468,24 +466,24 @@ QUALITY_REPORTS = lake_table(
     "gold",
     "quality_reports",
     (
-        ("table", STRING),
-        ("run", STRING),
-        ("status", STRING),
-        ("checks", INT),
-        ("failed", INT),
+        ("table", VARCHAR),
+        ("run", VARCHAR),
+        ("status", VARCHAR),
+        ("checks", INTEGER),
+        ("failed", INTEGER),
         ("rows", BIGINT),
-        ("checked_at", TIMESTAMP),
+        ("checked_at", TIMESTAMPTZ),
     ),
 )
 SOURCES_STATUS = lake_table(
     "gold",
     "sources_status",
     (
-        ("source", STRING),
-        ("stream", STRING),
+        ("source", VARCHAR),
+        ("stream", VARCHAR),
         ("last_records", BIGINT),
-        ("last_ingest_at", TIMESTAMP),
-        ("watermark", STRING),
+        ("last_ingest_at", TIMESTAMPTZ),
+        ("watermark", VARCHAR),
         ("total_records", BIGINT),
     ),
 )
@@ -493,37 +491,37 @@ GAME_SUMMARY = lake_table(
     "gold",
     "game_summary",
     (
-        ("game", STRING),
-        ("title", STRING),
+        ("game", VARCHAR),
+        ("title", VARCHAR),
         ("won", BOOLEAN),
         ("run_seconds", DOUBLE),
         ("record_seconds", DOUBLE),
         ("frames", BIGINT),
-        ("levels", INT),
-        ("run_updated_at", TIMESTAMP),
+        ("levels", INTEGER),
+        ("run_updated_at", TIMESTAMPTZ),
         ("levels_cleared", BIGINT),
         ("saved_since_first_clear_seconds", DOUBLE),
-        ("costliest_level", STRING),
+        ("costliest_level", VARCHAR),
         ("costliest_frames", BIGINT),
         ("costliest_share", DOUBLE),
-        ("first_at", TIMESTAMP),
-        ("last_change_at", TIMESTAMP),
+        ("first_at", TIMESTAMPTZ),
+        ("last_change_at", TIMESTAMPTZ),
         ("history_points", BIGINT),
         ("lab_runs", BIGINT),
         ("lab_deployed", BIGINT),
         ("lab_minutes", DOUBLE),
         ("hours_searched", DOUBLE),
         ("saved_since_yesterday_seconds", DOUBLE),
-        ("computed_at", TIMESTAMP),
+        ("computed_at", TIMESTAMPTZ),
     ),
 )
 LEVEL_COSTS = lake_table(
     "gold",
     "level_costs",
     (
-        ("game", STRING),
-        ("level", STRING),
-        ("position", INT),
+        ("game", VARCHAR),
+        ("level", VARCHAR),
+        ("position", INTEGER),
         ("frames", BIGINT),
         ("level_seconds", DOUBLE),
         ("first_seconds", DOUBLE),
@@ -536,8 +534,8 @@ LAB_OUTCOMES = lake_table(
     "gold",
     "lab_outcomes",
     (
-        ("game", STRING),
-        ("outcome", STRING),
+        ("game", VARCHAR),
+        ("outcome", VARCHAR),
         ("runs", BIGINT),
         ("minutes", DOUBLE),
         ("cost_usd", DOUBLE),
@@ -548,28 +546,28 @@ PLATFORM_TABLES = lake_table(
     "gold",
     "platform_tables",
     (
-        ("table", STRING),
-        ("layer", STRING),
-        ("store", STRING),
+        ("table", VARCHAR),
+        ("layer", VARCHAR),
+        ("store", VARCHAR),
         ("rows", BIGINT),
         ("bytes", BIGINT),
         ("files", BIGINT),
         ("version", BIGINT),
-        ("modified_at", TIMESTAMP),
-        ("measured_at", TIMESTAMP),
+        ("modified_at", TIMESTAMPTZ),
+        ("measured_at", TIMESTAMPTZ),
     ),
 )
 PLATFORM_JOBS = lake_table(
     "gold",
     "platform_jobs",
     (
-        ("dag", STRING),
-        ("run_id", STRING),
-        ("job", STRING),
-        ("started_at", TIMESTAMP),
-        ("finished_at", TIMESTAMP),
-        ("status", STRING),
+        ("dag", VARCHAR),
+        ("run_id", VARCHAR),
+        ("job", VARCHAR),
+        ("started_at", TIMESTAMPTZ),
+        ("finished_at", TIMESTAMPTZ),
+        ("status", VARCHAR),
         ("rows", BIGINT),
-        ("error", STRING),
+        ("error", VARCHAR),
     ),
 )

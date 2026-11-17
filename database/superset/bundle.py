@@ -3,12 +3,14 @@ from typing import Any
 import yaml
 from charts import COLOR_SCHEME, Chart, Dataset
 from dashboards import DASHBOARDS, Dashboard, Row
+from datasets import DATE, TIMESTAMPTZ
 from lake_datasets import stable_uuid
+from lake_snapshot import EXTENSIONS, SNAPSHOT
 
 VERSION = "1.0.0"
 DATABASE = "Retro Speedlab Lake"
-SQLALCHEMY_URI = "hive://retro-speedlab-thrift:10000/default?auth=NOSASL"
-TEMPORAL_TYPES = ("TIMESTAMP", "DATE")
+SQLALCHEMY_URI = f"duckdb:///{SNAPSHOT}?access_mode=read_only&extension_directory={EXTENSIONS}"
+TEMPORAL_TYPES = (TIMESTAMPTZ, DATE)
 GRID_COLUMNS = 12
 TIMESTAMP = "2026-11-16T00:00:00+00:00"
 COUNT = {"metric_name": "count", "verbose_name": "COUNT(*)", "metric_type": "count", "expression": "COUNT(*)"}

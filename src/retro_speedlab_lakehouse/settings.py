@@ -55,19 +55,6 @@ class StreamSettings(Frozen):
     status_seconds: NonNegativeInt
 
 
-class ThriftSettings(Frozen):
-    port: PositiveInt
-    metastore: Path
-    warehouse: Path
-    register_seconds: PositiveInt
-    spark: SparkSettings
-
-
-class DatabaseSettings(Frozen):
-    lake: LakeSettings
-    thrift: ThriftSettings
-
-
 class MiningSettings(Frozen):
     working: Path
     speedlab: Path
@@ -145,11 +132,6 @@ def backend_settings(document: Any) -> BackendSettings:
 
 def load_backend_settings(config: Path) -> BackendSettings:
     return backend_settings(load_document(config))
-
-
-def load_database_settings(config: Path) -> DatabaseSettings:
-    document = load_document(config)
-    return DatabaseSettings(lake=lake_settings(document), thrift=ThriftSettings(**document.thrift.to_dict()))
 
 
 def load_settings(config: Path) -> Settings:

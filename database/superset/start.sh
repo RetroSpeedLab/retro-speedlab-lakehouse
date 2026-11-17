@@ -3,12 +3,14 @@ set -euo pipefail
 
 umask 077
 
+readonly SNAPSHOT_SECONDS=60
 readonly SYNC_SECONDS=3600
 
-sync_datasets() {
+every() {
+    local seconds="$1" script="$2"
     while true; do
-        python /app/sync_datasets.py || echo "The lake dataset sync failed, it runs again in ${SYNC_SECONDS} seconds" >&2
-        sleep "${SYNC_SECONDS}"
+        python "/app/${script}" || echo "${script} failed, it runs again in ${seconds} seconds" >&2
+        sleep "${seconds}"
     done
 }
 
@@ -17,5 +19,6 @@ python /app/dataset_names.py
 superset init
 python /app/owner.py
 python /app/assets.py
-sync_datasets &
+every "${SNAPSHOT_SECONDS}" lake_snapshot.py &
+every "${SYNC_SECONDS}" sync_datasets.py &
 exec /usr/bin/run-server.sh

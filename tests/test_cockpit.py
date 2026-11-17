@@ -8,7 +8,7 @@ import respx
 from airflow.sdk.definitions.context import Context
 from pyspark.sql import SparkSession
 
-from retro_speedlab_lakehouse.alerts.airflow import FAILED, task_report
+from retro_speedlab_lakehouse.alerts.airflow import FAILED, NO_EXCEPTION, task_report
 from retro_speedlab_lakehouse.cockpit.catalog import AUDIENCE_HOURS, COCKPIT_DAYS, SEARCH_HOURS
 from retro_speedlab_lakehouse.cockpit.job import build_cockpit
 from retro_speedlab_lakehouse.lake.catalog import (
@@ -150,3 +150,6 @@ def test_a_failed_task_reports_its_error() -> None:
         "error": "gold.game_summary failed",
     }
 
+
+def test_a_task_failed_without_an_exception_says_so() -> None:
+    assert task_report(FAILED, cast(Context, {"ti": TaskInstance()}))["error"] == NO_EXCEPTION

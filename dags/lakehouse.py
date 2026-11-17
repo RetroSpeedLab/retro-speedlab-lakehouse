@@ -29,8 +29,7 @@ MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
 LAST = "platform"
 HOURLY_PRIORITY = 10
 NIGHTLY_PRIORITY = 1
-HOURLY_TASK_TIMEOUT = timedelta(minutes=25)
-NIGHTLY_TASK_TIMEOUT = timedelta(minutes=40)
+TASK_TIMEOUT = timedelta(minutes=40)
 MINING_TIMEOUT = timedelta(hours=2, minutes=30)
 ABSOLUTE = "absolute"
 
@@ -84,9 +83,9 @@ hourly = chained(
     "10 * * * *",
     HOURLY_JOBS,
     HOURLY_ASIDE,
-    timedelta(minutes=55),
+    timedelta(minutes=115),
     HOURLY_PRIORITY,
-    HOURLY_TASK_TIMEOUT,
+    TASK_TIMEOUT,
 )
 nightly = chained(
     "lakehouse_nightly",
@@ -95,6 +94,6 @@ nightly = chained(
     NIGHTLY_ASIDE,
     timedelta(hours=3),
     NIGHTLY_PRIORITY,
-    NIGHTLY_TASK_TIMEOUT,
+    TASK_TIMEOUT,
 )
 mining = chained("lakehouse_mining", "30 3 * * *", MINING_JOBS, (), MINING_TIMEOUT, NIGHTLY_PRIORITY, MINING_TIMEOUT)

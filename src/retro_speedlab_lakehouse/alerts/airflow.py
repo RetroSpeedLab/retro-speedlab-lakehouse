@@ -11,12 +11,18 @@ TIMEOUT_SECONDS = 15.0
 ERROR_LENGTH = 500
 SUCCESS = "success"
 FAILED = "failed"
+NO_EXCEPTION = "Airflow failed the task without an exception: it never started, or a restart or timeout killed it"
+
+
+def task_error(state: str, context: Context) -> str | None:
+    if "exception" in context:
+        return str(context["exception"])[:ERROR_LENGTH]
+    return NO_EXCEPTION if state == FAILED else None
 
 
 def task_report(state: str, context: Context) -> dict[str, Any]:
     if "ti" not in context:
         raise ValueError("Airflow passed no task instance to the callback")
-    error = str(context["exception"])[:ERROR_LENGTH] if "exception" in context else None
     ti = context["ti"]
     return {
         "dag": ti.dag_id,
@@ -24,7 +30,7 @@ def task_report(state: str, context: Context) -> dict[str, Any]:
         "run_id": ti.run_id,
         "state": state,
         "tries": ti.try_number,
-        "error": error,
+        "error": task_error(state, context),
     }
 
 

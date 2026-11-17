@@ -2,14 +2,16 @@
 set -euo pipefail
 
 readonly PLACEHOLDER=retro-speedlab-lan
-readonly DOMAINS=(database.retrospeedlab.com growthbook.retrospeedlab.com growthbook-api.retrospeedlab.com)
 readonly CERTS_USER=lan-certs
 readonly CERTS_HOME=/var/lib/lan-certs
 readonly PLACEHOLDER_TLS=/home/dokku/${PLACEHOLDER}/tls
 readonly CERTS=/etc/retro-speedlab/lan-certs
 readonly SERVICE=retro-speedlab-lan-certs
 readonly PULL=/usr/local/sbin/${SERVICE}
-readonly NGINX_INCLUDE=/etc/nginx/retro-speedlab-lan/server.conf
+readonly NGINX_FILES=/etc/nginx/retro-speedlab-lan
+readonly NGINX_INCLUDES=(server.conf proxy.conf gate.conf signed-in.conf growthbook-login.html)
+readonly GROWTHBOOK=retro-speedlab-growthbook
+readonly BACKEND=retro-speedlab-backend
 readonly NGINX_SITE=/etc/nginx/conf.d/retro-speedlab-lan.conf
 readonly MAIN_DEFAULT=/etc/nginx/conf.d/00-default-site.conf
 readonly ROUTE_PROBE=1.1.1.1
@@ -31,7 +33,7 @@ step() {
 
 install_on() {
     local host="$1" target="$2" mode="$3"
-    ssh "${host}" "cat > /tmp/lan-file && if sudo cmp -s /tmp/lan-file ${target}; then rm /tmp/lan-file \
+    ssh "${host}" "umask 077 && cat > /tmp/lan-file && if sudo cmp -s /tmp/lan-file ${target}; then rm /tmp/lan-file \
         && echo '    unchanged ${host}:${target}'; else sudo install -D -m ${mode} /tmp/lan-file ${target} \
         && rm /tmp/lan-file && echo '    installed ${host}:${target}'; fi"
 }
@@ -43,9 +45,9 @@ reload_nginx() {
 }
 
 placeholder() {
-    step "Main: ${PLACEHOLDER} holds ${DOMAINS[*]} and renews their certificate"
+    step "Main: ${PLACEHOLDER} holds ${LAN_DOMAINS[*]} and renews their certificate"
     ensure_app "${MAIN_DOKKU}" "${PLACEHOLDER}"
-    ssh "${MAIN_DOKKU}" domains:set "${PLACEHOLDER}" "${DOMAINS[@]}"
+    ssh "${MAIN_DOKKU}" domains:set "${PLACEHOLDER}" "${LAN_DOMAINS[@]}"
     ssh "${MAIN_DOKKU}" resource:limit --memory 16m --cpu 0.1 "${PLACEHOLDER}" >/dev/null
     if [[ "$(ssh "${MAIN_DOKKU}" ps:report "${PLACEHOLDER}" --deployed)" == true ]]; then
         echo "    ${PLACEHOLDER} is already deployed"
@@ -125,9 +127,27 @@ certificate_pull() {
         && echo \"    \$(sudo journalctl -u ${SERVICE} -n 1 -o cat --no-pager)\""
 }
 
+owner_sign_in() {
+    step "Main: the owner sign-in accepts the LAN names"
+    bash "${APPS_SCRIPTS}/gate-setup.sh"
+    echo "    SSO_HOSTS: $(ssh "${MAIN_DOKKU}" config:get "${BACKEND}" SSO_HOSTS)"
+}
+
+growthbook_bridge() {
+    local email password
+    email="$(plain_secret "${HOME_LAB}" "${GROWTHBOOK}" GROWTHBOOK_ADMIN_EMAIL)"
+    password="$(plain_secret "${HOME_LAB}" "${GROWTHBOOK}" GROWTHBOOK_ADMIN_PASSWORD)"
+    printf "proxy_set_body '{\"email\":\"%s\",\"password\":\"%s\"}';\n" "${email}" "${password}" \
+        | install_on "${HOME_LAB}" "${NGINX_FILES}/secrets/growthbook.conf" 600
+}
+
 lan_proxy() {
-    step "Home Lab: nginx serves the tools on ${LAN_ADDRESS} only"
-    install_on "${HOME_LAB}" "${NGINX_INCLUDE}" 644 < "${LAN_FILES}/server.conf"
+    step "Home Lab: nginx serves the tools on ${LAN_ADDRESS} only, behind the owner sign-in"
+    local file
+    for file in "${NGINX_INCLUDES[@]}"; do
+        install_on "${HOME_LAB}" "${NGINX_FILES}/${file}" 644 < "${LAN_FILES}/${file}"
+    done
+    growthbook_bridge
     sed "s/{{LAN_ADDRESS}}/${LAN_ADDRESS}/" "${LAN_FILES}/tools.conf" | install_on "${HOME_LAB}" "${NGINX_SITE}" 644
     reload_nginx "${HOME_LAB}" "${NGINX_SITE}"
     ssh "${HOME_LAB}" "sudo ufw allow in on ${LAN_INTERFACE} to ${LAN_ADDRESS} port 80,443 proto tcp \
@@ -136,9 +156,10 @@ lan_proxy() {
 
 placeholder
 main_default_site
+owner_sign_in
 certificate_pull
 lan_proxy
 step "Point these names at ${LAN_ADDRESS} in the LAN's DNS"
-for name in "${DOMAINS[@]}"; do
+for name in "${LAN_DOMAINS[@]}"; do
     echo "    ${LAN_ADDRESS} ${name}"
 done

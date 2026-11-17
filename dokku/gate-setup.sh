@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -eq 0 ]]; then
-    echo "Usage: bash dokku/gate-setup.sh APP... (an app with a file in gate/apps)" >&2
-    exit 1
-fi
-
 readonly BACKEND=retro-speedlab-backend
 readonly SSO_URL=https://sso.retrospeedlab.com
 readonly SSO_DOMAIN=sso.retrospeedlab.com
@@ -14,7 +9,6 @@ readonly GATE=/etc/nginx/gate
 readonly SECRETS=/etc/nginx/gate/secrets
 readonly INSECURE=/etc/nginx/conf.d/owner-gate.conf
 readonly BUGSINK_GATE=/var/lib/dokku/data/storage/bugs-gate
-readonly SECRET_CHARACTERS='^[A-Za-z0-9._~@+-]+$'
 
 source "$(dirname "${BASH_SOURCE[0]}")/apps.sh"
 readonly GATE_FILES="${APPS_SCRIPTS}/../gate"
@@ -30,18 +24,15 @@ write_secret() {
     ssh "${MAIN_SHELL}" "sudo install -d -m 700 ${SECRETS} && sudo sh -c 'umask 077 && cat > ${SECRETS}/${name}.conf'"
 }
 
-plain_secret() {
-    local host="$1" app="$2" name="$3"
-    ssh "${host}" "value=\$(sudo dokku config:get ${app} ${name}) && [[ \"\${value}\" =~ ${SECRET_CHARACTERS} ]] \
-        && printf '%s' \"\${value}\"" || { echo "${app} ${name} is missing or has characters nginx would misread" >&2; exit 1; }
-}
-
 owner_hosts() {
     local conf app
-    for conf in "${GATE_FILES}"/apps/*.conf; do
-        app="$(basename "${conf}" .conf)"
-        ssh "${MAIN_DOKKU}" domains:report "${app}" --domains-app-vhosts | tr ' ' '\n'
-    done | paste -sd, -
+    {
+        for conf in "${GATE_FILES}"/apps/*.conf; do
+            app="$(basename "${conf}" .conf)"
+            ssh "${MAIN_DOKKU}" domains:report "${app}" --domains-app-vhosts | tr ' ' '\n'
+        done
+        printf '%s\n' "${LAN_DOMAINS[@]}"
+    } | paste -sd, -
 }
 
 sign_in_host() {

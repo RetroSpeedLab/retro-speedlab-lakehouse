@@ -3,6 +3,8 @@ readonly HOME_LAB_DOKKU=dokku-black-omen
 readonly MAIN_DOKKU=dokku
 readonly MAIN_SHELL=jumphost
 readonly INTERACTIVE_CPU_SHARES=2048
+readonly LAN_DOMAINS=(database.retrospeedlab.com growthbook.retrospeedlab.com growthbook-api.retrospeedlab.com)
+readonly SECRET_CHARACTERS='^[A-Za-z0-9._~@+-]+$'
 APPS_SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly APPS_SCRIPTS
 
@@ -38,6 +40,12 @@ set_once() {
     local app="$1" name="$2" command="$3"
     ssh "${HOME_LAB}" "dokku config:get ${app} ${name} >/dev/null || { value=\$(${command}) && test -n \"\${value}\" \
         && dokku config:set --no-restart ${app} ${name}=\"\${value}\" >/dev/null; }"
+}
+
+plain_secret() {
+    local host="$1" app="$2" name="$3"
+    ssh "${host}" "value=\$(sudo dokku config:get ${app} ${name}) && [[ \"\${value}\" =~ ${SECRET_CHARACTERS} ]] \
+        && printf '%s' \"\${value}\"" || { echo "${app} ${name} is missing or has characters nginx would misread" >&2; exit 1; }
 }
 
 deploy_image() {

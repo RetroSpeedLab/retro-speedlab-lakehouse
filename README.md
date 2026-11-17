@@ -202,7 +202,8 @@ Apache Superset serves SQL Lab and dashboards on the lake, for the maintainer on
 ```mermaid
 flowchart LR
     browser[Browser on the LAN] -->|HTTPS| nginx[nginx on Home Lab]
-    nginx --> superset[retro-speedlab-superset]
+    nginx -->|auth_request| sso[Owner sign-in on Main]
+    nginx -->|X-Gate-User| superset[retro-speedlab-superset]
     superset -->|PyHive| thrift[retro-speedlab-thrift]
     thrift -->|s3a, read-only key| lake[(Garage lake)]
     thrift -->|read-only mount| bronze[(Bronze Delta)]
@@ -210,9 +211,10 @@ flowchart LR
 
 - `retro-speedlab-thrift` runs the Spark Thrift Server with Delta and registers every catalog table as
   `<layer>.<table>` at start and every hour. Only Superset can reach it.
-- Superset signs in with its own database login. Its only admin, `owner`, gets the password in
-  `SUPERSET_ADMIN_PASSWORD` at every start (`database/superset/owner.py`). Self-registration is off and the public role
-  has no permissions.
+- Superset signs in the user the owner sign-in names in `X-Gate-User`; nginx sets that header after the sign-in and
+  overrides any a client sends. Its own database login stays as break-glass: its only admin, `owner`, gets the password
+  in `SUPERSET_ADMIN_PASSWORD` at every start (`database/superset/owner.py`). Self-registration is off and the public
+  role has no permissions.
 - The lake connection forbids DML, CTAS and file uploads. Every start imports the cockpit's dashboards, defined in
   `database/superset/dashboards.py`.
 - Every registered table is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
@@ -220,13 +222,14 @@ flowchart LR
 
 ## Owner tools on the LAN
 
-Superset and GrowthBook run on the Home Lab and are reachable from the home LAN only, under their own names with TLS.
+Superset and GrowthBook run on the Home Lab and are reachable from the home LAN only, under their own names with TLS
+and behind the owner sign-in.
 
-| Name | Tool | Login |
-|------|------|-------|
-| `database` | Superset | `owner`, password in `SUPERSET_ADMIN_PASSWORD` |
-| `growthbook` | GrowthBook | `owner@retrospeedlab.com`, password in `GROWTHBOOK_ADMIN_PASSWORD` |
-| `growthbook-api` | GrowthBook's API and SDK endpoint | |
+| Name | Tool | Behind the sign-in | Break-glass login |
+|------|------|--------------------|-------------------|
+| `database` | Superset | trusts `X-Gate-User` | `owner`, password in `SUPERSET_ADMIN_PASSWORD` |
+| `growthbook` | GrowthBook | the gate signs in as the admin | the admin, password in `GROWTHBOOK_ADMIN_PASSWORD` |
+| `growthbook-api` | GrowthBook's API | the UI's calls; `/api/` stays open for SDK and REST keys | |
 
 - Every tool publishes its port on localhost only. nginx on the Home Lab serves the names on the LAN address only
   (`lan/tools.conf`), and the firewall opens HTTP and HTTPS on the LAN interface only. The LAN's DNS points the names
@@ -235,6 +238,12 @@ Superset and GrowthBook run on the Home Lab and are reachable from the home LAN 
   over HTTP-01. The Home Lab fetches it daily with a key that may only read that certificate (`lan/pull-certs.sh`),
   checks that it is valid and matches its key, and reloads nginx.
 - Main answers names it does not serve with nothing (`lan/main-default.conf`), never with another app.
+- nginx asks the owner sign-in's `/check` on Main before each request (`lan/gate.conf`, `lan/signed-in.conf`) and keeps
+  a yes for 60 seconds per session, so a page's many requests cost one round trip. A stranger goes to the sign-in page
+  and back.
+- On GrowthBook's first page without its `growthbook_gate` cookie, nginx serves `lan/growthbook-login.html`, which
+  posts to `/auth/gate` on the API. nginx turns that into GrowthBook's login with the admin's credentials from a
+  root-only include, so GrowthBook's own cookies are set without a second login. The cookie lasts one day.
 - Images are pinned by version and digest in `dokku/growthbook-setup.sh`.
 - Every password and key is generated on the server once and kept only in the apps' dokku config, readable with
   `config:get`.
@@ -243,7 +252,7 @@ Superset and GrowthBook run on the Home Lab and are reachable from the home LAN 
 
 ## Owner sign-in
 
-Every owner tool on Main signs in through one Discord sign-in at [sso.retrospeedlab.com](https://sso.retrospeedlab.com),
+Every owner tool signs in through one Discord sign-in at [sso.retrospeedlab.com](https://sso.retrospeedlab.com),
 served by the backend. nginx on Main asks the backend's `/check` before each request to a tool (`auth_request`); a
 stranger goes to the sign-in page, through Discord and back to the tool. Only the owner's Discord account gets a
 session: a signed, HttpOnly cookie for the whole domain, valid 30 days and renewed on use. A tool on another domain
@@ -259,7 +268,7 @@ takes the session over with a one-minute ticket at `/_gate/adopt`.
   `bash dokku/gate-setup.sh APP...` installs them, writes the tools' credentials into root-only nginx includes on Main
   and switches each tool to the gate after its gate is in place.
 - nginx strips `X-Gate-User` from every public path and sets it on the gated ones, so no client can name a user.
-- The backend needs `SSO_URL`, `SSO_SECRET`, `SSO_OWNER_ID` and `SSO_HOSTS` (the tools' hosts, from their domains);
+- The backend needs `SSO_URL`, `SSO_SECRET`, `SSO_OWNER_ID` and `SSO_HOSTS` (the tools' hosts on Main and the LAN);
   Discord must list `https://sso.retrospeedlab.com/callback` as a redirect of the backend's app.
 
 ## Cockpit and alerts
@@ -313,8 +322,8 @@ bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limi
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
 bash dokku/database-setup.sh  # once: the Thrift Server and Superset
 bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB and the admin; rerun after a pin bump
-bash dokku/lan-setup.sh       # the LAN proxy, its certificate and Main's default site; safe to rerun
-bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main
+bash dokku/lan-setup.sh       # the LAN proxy, its sign-in, its certificate and Main's default site; safe to rerun
+bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main; no APP only syncs its hosts
 bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift

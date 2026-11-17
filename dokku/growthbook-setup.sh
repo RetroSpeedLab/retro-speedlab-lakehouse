@@ -12,7 +12,7 @@ readonly API_PORT=18090
 readonly DATA=/mnt/fastdata/growthbook
 readonly NETWORK=retro-speedlab-growthbook
 readonly DATABASE_USER=growthbook
-readonly ADMIN_EMAIL=owner@retrospeedlab.com
+readonly ADMIN_EMAIL=martin.franke@datenwissenschaften.com
 readonly ADMIN_COMPANY="Retro Speedlab"
 readonly READY_TRIES=60
 

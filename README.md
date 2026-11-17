@@ -95,7 +95,7 @@ are readable only by Superset.
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
 | `gold.platform_tables`, `gold.platform_jobs` | `platform`, every job | | Size and versions per table, measured nightly and after mining, and every job run |
-| `gold.sources_status` | `sources-status`, `platform` | `source`, `stream` | Each source's newest load and its records |
+| `gold.sources_status` | `sources-hourly`, `sources-nightly` | `source`, `stream` | Each source's newest load and its records |
 | `gold.quality_reports`, `gold.quality_failures` | every write | | The data-quality report of every silver, gold and live write, and the failed ones again |
 | `gold.cockpit_days` | `cockpit` | `metric`, `days_ago` | The cockpit's numbers per 24-hour window ending now, for the last 8 windows |
 | `gold.search_hours`, `gold.audience_hours` | `cockpit` | `hour` | Search, PPO, Twitch and chat per hour of the last 7 days |
@@ -188,7 +188,7 @@ ratio mismatch. The `chat` process also publishes Helix's viewers and followers 
 
 | DAG | Schedule (UTC) | Jobs |
 |-----|----------------|------|
-| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `gold`, `sources-hourly`, `engagement-hourly`, `cockpit`, then `sources-status` |
+| `lakehouse_hourly` | minute 10 of every hour | `api-hourly`, `silver`, `sources-hourly`, `engagement-hourly`, `cockpit`, then `gold` |
 | `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `sources-nightly`, `videos-nightly`, `maintenance`, then `platform` |
 | `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
 

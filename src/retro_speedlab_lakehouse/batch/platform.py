@@ -3,15 +3,11 @@ from datetime import datetime
 
 from delta.tables import DeltaTable
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
 from pyspark.sql.types import LongType, StringType, StructField, StructType, TimestampType
 
 from retro_speedlab_lakehouse.lake.catalog import (
     PLATFORM_JOBS,
     PLATFORM_TABLES,
-    SOURCES,
-    SOURCES_STATUS,
-    WATERMARKS,
     Layer,
     Table,
 )
@@ -87,29 +83,11 @@ def platform_tables(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSe
     return spark.createDataFrame(stats, TABLE_STATS)
 
 
-def sources_status(spark: SparkSession, lake: LakeSettings) -> DataFrame:
-    totals = read(spark, SOURCES, lake).groupBy("source", "stream").agg(F.count("*").alias("total_records"))
-    state = read(spark, WATERMARKS, lake).select(
-        "source",
-        "stream",
-        F.col("records").alias("last_records"),
-        F.col("updated_at").alias("last_ingest_at"),
-        "watermark",
-    )
-    return state.join(totals, ["source", "stream"], "left").fillna(0, ["total_records"])
-
-
-def build_sources_status(spark: SparkSession, lake: LakeSettings, gate: Gate) -> int:
-    if not (exists(spark, WATERMARKS, lake) and exists(spark, SOURCES, lake)):
-        return 0
-    return replace_counted(SOURCES_STATUS, lake, sources_status(spark, lake), gate)
-
-
 def build_platform(
     spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, gate: Gate, now: datetime
 ) -> int:
     stats = platform_tables(spark, tables, lake, now)
-    return replace_counted(PLATFORM_TABLES, lake, stats, gate) + build_sources_status(spark, lake, gate)
+    return replace_counted(PLATFORM_TABLES, lake, stats, gate)
 
 
 def record_job(spark: SparkSession, lake: LakeSettings, gate: Gate, run: JobRun) -> None:

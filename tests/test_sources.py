@@ -4,12 +4,11 @@ import httpx
 import respx
 from pyspark.sql import SparkSession
 
-from retro_speedlab_lakehouse.batch.platform import build_platform
 from retro_speedlab_lakehouse.lake.catalog import GAMES, SOURCES_STATUS
 from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
-from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS, SOURCE_TABLES
+from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS
 from retro_speedlab_lakehouse.sources.itch import itch_days
 from retro_speedlab_lakehouse.sources.job import SourcesFailed, ingest_sources
 from retro_speedlab_lakehouse.sources.number import Number
@@ -79,7 +78,6 @@ def test_a_failing_source_keeps_the_others_and_their_gold_numbers(spark: SparkSe
         assert "twitch" in str(error)
     numbers = read(spark, SOURCE_NUMBERS, settings.lake).collect()
     assert [(row["source"], row["metric"], row["value"]) for row in numbers] == [("discord", "members", 5.0)]
-    build_platform(spark, SOURCE_TABLES, settings.lake, gate, NOW + timedelta(hours=1))
     status = read(spark, SOURCES_STATUS, settings.lake).collect()
     assert [(row["source"], row["last_records"], row["total_records"]) for row in status] == [("discord", 1, 2)]
 

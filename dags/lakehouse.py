@@ -11,7 +11,7 @@ NICE = 15
 START = datetime(2026, 11, 15)
 RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
-HOURLY_JOBS = ("api-hourly", "silver", "gold", "sources-status")
+HOURLY_JOBS = ("api-hourly", "silver", "gold")
 HOURLY_ASIDE = ("sources-hourly", "engagement-hourly", "cockpit")
 NIGHTLY_JOBS = (
     "api-nightly",

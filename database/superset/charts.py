@@ -11,6 +11,25 @@ COLOR_SCHEME = "retroSpeedlab"
 VIRTUAL_SCHEMA = "main"
 COMPARED = "vs the 24 h before"
 NO_FILTER = "No filter"
+FINDING_COLUMNS = ("rank", "area", "verdict", "statement", "action")
+FINDING_TEMPLATE = (
+    '<div class="findings">{{#each data}}<div class="finding {{verdict}}">'
+    '<span class="verdict">{{verdict}}</span><span class="area">{{area}}</span>{{statement}}'
+    '{{#if action}}<div class="action">Next step: {{action}}</div>{{/if}}</div>{{/each}}</div>'
+)
+FINDING_STYLE = """
+.findings { font-size: 14px; line-height: 1.45; }
+.finding { border-left: 6px solid; border-radius: 4px; padding: 6px 10px; margin: 0 0 6px; color: #1f1f1f; }
+.finding.act { border-color: #d03b3b; background: #fdecec; }
+.finding.watch { border-color: #d08700; background: #fff4dc; }
+.finding.good { border-color: #0ca30c; background: #e9f6e9; }
+.finding .verdict { display: inline-block; min-width: 4.5em; font-weight: 700; text-transform: uppercase; }
+.finding.act .verdict { color: #a11d1d; }
+.finding.watch .verdict { color: #7a4f00; }
+.finding.good .verdict { color: #086b08; }
+.finding .area { display: inline-block; min-width: 7.5em; color: #555; }
+.finding .action { margin: 2px 0 0 12em; font-weight: 600; }
+"""
 
 Columns = tuple[tuple[str, str], ...]
 
@@ -88,6 +107,19 @@ def table(dataset: Dataset, name: str, columns: tuple[str, ...], order: str, fil
         "include_search": True,
     }
     return Chart(name, "table", dataset, (*columns, ordered), (), filters, params)
+
+
+def findings(dataset: Dataset, name: str, filters: tuple[str, ...]) -> Chart:
+    params = {
+        "query_mode": "raw",
+        "all_columns": list(FINDING_COLUMNS),
+        "order_by_cols": [json.dumps(["rank", True]), json.dumps(["area", True])],
+        "adhoc_filters": where(filters),
+        "row_limit": ROW_LIMIT,
+        "handlebarsTemplate": FINDING_TEMPLATE,
+        "styleTemplate": FINDING_STYLE,
+    }
+    return Chart(name, "handlebars", dataset, FINDING_COLUMNS, (), filters, params)
 
 
 def number(dataset: Dataset, name: str, expression: str, filters: tuple[str, ...]) -> Chart:

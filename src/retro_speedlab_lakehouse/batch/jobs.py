@@ -77,7 +77,7 @@ def engagement_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> i
 
 
 def cockpit(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return build_cockpit(spark, settings.lake, gate, now())
+    return build_cockpit(spark, settings.lake, settings.findings, gate, now())
 
 
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:

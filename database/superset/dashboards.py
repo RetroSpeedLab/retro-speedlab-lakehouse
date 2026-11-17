@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 
-from charts import Chart, columns_over_time, kpi, number, ranked, table, trend
+from charts import Chart, columns_over_time, findings, kpi, number, ranked, table, trend
 from datasets import (
     AUDIENCE_HOURS,
     COCKPIT_DAYS,
+    COCKPIT_FINDINGS,
     COMMUNITY_DAILY,
     CONTENT_RANKING,
     ENGAGEMENT_EXPERIMENTS,
@@ -38,6 +39,8 @@ from datasets import (
 )
 
 TILE_HEIGHT = 24
+FINDINGS_HEIGHT = 70
+STRIP_HEIGHT = 40
 CHART_HEIGHT = 50
 TABLE_HEIGHT = 60
 REFRESH_SECONDS = 300
@@ -89,6 +92,11 @@ def numbers_table(name: str, sources: str) -> Chart:
     return table(SOURCE_NUMBERS, name, columns, "label", (f"source IN ({sources})",))
 
 
+def meaning(name: str, areas: tuple[str, ...], height: int) -> Section:
+    listed = ", ".join(f"'{area}'" for area in areas)
+    return Section("What this means", (Row(height, (findings(COCKPIT_FINDINGS, name, (f"area IN ({listed})",)),)),))
+
+
 def tiles(*charts: Chart) -> Row:
     return Row(TILE_HEIGHT, charts)
 
@@ -106,6 +114,11 @@ OVERVIEW = Dashboard(
     "cockpit",
     REFRESH_SECONDS,
     (
+        meaning(
+            "Findings across the platform",
+            ("search", "records", "lab", "platform", "audience", "cost", "data quality"),
+            FINDINGS_HEIGHT,
+        ),
         Section(
             "Health",
             (
@@ -180,6 +193,7 @@ SEARCH_AI = Dashboard(
     "search-ai",
     NO_REFRESH,
     (
+        meaning("Findings for search, records and the lab", ("search", "records", "lab"), STRIP_HEIGHT),
         Section(
             "Records",
             (
@@ -260,15 +274,6 @@ SEARCH_AI = Dashboard(
                         (),
                         WEEK + ("ppo_rounds > 0",),
                     ),
-                    trend(
-                        SEARCH_HOURS,
-                        "PPO mean loss per hour",
-                        "hour",
-                        "PT1H",
-                        "SUM(ppo_loss_sum) / SUM(ppo_rounds)",
-                        (),
-                        WEEK + ("ppo_rounds > 0",),
-                    ),
                 ),
                 tables(
                     table(
@@ -321,6 +326,7 @@ AUDIENCE = Dashboard(
     "audience",
     NO_REFRESH,
     (
+        meaning("Findings for the audience", ("audience",), STRIP_HEIGHT),
         Section(
             "Now",
             (
@@ -477,6 +483,7 @@ PLATFORM_COST = Dashboard(
     "platform-cost",
     NO_REFRESH,
     (
+        meaning("Findings for the platform, data quality and cost", ("platform", "data quality", "cost"), STRIP_HEIGHT),
         Section(
             "Now",
             (
@@ -487,7 +494,6 @@ PLATFORM_COST = Dashboard(
                         f"MAX(greatest(lag_seconds / 60, {minutes_since('updated_at')}))",
                         (),
                     ),
-                    number(STREAM_STATUS, "Stream events per minute", "MAX(events_per_minute)", ()),
                     number(
                         PLATFORM_JOBS,
                         "Failed job runs, 24 h",
@@ -599,15 +605,6 @@ PLATFORM_COST = Dashboard(
                     numbers_table("Errors (Bugsink)", "'bugsink'"),
                     numbers_table("Uptime (Uptime Kuma)", "'uptime'"),
                 ),
-                tables(
-                    table(
-                        PLATFORM_TABLES,
-                        "Tables",
-                        ("table", "layer", "store", "rows", "bytes", "files", "version", "modified_at"),
-                        "table",
-                        (),
-                    ),
-                ),
             ),
         ),
     ),
@@ -617,6 +614,7 @@ RETURN_ON_COST = Dashboard(
     "return-on-cost",
     NO_REFRESH,
     (
+        meaning("Findings for cost and the lab", ("cost", "lab"), STRIP_HEIGHT),
         Section(
             "Lab: frames saved per Claude dollar",
             (

@@ -93,6 +93,25 @@ chat:
     - streamelements
     - sery_bot
 
+findings:
+  baseline_days: 7
+  min_baseline_days: 3
+  change: 0.25
+  stuck_watch_hours: 3
+  stuck_act_hours: 8
+  failed_runs_act: 3
+  stream_watch_minutes: 10
+  stream_act_minutes: 30
+  disk_watch_percent: 85
+  disk_act_percent: 92
+  actions:
+    search_idle: "Check that the runner is up and that its workers are searching."
+    search_stuck: "Check the runner's log for {game} and move its workers to a game that still improves."
+    failed_jobs: "Open the failed tasks in Airflow, fix the cause and clear them."
+    quality: "Open the failing quality reports and fix the input before the next run."
+    stream: "Check the stream job's log and restart the lakehouse stream if it is stuck."
+    disk: "Free disk on {host}: vacuum old Delta files and prune unused Docker images."
+
 sources:
   github:
     owner: RetroSpeedLab

@@ -57,7 +57,7 @@ def test_the_cockpit_compares_the_last_24_hours_with_the_day_before(spark: Spark
     now = datetime.now(UTC)
     kafka = [(json.dumps(item).encode("utf-8"), 0, offset, now) for offset, item in enumerate(search_events(now))]
     search_batch(settings, Gate("search"), search_rows.parsed(spark.createDataFrame(kafka, KAFKA_ROW)), 0)
-    assert build_cockpit(spark, settings.lake, Gate("cockpit"), now) > 0
+    assert build_cockpit(spark, settings.lake, settings.findings, Gate("cockpit"), now) > 0
     days = {
         (row["metric"], row["days_ago"]): row["value"] for row in read(spark, COCKPIT_DAYS, settings.lake).collect()
     }

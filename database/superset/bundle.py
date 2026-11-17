@@ -4,6 +4,7 @@ import yaml
 from charts import COLOR_SCHEME, Chart, Dataset
 from dashboards import DASHBOARDS, Dashboard, Row
 from datasets import DATE, TIMESTAMPTZ
+from hints import HINTS
 from lake_datasets import EXTENSIONS, SNAPSHOT, stable_uuid
 
 VERSION = "1.0.0"
@@ -15,6 +16,7 @@ TIMESTAMP = "2026-11-16T00:00:00+00:00"
 COUNT = {"metric_name": "count", "verbose_name": "COUNT(*)", "metric_type": "count", "expression": "COUNT(*)"}
 STATUS_COLORS = {"success": "#0ca30c", "failed": "#d03b3b"}
 TRANSPARENT = "BACKGROUND_TRANSPARENT"
+HINT_HEIGHT = 5
 
 
 def database_config() -> dict[str, Any]:
@@ -77,19 +79,19 @@ def chart_config(chart: Chart) -> dict[str, Any]:
     }
 
 
-def chart_layout(chart: Chart, row: Row, parents: list[str]) -> dict[str, Any]:
+def chart_layout(chart: Chart, row: Row, parents: list[str]) -> dict[str, dict[str, Any]]:
+    width = GRID_COLUMNS // len(row.charts)
+    column_id, hint_id, chart_id = f"COLUMN-{chart.uuid}", f"MARKDOWN-{chart.uuid}", f"CHART-{chart.uuid}"
+    inside = [*parents, column_id]
+    column = {"type": "COLUMN", "id": column_id, "children": [hint_id, chart_id], "parents": parents}
+    column["meta"] = {"width": width, "background": TRANSPARENT}
+    hint = {"type": "MARKDOWN", "id": hint_id, "children": [], "parents": inside}
+    hint["meta"] = {"width": width, "height": HINT_HEIGHT, "code": HINTS[chart.name]}
+    meta = {"width": width, "height": row.height, "chartId": 0, "uuid": chart.uuid, "sliceName": chart.name}
     return {
-        "type": "CHART",
-        "id": f"CHART-{chart.uuid}",
-        "children": [],
-        "parents": parents,
-        "meta": {
-            "width": GRID_COLUMNS // len(row.charts),
-            "height": row.height,
-            "chartId": 0,
-            "uuid": chart.uuid,
-            "sliceName": chart.name,
-        },
+        column_id: column,
+        hint_id: hint,
+        chart_id: {"type": "CHART", "id": chart_id, "children": [], "parents": inside, "meta": meta},
     }
 
 
@@ -110,11 +112,11 @@ def position(dashboard: Dashboard) -> dict[str, Any]:
         for row_number, row in enumerate(section.rows):
             row_id = f"ROW-{section_number}-{row_number}"
             grid.append(row_id)
-            children = [f"CHART-{chart.uuid}" for chart in row.charts]
+            children = [f"COLUMN-{chart.uuid}" for chart in row.charts]
             layout[row_id] = {"type": "ROW", "id": row_id, "children": children, "parents": ["ROOT_ID", "GRID_ID"]}
             layout[row_id]["meta"] = {"background": TRANSPARENT}
             for chart in row.charts:
-                layout[f"CHART-{chart.uuid}"] = chart_layout(chart, row, ["ROOT_ID", "GRID_ID", row_id])
+                layout |= chart_layout(chart, row, ["ROOT_ID", "GRID_ID", row_id])
     return layout
 
 

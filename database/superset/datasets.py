@@ -152,6 +152,21 @@ HOSTS = virtual(
     "The newest disk, memory and load of every server.",
 )
 
+COCKPIT_FINDINGS = lake_table(
+    "gold",
+    "cockpit_findings",
+    (
+        ("area", VARCHAR),
+        ("subject", VARCHAR),
+        ("verdict", VARCHAR),
+        ("rank", INTEGER),
+        ("statement", VARCHAR),
+        ("value", DOUBLE),
+        ("baseline", DOUBLE),
+        ("action", VARCHAR),
+        ("computed_at", TIMESTAMPTZ),
+    ),
+)
 COMPARISON: Columns = (
     ("control_n", BIGINT),
     ("treatment_n", BIGINT),

@@ -9,6 +9,7 @@ from bundle import GRID_COLUMNS, bundle, cockpit_charts, cockpit_datasets
 from charts import Chart, Dataset
 from dashboards import DASHBOARDS
 from datasets import BIGINT, BOOLEAN, DATE, DOUBLE, INTEGER, TIMESTAMPTZ, VARCHAR
+from hints import HINTS
 from lake_datasets import LAYERS, lake_datasets
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
@@ -19,6 +20,7 @@ from retro_speedlab_lakehouse.batch.jobs import ALL_TABLES
 from retro_speedlab_lakehouse.batch.platform import JOB_RUN, TABLE_STATS
 from retro_speedlab_lakehouse.cockpit.days import SEARCH_METRICS, dense, search_days
 from retro_speedlab_lakehouse.cockpit.hours import audience_hours, search_hours
+from retro_speedlab_lakehouse.cockpit.job import FINDING
 from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.jobs import RESULT as ENGAGEMENT
 from retro_speedlab_lakehouse.engagement.ranking import RANKING
@@ -74,6 +76,10 @@ def test_the_bundle_holds_every_chart_dataset_and_dashboard() -> None:
         assert max(widths) <= GRID_COLUMNS
 
 
+def test_every_chart_has_one_hint_and_every_hint_a_chart() -> None:
+    assert set(HINTS) == {chart.name for chart in cockpit_charts().values()}
+
+
 def test_every_chart_names_only_columns_of_its_dataset() -> None:
     for chart in cockpit_charts().values():
         assert set(chart.columns) <= chart.dataset.column_names, chart.name
@@ -109,6 +115,7 @@ def code_tables(spark: SparkSession) -> dict[str, DataFrame]:
         "gold.lab_experiments": spark.createDataFrame([], EXPERIMENTS),
         "gold.lab_roi": spark.createDataFrame([], ROI),
         "gold.promotion_roi": spark.createDataFrame([], PROMOTION),
+        "gold.cockpit_findings": spark.createDataFrame([], FINDING),
         "gold.cockpit_days": dense(spark, [search_days(search, NOW)], list(SEARCH_METRICS), NOW),
         "gold.search_hours": search_hours(search, NOW),
         "gold.audience_hours": audience_hours(search, NOW),

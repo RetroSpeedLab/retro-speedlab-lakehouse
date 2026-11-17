@@ -18,17 +18,18 @@ STARTED = "started map<string, bigint>"
 class Metric:
     name: str
     flow: bool
+    area: str
 
 
-RECORDS_METRIC = Metric("Records", True)
-FRAMES_SAVED = Metric("Frames saved", True)
-CHAT_MESSAGES = Metric("Chat messages", True)
-PEAK_VIEWERS = Metric("Peak viewers", False)
-FOLLOWERS = Metric("Twitch followers", False)
-HIGHSCORES_METRIC = Metric("Highscores", True)
-LAB_RUNS_METRIC = Metric("Lab runs", True)
-HUMAN_PLAYS = Metric("Human game starts", False)
-DISCORD_MEMBERS = Metric("Discord members", False)
+RECORDS_METRIC = Metric("Records", True, "records")
+FRAMES_SAVED = Metric("Frames saved", True, "search")
+CHAT_MESSAGES = Metric("Chat messages", True, "audience")
+PEAK_VIEWERS = Metric("Peak viewers", False, "audience")
+FOLLOWERS = Metric("Twitch followers", False, "audience")
+HIGHSCORES_METRIC = Metric("Highscores", True, "audience")
+LAB_RUNS_METRIC = Metric("Lab runs", True, "lab")
+HUMAN_PLAYS = Metric("Human game starts", False, "audience")
+DISCORD_MEMBERS = Metric("Discord members", False, "audience")
 SEARCH_METRICS = (RECORDS_METRIC, FRAMES_SAVED, CHAT_MESSAGES, PEAK_VIEWERS, FOLLOWERS)
 SOURCE_METRICS = (HUMAN_PLAYS, DISCORD_MEMBERS)
 

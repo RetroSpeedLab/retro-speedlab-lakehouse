@@ -35,6 +35,7 @@ RATELIMIT_STORAGE_URI = "memory://"
 SQLLAB_TIMEOUT = QUERY_SECONDS
 SUPERSET_WEBSERVER_TIMEOUT = QUERY_SECONDS
 DATA_CACHE_CONFIG = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": CACHE_SECONDS}
+HTML_SANITIZATION_SCHEMA_EXTENSIONS = {"attributes": {"*": ["className"]}}
 EXTRA_CATEGORICAL_COLOR_SCHEMES = [
     {"id": "retroSpeedlab", "label": "Retro Speedlab", "description": "", "isDefault": True, "colors": PALETTE}
 ]

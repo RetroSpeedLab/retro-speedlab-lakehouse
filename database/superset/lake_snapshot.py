@@ -21,6 +21,7 @@ SECRET = (
 SERVING_TABLES = f"SELECT \"table\" FROM delta_scan('{BUCKET}/gold/platform_tables') WHERE store = 'lake'"
 COMMITS = "main.commits"
 MEMORY_LIMIT = "512MB"
+SPILL = "/tmp/lake-snapshot"
 READ_THREADS = 16
 COPIES = 8
 REFRESH_SECONDS = 30
@@ -31,6 +32,7 @@ def connect() -> duckdb.DuckDBPyConnection:
         config={
             "extension_directory": EXTENSIONS,
             "memory_limit": MEMORY_LIMIT,
+            "temp_directory": SPILL,
             "threads": READ_THREADS,
             "enable_http_metadata_cache": True,
         }

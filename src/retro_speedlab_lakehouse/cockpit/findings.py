@@ -68,8 +68,12 @@ def graded(value: float, watch: float, act: float) -> Verdict:
     return Verdict.GOOD
 
 
-def thin(area: str, subject: str, have: int, rules: FindingsSettings) -> Finding:
-    statement = f"{subject}: not enough data yet, {have} of the {rules.min_baseline_days} days a baseline needs."
+def days(count: int) -> str:
+    return "1 day" if count == 1 else f"{count} days"
+
+
+def thin(area: str, subject: str, have: int, need: int) -> Finding:
+    statement = f"{subject}: not enough data yet; it needs {days(need)} with data and has {have}."
     return Finding(area, subject, Verdict.WATCH, statement, None, None, None)
 
 
@@ -86,7 +90,7 @@ def flow_finding(metric: DayMetric, rules: FindingsSettings) -> Finding:
     before = history(metric, rules)
     today = measured(metric, 0)
     if today is None or len(before) < rules.min_baseline_days:
-        return thin(metric.area, metric.name, len(before), rules)
+        return thin(metric.area, metric.name, len(before), rules.min_baseline_days)
     baseline = mean(before)
     comparison = f"the {len(before)}-day average is {figure(baseline)}"
     if today <= baseline * (1 - rules.change):
@@ -103,12 +107,15 @@ def level_finding(metric: DayMetric, rules: FindingsSettings) -> Finding:
     before = [(day, value) for day in range(rules.baseline_days, 0, -1) if (value := measured(metric, day)) is not None]
     today = measured(metric, 0)
     if today is None or not before:
-        return thin(metric.area, metric.name, len(before), rules)
-    days, then = before[0]
+        return thin(metric.area, metric.name, len(before), 1)
+    since, then = before[0]
     change = today - then
     verdict = Verdict.GOOD if change >= 0 else Verdict.WATCH
-    direction = "up" if change >= 0 else "down"
-    statement = f"{metric.name}: {figure(today)}, {direction} {figure(abs(change))} in {days} days."
+    if change == 0:
+        moved = "unchanged"
+    else:
+        moved = f"{'up' if change > 0 else 'down'} {figure(abs(change))}"
+    statement = f"{metric.name}: {figure(today)}, {moved} in {days(since)}."
     return Finding(metric.area, metric.name, verdict, statement, today, then, None)
 
 
@@ -189,7 +196,7 @@ def cost_finding(costs: dict[int, float], rules: FindingsSettings) -> Finding:
     subject = "Claude cost"
     before = [costs[day] for day in range(2, rules.baseline_days + 2) if day in costs]
     if 1 not in costs or len(before) < rules.min_baseline_days:
-        return thin("cost", subject, len(before), rules)
+        return thin("cost", subject, len(before), rules.min_baseline_days)
     yesterday, baseline = costs[1], mean(before)
     verdict = Verdict.WATCH if yesterday >= baseline * (1 + rules.change) else Verdict.GOOD
     trend = "above" if verdict is Verdict.WATCH else "within"

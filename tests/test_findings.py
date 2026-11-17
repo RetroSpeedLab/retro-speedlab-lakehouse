@@ -47,13 +47,16 @@ def test_a_metric_without_enough_history_says_so() -> None:
     young = flow_finding(DayMetric("Lab runs", "lab", True, {0: 3.0, 1: 2.0}), RULES)
     assert young.verdict is Verdict.WATCH
     assert (
-        young.statement == f"Lab runs: not enough data yet, 1 of the {RULES.min_baseline_days} days a baseline needs."
+        young.statement
+        == f"Lab runs: not enough data yet; it needs {RULES.min_baseline_days} days with data and has 1."
     )
 
 
 def test_a_level_metric_reports_its_change_since_the_oldest_day() -> None:
     finding = level_finding(DayMetric("Twitch followers", "audience", False, {0: 39.0, 3: 36.0, 6: None}), RULES)
     assert (finding.verdict, finding.statement) == (Verdict.GOOD, "Twitch followers: 39, up 3 in 3 days.")
+    still = level_finding(DayMetric("Discord members", "audience", False, {0: 4.0, 1: 4.0}), RULES)
+    assert still.statement == "Discord members: 4, unchanged in 1 day."
 
 
 def test_the_longest_stuck_search_decides_and_names_its_game() -> None:

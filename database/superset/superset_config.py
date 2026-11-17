@@ -1,10 +1,13 @@
 import os
 from typing import Any
 
+from flask import Flask, request
 from flask_appbuilder.security.manager import AUTH_DB
+from flask_login import current_user, login_user
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 
+GATE_USER_HEADER = "X-Gate-User"
 QUERY_SECONDS = 300
 CACHE_SECONDS = 300
 PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
@@ -24,11 +27,22 @@ def spark_view_names(dialect: HiveDialect, connection: Any, schema: str | None, 
     return [row.viewName for row in spark_listing(dialect, connection, "SHOW VIEWS", schema)]
 
 
+def trust_gate(app: Flask) -> None:
+    @app.before_request
+    def sign_in_gate_user() -> None:
+        if GATE_USER_HEADER not in request.headers or current_user.is_authenticated:
+            return
+        user = app.appbuilder.sm.find_user(username=request.headers[GATE_USER_HEADER])
+        if user is not None:
+            login_user(user)
+
+
 HiveDialect.get_table_names = spark_table_names
 HiveDialect.get_view_names = spark_view_names
 SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
 SQLALCHEMY_DATABASE_URI = "sqlite:////app/superset_home/superset.db"
 AUTH_TYPE = AUTH_DB
+FLASK_APP_MUTATOR = trust_gate
 AUTH_USER_REGISTRATION = False
 PUBLIC_ROLE_LIKE = None
 FAB_API_SWAGGER_UI = False

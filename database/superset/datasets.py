@@ -32,7 +32,8 @@ RUNNER = minutes_since("max(run_updated_at)")
 SEARCHED = minutes_since("max(last_event_at)")
 LAG = f"greatest(max(lag_seconds) / 60, {minutes_since('max(updated_at)')})"
 LAST_JOB = minutes_since("max(finished_at)")
-FAILED_JOBS = f"count_if(status = 'failed' AND finished_at >= {LAST_DAY})"
+FAILED_JOBS = f"count(*) FILTER (WHERE status = 'failed' AND finished_at >= {LAST_DAY})"
+QUALITY_FAILS = f"count(*) FILTER (WHERE checked_at >= {LAST_DAY})"
 FAILED_JOB_NAMES = f"string_agg(DISTINCT CASE WHEN status = 'failed' AND finished_at >= {LAST_DAY} THEN job END, ', ')"
 CHECKS = (
     check(
@@ -82,11 +83,11 @@ CHECKS = (
     ),
     check(
         "Quality gate fails, 24 h",
-        f"count_if(checked_at >= {LAST_DAY})",
+        QUALITY_FAILS,
         "reports",
         f"string_agg(DISTINCT CASE WHEN checked_at >= {LAST_DAY} THEN \"table\" END, ', ')",
         "max(checked_at)",
-        f"count_if(checked_at >= {LAST_DAY}) > 0",
+        f"{QUALITY_FAILS} > 0",
         "gold.quality_failures",
     ),
     check(

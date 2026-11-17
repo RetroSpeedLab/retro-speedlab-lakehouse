@@ -3,7 +3,7 @@ set -euo pipefail
 
 umask 077
 
-readonly SNAPSHOT_SECONDS=60
+readonly RESTART_SECONDS=60
 readonly SYNC_SECONDS=3600
 
 every() {
@@ -19,6 +19,6 @@ python /app/dataset_names.py
 superset init
 python /app/owner.py
 python /app/assets.py
-every "${SNAPSHOT_SECONDS}" lake_snapshot.py &
+every "${RESTART_SECONDS}" lake_snapshot.py &
 every "${SYNC_SECONDS}" sync_datasets.py &
 exec /usr/bin/run-server.sh

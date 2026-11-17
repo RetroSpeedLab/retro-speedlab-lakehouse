@@ -4,8 +4,7 @@ import yaml
 from charts import COLOR_SCHEME, Chart, Dataset
 from dashboards import DASHBOARDS, Dashboard, Row
 from datasets import DATE, TIMESTAMPTZ
-from lake_datasets import stable_uuid
-from lake_snapshot import EXTENSIONS, SNAPSHOT
+from lake_datasets import EXTENSIONS, SNAPSHOT, stable_uuid
 
 VERSION = "1.0.0"
 DATABASE = "Retro Speedlab Lake"

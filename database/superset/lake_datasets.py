@@ -1,7 +1,10 @@
 import uuid
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
+SNAPSHOT = Path("/app/superset_home/lake.duckdb")
+EXTENSIONS = "/app/duckdb-extensions"
 NAMESPACE = uuid.UUID("5d0e4a8c-7f62-4c1b-9b8e-2f4a6d1c3e70")
 LAYERS = {
     "bronze": "raw records as they were ingested",

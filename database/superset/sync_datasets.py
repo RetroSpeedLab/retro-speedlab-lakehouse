@@ -3,8 +3,7 @@ from uuid import UUID
 
 import duckdb
 from bundle import DATABASE
-from lake_datasets import LAYERS, LakeDataset, lake_datasets
-from lake_snapshot import SNAPSHOT
+from lake_datasets import LAYERS, SNAPSHOT, LakeDataset, lake_datasets
 from loguru import logger
 from superset.app import create_app
 

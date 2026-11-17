@@ -169,7 +169,7 @@ OVERVIEW = Dashboard(
                     number(LAB_ROI, "Lab frames saved per Claude dollar", LAB_PER_DOLLAR, ()),
                     number(PROMOTION_ROI, "Promotion views per Claude dollar", PROMOTION_PER_DOLLAR, ()),
                     number(SEARCH_ALLOCATION, "Search frames saved per CPU-hour", SEARCH_PER_CPU_HOUR, ()),
-                    number(LAB_ROI, "Lab changes flagged as harmful", "COUNT_IF(harm_flagged)", ()),
+                    number(LAB_ROI, "Lab changes flagged as harmful", "COUNT(*) FILTER (WHERE harm_flagged)", ()),
                 ),
             ),
         ),

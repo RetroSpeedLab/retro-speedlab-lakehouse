@@ -15,7 +15,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/garage.sh"
 
 ssh "${SERVER}" "mkdir -p ${DATA}/superset && chmod 700 ${DATA}/superset"
 ensure_network "${NETWORK}"
-home_app "${SUPERSET}" "${NETWORK}" 1280m 1 "--publish 127.0.0.1:${SUPERSET_PORT}:8088"
+home_app "${SUPERSET}" "${NETWORK}" 1280m 2 "--publish 127.0.0.1:${SUPERSET_PORT}:8088"
 ensure_mount "${SUPERSET}" "${DATA}/superset" /app/superset_home
 ensure_mount "${SUPERSET}" "${BRONZE}" /lake/bronze:ro
 set_once "${SUPERSET}" SUPERSET_SECRET_KEY "openssl rand -hex 32"

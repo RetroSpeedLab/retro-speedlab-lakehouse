@@ -6,4 +6,3 @@ readonly DOKKU_SCRIPTS
 
 bash "${DOKKU_SCRIPTS}/deploy.sh" retro-speedlab-thrift
 bash "${DOKKU_SCRIPTS}/push-dir.sh" dokku-black-omen retro-speedlab-superset database/superset
-bash "${DOKKU_SCRIPTS}/push-dir.sh" dokku retro-speedlab-database database/proxy

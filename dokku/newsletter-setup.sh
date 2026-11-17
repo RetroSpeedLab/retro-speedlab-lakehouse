@@ -4,8 +4,6 @@ set -euo pipefail
 readonly POSTGRES=retro-speedlab-listmonk-postgres
 readonly POSTGRES_IMAGE=postgres:17.12-alpine@sha256:a77aa70e641402a21411b92b721c58d10f23b50ae5fdd2333efd22d166e1e5f7
 readonly LISTMONK=retro-speedlab-listmonk
-readonly PROXY=retro-speedlab-newsletter
-readonly DOMAIN=newsletter.retrospeedlab.com
 readonly PORT=18091
 readonly DATA=/mnt/fastdata/newsletter
 readonly NETWORK=retro-speedlab-newsletter
@@ -36,6 +34,4 @@ dokku config:set --no-restart "${LISTMONK}" TZ=Etc/UTC LISTMONK_app__address=0.0
 set_once "${LISTMONK}" LISTMONK_db__password "dokku config:get ${POSTGRES} POSTGRES_PASSWORD"
 set_once "${LISTMONK}" LISTMONK_ADMIN_PASSWORD "openssl rand -hex 16"
 bash "${APPS_SCRIPTS}/push-dir.sh" "${HOME_LAB_DOKKU}" "${LISTMONK}" database/listmonk
-
-owner_proxy "${PROXY}" "${DOMAIN}" "${PORT}"
-echo "Then: bash dokku/gate-setup.sh ${PROXY}"
+echo "Then: bash dokku/lan-setup.sh"

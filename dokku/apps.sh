@@ -3,7 +3,6 @@ readonly HOME_LAB_DOKKU=dokku-black-omen
 readonly MAIN_DOKKU=dokku
 readonly MAIN_SHELL=jumphost
 readonly INTERACTIVE_CPU_SHARES=2048
-readonly PROXY_PORT_MAP=http:80:8088
 APPS_SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly APPS_SCRIPTS
 
@@ -30,6 +29,7 @@ home_app() {
     ssh "${HOME_LAB_DOKKU}" docker-options:add "${app}" deploy "--cpu-shares ${INTERACTIVE_CPU_SHARES} --network-alias ${app} ${options}"
     ssh "${HOME_LAB_DOKKU}" resource:limit --memory "${memory}" --cpu "${cpu}" "${app}"
     ssh "${HOME_LAB_DOKKU}" network:set "${app}" initial-network "${network}"
+    ssh "${HOME_LAB_DOKKU}" network:set "${app}" bind-all-interfaces false
     ssh "${HOME_LAB_DOKKU}" proxy:disable "${app}"
     ssh "${HOME_LAB_DOKKU}" checks:disable "${app}"
 }
@@ -38,18 +38,6 @@ set_once() {
     local app="$1" name="$2" command="$3"
     ssh "${HOME_LAB}" "dokku config:get ${app} ${name} >/dev/null || { value=\$(${command}) && test -n \"\${value}\" \
         && dokku config:set --no-restart ${app} ${name}=\"\${value}\" >/dev/null; }"
-}
-
-owner_proxy() {
-    local app="$1" domain="$2" port="$3"
-    ensure_app "${MAIN_DOKKU}" "${app}"
-    ssh "${MAIN_DOKKU}" domains:set "${app}" "${domain}"
-    [[ "$(ssh "${MAIN_DOKKU}" ports:report "${app}" --ports-map)" == *"${PROXY_PORT_MAP}"* ]] \
-        || ssh "${MAIN_DOKKU}" ports:add "${app}" "${PROXY_PORT_MAP}"
-    ssh "${MAIN_DOKKU}" resource:limit --memory 32m --cpu 0.25 "${app}"
-    ssh "${MAIN_DOKKU}" config:set --no-restart "${app}" "TUNNEL_PORT=${port}"
-    bash "${APPS_SCRIPTS}/push-dir.sh" "${MAIN_DOKKU}" "${app}" database/proxy
-    [[ "$(ssh "${MAIN_DOKKU}" letsencrypt:active "${app}")" == true ]] || ssh "${MAIN_DOKKU}" letsencrypt:enable "${app}"
 }
 
 deploy_image() {

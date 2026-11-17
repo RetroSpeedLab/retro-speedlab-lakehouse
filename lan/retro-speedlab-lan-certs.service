@@ -1,0 +1,8 @@
+[Unit]
+Description=Retro Speedlab LAN certificate: fetch the owner tools' certificate from the main server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/retro-speedlab-lan-certs {{MAIN_ADDRESS}}

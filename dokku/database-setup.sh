@@ -3,17 +3,13 @@ set -euo pipefail
 
 readonly HOST=dokku-black-omen
 readonly SERVER=black-omen
-readonly MAIN=dokku
 readonly THRIFT=retro-speedlab-thrift
 readonly SUPERSET=retro-speedlab-superset
-readonly PROXY=retro-speedlab-database
-readonly DOMAIN=database.retrospeedlab.com
 readonly DATA=/mnt/fastdata/database
 readonly BRONZE=/mnt/fastdata/lakehouse/data/bronze
 readonly NETWORK=retro-speedlab-database
 readonly KEY=database
 readonly SUPERSET_PORT=18088
-readonly QUERY_TIMEOUT=300s
 
 source "$(dirname "${BASH_SOURCE[0]}")/apps.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/garage.sh"
@@ -21,10 +17,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/settings.sh"
 
 dokku() {
     ssh "${HOST}" "$@"
-}
-
-main() {
-    ssh "${MAIN}" "$@"
 }
 
 ssh "${SERVER}" "mkdir -p ${DATA}/thrift ${DATA}/superset && chmod 700 ${DATA}/superset \
@@ -47,16 +39,8 @@ garage key create "${KEY}" >/dev/null
 garage bucket allow --read "${BUCKET}" --key "${KEY}"
 store_key "${KEY}" "${HOST}" "${THRIFT}"
 
-dokku apps:create "${SUPERSET}"
-dokku storage:mount "${SUPERSET}" "${DATA}/superset:/app/superset_home"
-dokku ps:set "${SUPERSET}" restart-policy unless-stopped
-dokku docker-options:add "${SUPERSET}" deploy "--cpu-shares 2048 --publish 127.0.0.1:${SUPERSET_PORT}:8088"
-dokku resource:limit --memory 768m --cpu 1 "${SUPERSET}"
-dokku network:set "${SUPERSET}" initial-network "${NETWORK}"
-dokku proxy:disable "${SUPERSET}"
-dokku checks:disable "${SUPERSET}"
-ssh "${SERVER}" "sudo dokku config:set --no-restart ${SUPERSET} SUPERSET_SECRET_KEY=\$(openssl rand -hex 32) >/dev/null"
-
-owner_proxy "${PROXY}" "${DOMAIN}" "${SUPERSET_PORT}"
-main nginx:set "${PROXY}" proxy-read-timeout "${QUERY_TIMEOUT}"
-echo "Then: bash dokku/database-tunnel.sh; bash dokku/database-deploy.sh; bash dokku/gate-setup.sh ${PROXY}"
+home_app "${SUPERSET}" "${NETWORK}" 768m 1 "--publish 127.0.0.1:${SUPERSET_PORT}:8088"
+ensure_mount "${SUPERSET}" "${DATA}/superset" /app/superset_home
+set_once "${SUPERSET}" SUPERSET_SECRET_KEY "openssl rand -hex 32"
+set_once "${SUPERSET}" SUPERSET_ADMIN_PASSWORD "openssl rand -hex 16"
+echo "Then: bash dokku/database-deploy.sh; bash dokku/lan-setup.sh"

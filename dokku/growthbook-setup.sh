@@ -5,8 +5,6 @@ readonly MONGO=retro-speedlab-growthbook-mongo
 readonly MONGO_IMAGE=mongo:8.0.38@sha256:999744ea9784b56ca8a48cb47d697b78290c817feaf7ffb6946f44171b2d4055
 readonly GROWTHBOOK=retro-speedlab-growthbook
 readonly GROWTHBOOK_IMAGE=growthbook/growthbook:5.2.1@sha256:0da8afcb9ed92d8e09abca3ea9d9531e29b7e39b0bccba03d9a3d4cc47f1f60d
-readonly UI_PROXY=retro-speedlab-growthbook-ui
-readonly API_PROXY=retro-speedlab-growthbook-api
 readonly UI_DOMAIN=growthbook.retrospeedlab.com
 readonly API_DOMAIN=growthbook-api.retrospeedlab.com
 readonly UI_PORT=18089
@@ -55,8 +53,5 @@ set_once "${GROWTHBOOK}" JWT_SECRET "openssl rand -hex 32"
 set_once "${GROWTHBOOK}" ENCRYPTION_KEY "openssl rand -hex 32"
 set_once "${GROWTHBOOK}" GROWTHBOOK_ADMIN_PASSWORD "openssl rand -hex 16"
 deploy_image "${GROWTHBOOK}" "${GROWTHBOOK_IMAGE}"
-
-owner_proxy "${UI_PROXY}" "${UI_DOMAIN}" "${UI_PORT}"
-owner_proxy "${API_PROXY}" "${API_DOMAIN}" "${API_PORT}"
 create_admin
-echo "Then: bash dokku/gate-setup.sh ${UI_PROXY} ${API_PROXY}"
+echo "Then: bash dokku/lan-setup.sh"

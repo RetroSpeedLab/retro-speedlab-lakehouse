@@ -14,7 +14,6 @@ readonly GATE=/etc/nginx/gate
 readonly SECRETS=/etc/nginx/gate/secrets
 readonly INSECURE=/etc/nginx/conf.d/owner-gate.conf
 readonly BUGSINK_GATE=/var/lib/dokku/data/storage/bugs-gate
-readonly LISTMONK=retro-speedlab-listmonk
 readonly SECRET_CHARACTERS='^[A-Za-z0-9._~@+-]+$'
 
 source "$(dirname "${BASH_SOURCE[0]}")/apps.sh"
@@ -77,12 +76,6 @@ secrets_for() {
             printf "proxy_set_body '{\"username\":\"%s\",\"password\":\"%s\"}';\n" \
                 "$(plain_secret "${MAIN_SHELL}" "${BACKEND}" UMAMI_USERNAME)" \
                 "$(plain_secret "${MAIN_SHELL}" "${BACKEND}" UMAMI_PASSWORD)" | write_secret tracking ;;
-        retro-speedlab-newsletter)
-            printf "proxy_set_body \"username=%s&password=%s&next=\$arg_next\";\n" \
-                "$(plain_secret "${HOME_LAB}" "${LISTMONK}" LISTMONK_ADMIN_USER)" \
-                "$(plain_secret "${HOME_LAB}" "${LISTMONK}" LISTMONK_ADMIN_PASSWORD)" | write_secret newsletter ;;
-        retro-speedlab-database)
-            printf 'proxy_set_header X-Gate-User "discord_%s";\n' "${OWNER_DISCORD_ID}" | write_secret database ;;
     esac
 }
 

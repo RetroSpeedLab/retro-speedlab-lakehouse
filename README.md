@@ -213,10 +213,9 @@ flowchart LR
 - `retro-speedlab-superset` listens on localhost only and is reached through a reverse SSH tunnel to Main, held by a
   systemd service. The tunnel's user has no shell, and its key may only open the owner tools' remote forwards
   (`database/tunnel/sshd.conf`).
-- Superset signs in with Discord only (scope `identify`), and only the Discord user `DISCORD_USER_ID` in
-  `database/superset/superset_config.py` gets in, created as Admin on first sign-in. Self-registration is off and the
-  public role has no permissions. It shares the backend's Discord app, whose redirects include
-  `https://database.retrospeedlab.com/oauth-authorized/discord`.
+- Superset has no login of its own: it signs in the user the owner sign-in names in `X-Gate-User`
+  (`AUTH_REMOTE_USER`), and only the owner's account exists. Self-registration is off and the public role has no
+  permissions.
 - The lake connection forbids DML, CTAS and file uploads. Every start imports the cockpit's dashboards, defined in
   `database/superset/dashboards.py`.
 - Every registered table is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
@@ -238,12 +237,36 @@ port in `TUNNEL_PORT`) serves its domain with TLS from Let's Encrypt.
   `database/listmonk/Dockerfile`; data lives in `/mnt/fastdata/growthbook` and `/mnt/fastdata/newsletter`.
 - Every password and key is generated on the server once and kept only in the apps' dokku config.
 - GrowthBook's setup creates its only admin, `owner@retrospeedlab.com`, and the API proxy refuses `/auth/register` and
-  `/auth/firsttime` (`database/growthbook/registration.conf`), so nobody else can sign up. A second account needs that
-  block lifted while an invite is accepted.
+  `/auth/firsttime` (`gate/apps/retro-speedlab-growthbook-api.conf`), so nobody else can sign up. A second account
+  needs that block lifted while an invite is accepted.
 - Listmonk creates its admin `owner` on first start. Sending is not configured until an SMTP provider is chosen.
 
 Read the admin passwords with `ssh dokku-black-omen config:get retro-speedlab-growthbook GROWTHBOOK_ADMIN_PASSWORD`
 and `ssh dokku-black-omen config:get retro-speedlab-listmonk LISTMONK_ADMIN_PASSWORD`.
+
+## Owner sign-in
+
+Every owner tool signs in through one Discord sign-in at [sso.retrospeedlab.com](https://sso.retrospeedlab.com),
+served by the backend. nginx on Main asks the backend's `/check` before each request to a tool (`auth_request`); a
+stranger goes to the sign-in page, through Discord and back to the tool. Only the owner's Discord account gets a
+session: a signed, HttpOnly cookie for the whole domain, valid 30 days and renewed on use. A tool on another domain
+takes the session over with a one-minute ticket at `/_gate/adopt`.
+
+| Tool | Sign-in behind the gate | Public without the gate |
+|------|-------------------------|-------------------------|
+| Superset | trusts `X-Gate-User` | `/health` for the monitor |
+| GrowthBook | its own login, 30-day refresh cookie | the SDK and REST API under `/api/` |
+| Listmonk | the gate signs in as `owner` at `/admin/login`; the session lasts 7 days and renews silently | subscription, archive, link and campaign pages, `/api/public/` |
+| Bugsink | trusts `X-Gate-User` (`gate/bugsink`, set by `DJANGO_SETTINGS_MODULE=gate.settings`) | ingest and the token API under `/api/` |
+| Uptime Kuma | its own auth is off | status pages, push and badge URLs and their assets |
+| Umami | the gate signs in at `/login` and hands the token to the browser | `script.js` and the API under `/api/` |
+
+- `gate/` holds the nginx snippets, one include per tool in `gate/apps` and the Bugsink module;
+  `bash dokku/gate-setup.sh APP...` installs them, writes the tools' credentials into root-only nginx includes on Main
+  and switches each tool to the gate after its gate is in place.
+- nginx strips `X-Gate-User` from every public path and sets it on the gated ones, so no client can name a user.
+- The backend needs `SSO_URL`, `SSO_SECRET`, `SSO_OWNER_ID` and `SSO_HOSTS` (the tools' hosts, from their domains);
+  Discord must list `https://sso.retrospeedlab.com/callback` as a redirect of the backend's app.
 
 ## Cockpit and alerts
 
@@ -276,7 +299,7 @@ stream triggers, sources and the Thrift Server. Secrets come from the environmen
 | `UPLOAD_API_KEY` | The backend's events endpoint |
 | `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; the Thrift Server holds its own read-only pair |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
-| `SUPERSET_SECRET_KEY`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | Superset and its Discord login |
+| `SUPERSET_SECRET_KEY` | Superset's session key |
 
 `dokku/sources.sh` copies the sources' credentials from the backend's and the runner's config, and
 `dokku/database-setup.sh` copies the Discord app's, without printing them.
@@ -298,6 +321,7 @@ bash dokku/database-setup.sh  # once: the Thrift Server, Superset and the proxy 
 bash dokku/database-tunnel.sh # the tunnel's user, key, sshd block, firewall rules and service
 bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB, both proxies and the admin; rerun after a pin bump
 bash dokku/newsletter-setup.sh # Listmonk, its Postgres and the proxy; rerun after a pin bump
+bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool; rerun after a tool's proxy changes
 bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift

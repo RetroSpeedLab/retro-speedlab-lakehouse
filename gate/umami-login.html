@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>Umami</title>
+</head>
+<body>
+<script>
+fetch("/_gate/umami", { method: "POST" })
+  .then((response) => {
+    if (!response.ok) throw new Error(`Umami answered ${response.status}`);
+    return response.json();
+  })
+  .then((login) => {
+    localStorage.setItem("umami.auth", JSON.stringify(login.token));
+    location.replace("/");
+  })
+  .catch((error) => {
+    document.body.textContent = `Umami sign-in failed: ${error.message}`;
+  });
+</script>
+</body>
+</html>

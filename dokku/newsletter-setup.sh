@@ -38,3 +38,4 @@ set_once "${LISTMONK}" LISTMONK_ADMIN_PASSWORD "openssl rand -hex 16"
 bash "${APPS_SCRIPTS}/push-dir.sh" "${HOME_LAB_DOKKU}" "${LISTMONK}" database/listmonk
 
 owner_proxy "${PROXY}" "${DOMAIN}" "${PORT}"
+echo "Then: bash dokku/gate-setup.sh ${PROXY}"

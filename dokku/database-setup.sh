@@ -56,8 +56,7 @@ dokku network:set "${SUPERSET}" initial-network "${NETWORK}"
 dokku proxy:disable "${SUPERSET}"
 dokku checks:disable "${SUPERSET}"
 ssh "${SERVER}" "sudo dokku config:set --no-restart ${SUPERSET} SUPERSET_SECRET_KEY=\$(openssl rand -hex 32) >/dev/null"
-copy_settings "${MAIN}" retro-speedlab-backend "${SUPERSET}" DISCORD_CLIENT_ID DISCORD_CLIENT_SECRET
 
 owner_proxy "${PROXY}" "${DOMAIN}" "${SUPERSET_PORT}"
 main nginx:set "${PROXY}" proxy-read-timeout "${QUERY_TIMEOUT}"
-echo "Then: bash dokku/database-tunnel.sh; bash dokku/database-deploy.sh"
+echo "Then: bash dokku/database-tunnel.sh; bash dokku/database-deploy.sh; bash dokku/gate-setup.sh ${PROXY}"

@@ -17,19 +17,11 @@ readonly DATABASE_USER=growthbook
 readonly ADMIN_EMAIL=owner@retrospeedlab.com
 readonly ADMIN_COMPANY="Retro Speedlab"
 readonly READY_TRIES=60
-readonly REGISTRATION=/home/dokku/${API_PROXY}/nginx.conf.d/registration.conf
 
 source "$(dirname "${BASH_SOURCE[0]}")/apps.sh"
 
 dokku() {
     ssh "${HOME_LAB_DOKKU}" "$@"
-}
-
-block_registration() {
-    scp -q "${APPS_SCRIPTS}/../database/growthbook/registration.conf" "${MAIN_SHELL}:/tmp/registration.conf"
-    ssh "${MAIN_SHELL}" "sudo install -d -o dokku -g dokku -m 755 $(dirname "${REGISTRATION}") \
-        && sudo install -o dokku -g dokku -m 644 /tmp/registration.conf ${REGISTRATION} && rm /tmp/registration.conf"
-    ssh "${MAIN_DOKKU}" proxy:build-config "${API_PROXY}"
 }
 
 create_admin() {
@@ -66,5 +58,5 @@ deploy_image "${GROWTHBOOK}" "${GROWTHBOOK_IMAGE}"
 
 owner_proxy "${UI_PROXY}" "${UI_DOMAIN}" "${UI_PORT}"
 owner_proxy "${API_PROXY}" "${API_DOMAIN}" "${API_PORT}"
-block_registration
 create_admin
+echo "Then: bash dokku/gate-setup.sh ${UI_PROXY} ${API_PROXY}"

@@ -9,7 +9,7 @@ from pyspark.sql import SparkSession
 from retro_speedlab_lakehouse.batch.jobs import ALL_TABLES
 from retro_speedlab_lakehouse.database.register import register
 from retro_speedlab_lakehouse.settings import DatabaseSettings, ThriftSettings
-from retro_speedlab_lakehouse.spark.session import session_builder
+from retro_speedlab_lakehouse.spark.session import IDLE_HEAP_RETURN, session_builder
 
 ALL_INTERFACES = "0.0.0.0"
 EXIT_ON_ERROR = True
@@ -19,9 +19,10 @@ DERBY_LOG = "derby.log"
 def hive_options(thrift: ThriftSettings) -> dict[str, str]:
     if thrift.spark.jars_dir is None:
         raise ValueError("The Thrift Server needs spark.jars_dir: its sessions load Delta from the driver class path")
+    derby_log = thrift.metastore.parent / DERBY_LOG
     return {
         "spark.driver.extraClassPath": str(thrift.spark.jars_dir / "*"),
-        "spark.driver.extraJavaOptions": f"-Dderby.stream.error.file={thrift.metastore.parent / DERBY_LOG}",
+        "spark.driver.extraJavaOptions": f"{IDLE_HEAP_RETURN} -Dderby.stream.error.file={derby_log}",
         "spark.sql.warehouse.dir": str(thrift.warehouse),
         "spark.hadoop.javax.jdo.option.ConnectionURL": f"jdbc:derby:;databaseName={thrift.metastore};create=true",
         "spark.hadoop.hive.server2.thrift.port": str(thrift.port),

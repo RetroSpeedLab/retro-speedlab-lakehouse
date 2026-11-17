@@ -1,7 +1,7 @@
 FROM python:3.12-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704
 ENV PYTHONUNBUFFERED=1 UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/opt/venv VIRTUAL_ENV=/opt/venv PATH="/opt/venv/bin:/opt/java/bin:${PATH}" \
-    JAVA_HOME=/opt/java PYSPARK_PYTHON=/opt/venv/bin/python AIRFLOW_HOME=/lake/airflow
+    JAVA_HOME=/opt/java PYSPARK_PYTHON=/opt/venv/bin/python AIRFLOW_HOME=/lake/airflow MALLOC_ARENA_MAX=2
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends procps \
     && rm -rf /var/lib/apt/lists/*

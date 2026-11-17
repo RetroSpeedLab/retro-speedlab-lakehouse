@@ -3,7 +3,7 @@ USER root
 COPY requirements.txt /tmp/requirements.txt
 RUN uv pip install --python /app/.venv/bin/python --no-deps --require-hashes --requirement /tmp/requirements.txt
 COPY superset_config.py /app/pythonpath/superset_config.py
-COPY assets.py bundle.py charts.py dashboards.py datasets.py dataset_names.py lake_datasets.py lake_snapshot.py owner.py sync_datasets.py start.sh /app/
+COPY assets.py bundle.py charts.py dashboards.py datasets.py dataset_names.py hints.py lake_datasets.py lake_snapshot.py owner.py sync_datasets.py start.sh /app/
 RUN cd /app && /app/.venv/bin/python -c "import duckdb, lake_datasets; \
     connection = duckdb.connect(config={'extension_directory': lake_datasets.EXTENSIONS}); \
     [connection.install_extension(name) for name in ('delta', 'httpfs')]"

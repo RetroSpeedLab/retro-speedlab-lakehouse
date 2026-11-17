@@ -21,8 +21,8 @@ def task_error(state: str, context: Context) -> str | None:
 
 
 def task_report(state: str, context: Context) -> dict[str, Any]:
-    if "ti" not in context:
-        raise ValueError("Airflow passed no task instance to the callback")
+    if "ti" not in context or "dag" not in context:
+        raise ValueError("Airflow passed no task instance or DAG to the callback")
     ti = context["ti"]
     return {
         "dag": ti.dag_id,
@@ -31,6 +31,7 @@ def task_report(state: str, context: Context) -> dict[str, Any]:
         "state": state,
         "tries": ti.try_number,
         "error": task_error(state, context),
+        "dag_tasks": sorted(context["dag"].task_ids),
     }
 
 

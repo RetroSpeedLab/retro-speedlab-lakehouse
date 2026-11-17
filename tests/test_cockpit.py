@@ -139,8 +139,12 @@ class TaskInstance:
     try_number = 2
 
 
+class Dag:
+    task_ids = ("sources-hourly", "gold")
+
+
 def test_a_failed_task_reports_its_error() -> None:
-    context = cast(Context, {"ti": TaskInstance(), "exception": RuntimeError("gold.game_summary failed")})
+    context = cast(Context, {"ti": TaskInstance(), "dag": Dag(), "exception": RuntimeError("gold.game_summary failed")})
     assert task_report(FAILED, context) == {
         "dag": "lakehouse_hourly",
         "task": "gold",
@@ -148,8 +152,9 @@ def test_a_failed_task_reports_its_error() -> None:
         "state": "failed",
         "tries": 2,
         "error": "gold.game_summary failed",
+        "dag_tasks": ["gold", "sources-hourly"],
     }
 
 
 def test_a_task_failed_without_an_exception_says_so() -> None:
-    assert task_report(FAILED, cast(Context, {"ti": TaskInstance()}))["error"] == NO_EXCEPTION
+    assert task_report(FAILED, cast(Context, {"ti": TaskInstance(), "dag": Dag()}))["error"] == NO_EXCEPTION

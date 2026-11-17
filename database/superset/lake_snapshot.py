@@ -6,8 +6,10 @@ from pathlib import Path
 
 import duckdb
 from bundle import cockpit_datasets
+from charts import Columns, Dataset
 from lake_datasets import EXTENSIONS, SNAPSHOT
 from loguru import logger
+from sqlglot import exp, parse_one
 
 NEXT_SNAPSHOT = SNAPSHOT.with_suffix(".next")
 BUCKET = "s3://retro-speedlab-lake"
@@ -38,10 +40,25 @@ def connect() -> duckdb.DuckDBPyConnection:
     return connection
 
 
+def referenced(dataset: Dataset) -> set[str]:
+    if dataset.sql is None:
+        return {f"{dataset.schema}.{dataset.name}"}
+    return {f"{table.db}.{table.name}" for table in parse_one(dataset.sql, read="duckdb").find_all(exp.Table)}
+
+
+def declared_tables() -> dict[str, Columns]:
+    datasets = cockpit_datasets().values()
+    return {f"{dataset.schema}.{dataset.name}": dataset.columns for dataset in datasets if dataset.sql is None}
+
+
 def serving_tables(connection: duckdb.DuckDBPyConnection) -> list[str]:
     listed = {name for (name,) in connection.execute(SERVING_TABLES).fetchall()}
-    charted = {f"{dataset.schema}.{dataset.name}" for dataset in cockpit_datasets().values() if dataset.sql is None}
-    return sorted(listed | charted)
+    return sorted(listed.union(*(referenced(dataset) for dataset in cockpit_datasets().values())))
+
+
+def create_empty(cursor: duckdb.DuckDBPyConnection, name: str, columns: Columns) -> None:
+    definition = ", ".join(f'"{column}" {kind}' for column, kind in columns)
+    cursor.execute(f"CREATE TABLE snapshot.{name} ({definition})")
 
 
 def previous_commits(connection: duckdb.DuckDBPyConnection) -> dict[str, str]:
@@ -51,11 +68,15 @@ def previous_commits(connection: duckdb.DuckDBPyConnection) -> dict[str, str]:
     return dict(connection.execute(f"SELECT name, commit FROM previous.{COMMITS}").fetchall())
 
 
-def copy(connection: duckdb.DuckDBPyConnection, name: str, previous: dict[str, str]) -> tuple[str, str] | None:
+def copy(
+    connection: duckdb.DuckDBPyConnection, name: str, previous: dict[str, str], declared: dict[str, Columns]
+) -> tuple[str, str] | None:
     cursor = connection.cursor()
     location = f"{BUCKET}/{name.replace('.', '/')}"
     commit = cursor.execute("SELECT max(file) FROM glob(?)", [f"{location}/_delta_log/*.json"]).fetchall()[0][0]
     if commit is None:
+        if name in declared:
+            create_empty(cursor, name, declared[name])
         return None
     unchanged = name in previous and previous[name] == commit
     source = f"previous.{name}" if unchanged else f"delta_scan('{location}')"
@@ -69,7 +90,8 @@ def snapshot(connection: duckdb.DuckDBPyConnection, previous: dict[str, str]) ->
     for layer in sorted({name.split(".")[0] for name in serving} | {"bronze"}):
         connection.execute(f"CREATE SCHEMA snapshot.{layer}")
     with ThreadPoolExecutor(COPIES) as pool:
-        commits = [commit for commit in pool.map(copy, repeat(connection), serving, repeat(previous)) if commit]
+        copies = pool.map(copy, repeat(connection), serving, repeat(previous), repeat(declared_tables()))
+        commits = [commit for commit in copies if commit]
     for table in bronze:
         connection.execute(f"CREATE VIEW snapshot.bronze.{table.name} AS SELECT * FROM delta_scan('{table}')")
     connection.execute(f"CREATE TABLE snapshot.{COMMITS} (name VARCHAR, commit VARCHAR)")

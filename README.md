@@ -216,9 +216,11 @@ flowchart LR
 
 - Superset queries a local DuckDB file instead of the lake, because every read of the lake crosses to Main and
   costs seconds. `database/superset/lake_snapshot.py` rebuilds the file 30 seconds after the last build: every live,
-  silver and gold table that `gold.platform_tables` lists or a dashboard reads is copied as `<layer>.<table>`, from
-  the lake only when its Delta log has a new commit, and every bronze table is a view on the read-only bronze mount.
-  The new file replaces the old one in one rename, so the dashboards lag the lake by one build.
+  silver and gold table that `gold.platform_tables` lists or a dashboard dataset reads is copied as `<layer>.<table>`,
+  from the lake only when its Delta log has a new commit, and every bronze table is a view on the read-only bronze
+  mount. A dashboard table that is not in the lake yet is an empty table with its declared columns, so its charts show
+  no data instead of an error. The new file replaces the old one in one rename, so the dashboards lag the lake by one
+  build.
 - Superset signs in the user the owner sign-in names in `X-Gate-User`; nginx sets that header after the sign-in and
   overrides any a client sends. Its own database login stays as break-glass: its only admin, `owner`, gets the password
   in `SUPERSET_ADMIN_PASSWORD` at every start (`database/superset/owner.py`). Self-registration is off and the public

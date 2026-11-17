@@ -23,7 +23,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     Table,
 )
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.lake.write import replace_counted
 from retro_speedlab_lakehouse.mining.gold import (
     latest_pieces,
     level_history,
@@ -104,8 +104,4 @@ def build_mining_gold(spark: SparkSession, settings: Settings, gate: Gate) -> in
         *human_tables(spark, settings.lake, games),
         *replay_tables(spark, settings.lake, games),
     ]
-    written = 0
-    for table, rows in built:
-        replace(table, settings.lake, rows, gate)
-        written += rows.count()
-    return written
+    return sum(replace_counted(table, settings.lake, rows, gate) for table, rows in built)

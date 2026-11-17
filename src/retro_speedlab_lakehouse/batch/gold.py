@@ -20,7 +20,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
 )
 from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.time_travel import as_of
-from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.lake.write import replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 
@@ -145,8 +145,4 @@ def build_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetim
         (LAB_OUTCOMES, lab_outcomes(lab_runs)),
         (GAME_SUMMARY, with_yesterday(summary, yesterday).withColumn("computed_at", F.lit(now))),
     ]
-    written = 0
-    for table, rows in tables:
-        replace(table, lake, rows, gate)
-        written += rows.count()
-    return written
+    return sum(replace_counted(table, lake, rows, gate) for table, rows in tables)

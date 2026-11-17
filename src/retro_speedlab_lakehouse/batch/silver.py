@@ -15,7 +15,7 @@ from retro_speedlab_lakehouse.batch.api import GAMES as GAMES_ENDPOINT
 from retro_speedlab_lakehouse.batch.api import HOURLY_GAME_ENDPOINTS
 from retro_speedlab_lakehouse.lake.catalog import API, GAME_RUNS, GAMES, HISTORY, KNOWLEDGE, LAB_PROGRESS, SPLITS
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import insert_new, replace
+from retro_speedlab_lakehouse.lake.write import insert_new, replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 
@@ -126,14 +126,16 @@ def build_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> int:
     written = 0
     if exists(spark, API, lake):
         api = read(spark, API, lake)
-        for table, rows in ((GAMES, games(api)), (LAB_PROGRESS, lab_progress(api))):
-            replace(table, lake, rows, gate)
-            written += rows.count()
+        written += sum(
+            replace_counted(table, lake, rows, gate)
+            for table, rows in ((GAMES, games(api)), (LAB_PROGRESS, lab_progress(api)))
+        )
     if exists(spark, GAME_RUNS, lake):
         runs = read(spark, GAME_RUNS, lake)
-        for table, rows in ((SPLITS, splits(runs)), (KNOWLEDGE, knowledge(runs))):
-            replace(table, lake, rows, gate)
-            written += rows.count()
+        written += sum(
+            replace_counted(table, lake, rows, gate)
+            for table, rows in ((SPLITS, splits(runs)), (KNOWLEDGE, knowledge(runs)))
+        )
         points = history(runs)
         insert_new(HISTORY, lake, points, gate)
         written += points.count()

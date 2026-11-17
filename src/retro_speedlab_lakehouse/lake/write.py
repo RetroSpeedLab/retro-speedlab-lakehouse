@@ -58,3 +58,11 @@ def overwrite(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> 
 def replace(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> None:
     builder = merging(table, lake, rows, gate).whenMatchedUpdateAll().whenNotMatchedInsertAll()
     builder.whenNotMatchedBySourceDelete().execute()
+
+
+def replace_counted(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> int:
+    kept = rows.persist()
+    replace(table, lake, kept, gate)
+    count = kept.count()
+    kept.unpersist()
+    return count

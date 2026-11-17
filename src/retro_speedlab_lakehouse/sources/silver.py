@@ -13,7 +13,7 @@ from pyspark.sql.types import (
 
 from retro_speedlab_lakehouse.lake.catalog import SOURCES
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.lake.write import replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 from retro_speedlab_lakehouse.sources.bronze import latest
@@ -118,6 +118,4 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
         (LANGFUSE_DAILY, daily(latest(spark, lake, "langfuse", DAILY), DAILY_COST)),
         (SILVER_ITCH_DAILY, daily(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
     ]
-    for table, rows in streams:
-        replace(table, lake, rows, gate)
-    return sum(rows.count() for _, rows in streams)
+    return sum(replace_counted(table, lake, rows, gate) for table, rows in streams)

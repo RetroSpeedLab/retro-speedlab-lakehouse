@@ -17,7 +17,7 @@ from retro_speedlab_lakehouse.cockpit.days import (
 from retro_speedlab_lakehouse.cockpit.hours import audience_hours, search_hours
 from retro_speedlab_lakehouse.lake.catalog import HIGHSCORES, LAB_RUNS, SEARCH_EVENTS, SOURCES
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.lake.write import replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 
@@ -27,9 +27,7 @@ COUNTED = ((HIGHSCORES, "set_at", HIGHSCORES_METRIC), (LAB_RUNS, "started_at", L
 def build_hours(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
     events = read(spark, SEARCH_EVENTS, lake)
     searched, watched = search_hours(events, now), audience_hours(events, now)
-    replace(SEARCH_HOURS, lake, searched, gate)
-    replace(AUDIENCE_HOURS, lake, watched, gate)
-    return searched.count() + watched.count()
+    return replace_counted(SEARCH_HOURS, lake, searched, gate) + replace_counted(AUDIENCE_HOURS, lake, watched, gate)
 
 
 def measured_days(spark: SparkSession, lake: LakeSettings, now: datetime) -> tuple[list[DataFrame], list[Metric]]:
@@ -53,8 +51,7 @@ def build_cockpit(spark: SparkSession, lake: LakeSettings, gate: Gate, now: date
     if not measured:
         return 0
     days = dense(spark, measured, metrics, now)
-    replace(COCKPIT_DAYS, lake, days, gate)
-    written = days.count()
+    written = replace_counted(COCKPIT_DAYS, lake, days, gate)
     if exists(spark, SEARCH_EVENTS, lake):
         written += build_hours(spark, lake, gate, now)
     return written

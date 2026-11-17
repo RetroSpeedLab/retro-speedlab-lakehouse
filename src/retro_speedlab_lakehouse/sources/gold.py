@@ -5,7 +5,7 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.lake.catalog import GAMES, SPLIT_COMPARISON, Table
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import replace, replace_counted
+from retro_speedlab_lakehouse.lake.write import replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 from retro_speedlab_lakehouse.sources.catalog import (
@@ -37,8 +37,7 @@ def build_numbers_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now:
         return 0
     fresh = read(spark, SILVER_NUMBERS, lake).where(F.col("measured_at") >= F.lit(now - FRESH))
     numbers = fresh.withColumn("computed_at", F.lit(now))
-    replace(SOURCE_NUMBERS, lake, numbers, gate)
-    return numbers.count()
+    return replace_counted(SOURCE_NUMBERS, lake, numbers, gate)
 
 
 def build_per_game(
@@ -114,8 +113,7 @@ def build_dropoff_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now:
     found = exists(spark, SPLIT_COMPARISON, lake)
     splits = read(spark, SPLIT_COMPARISON, lake) if found else spark.createDataFrame([], NO_SPLITS)
     dropoff = human_dropoff(read(spark, SILVER_DROPOFF, lake), splits, now)
-    replace(HUMAN_DROPOFF, lake, dropoff, gate)
-    return dropoff.count()
+    return replace_counted(HUMAN_DROPOFF, lake, dropoff, gate)
 
 
 def build_source_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:

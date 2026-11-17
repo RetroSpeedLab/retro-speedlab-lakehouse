@@ -21,7 +21,7 @@ from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_ro
 from retro_speedlab_lakehouse.engagement.umami import CELLS, UMAMI, UmamiCells
 from retro_speedlab_lakehouse.lake.catalog import EVENTS, GAMES, SEARCH_EVENTS
 from retro_speedlab_lakehouse.lake.tables import read
-from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.lake.write import replace, replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.bronze import ingest, latest
@@ -122,5 +122,4 @@ def build_community(spark: SparkSession, settings: Settings, gate: Gate) -> int:
         F.get_json_object("body", "$.joins").cast("long").alias("discord_joins"),
         F.col("fetched_at").alias("measured_at"),
     )
-    replace(COMMUNITY_DAILY, settings.lake, days, gate)
-    return days.count()
+    return replace_counted(COMMUNITY_DAILY, settings.lake, days, gate)

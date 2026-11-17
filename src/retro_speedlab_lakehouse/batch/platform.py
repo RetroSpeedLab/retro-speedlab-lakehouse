@@ -16,7 +16,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     Table,
 )
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import merge, replace
+from retro_speedlab_lakehouse.lake.write import merge, replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 
@@ -102,17 +102,14 @@ def sources_status(spark: SparkSession, lake: LakeSettings) -> DataFrame:
 def build_sources_status(spark: SparkSession, lake: LakeSettings, gate: Gate) -> int:
     if not (exists(spark, WATERMARKS, lake) and exists(spark, SOURCES, lake)):
         return 0
-    status = sources_status(spark, lake)
-    replace(SOURCES_STATUS, lake, status, gate)
-    return status.count()
+    return replace_counted(SOURCES_STATUS, lake, sources_status(spark, lake), gate)
 
 
 def build_platform(
     spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, gate: Gate, now: datetime
 ) -> int:
     stats = platform_tables(spark, tables, lake, now)
-    replace(PLATFORM_TABLES, lake, stats, gate)
-    return stats.count() + build_sources_status(spark, lake, gate)
+    return replace_counted(PLATFORM_TABLES, lake, stats, gate) + build_sources_status(spark, lake, gate)
 
 
 def record_job(spark: SparkSession, lake: LakeSettings, gate: Gate, run: JobRun) -> None:

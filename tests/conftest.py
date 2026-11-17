@@ -22,6 +22,7 @@ from retro_speedlab_lakehouse.settings import (
     Settings,
     SparkSettings,
     StreamSettings,
+    SummarySettings,
     load_document,
 )
 from retro_speedlab_lakehouse.sources.settings import (
@@ -150,6 +151,7 @@ def settings(tmp_path: Path) -> Settings:
         engagement=engagement_settings(),
         chat=ChatSettings(channel="retrospeedlab", ignored=frozenset({"streamelements"})),
         findings=findings_settings(),
+        summary=SummarySettings(**load_document(CONFIG).summary.to_dict()),
         sources=source_settings(),
     )
 

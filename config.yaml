@@ -112,6 +112,11 @@ findings:
     stream: "Check the stream job's log and restart the lakehouse stream if it is stuck."
     disk: "Free disk on {host}: vacuum old Delta files and prune unused Docker images."
 
+summary:
+  model: claude-haiku-5-5
+  max_tokens: 1024
+  max_characters: 400
+
 sources:
   github:
     owner: RetroSpeedLab

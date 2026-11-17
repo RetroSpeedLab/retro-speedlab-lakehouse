@@ -12,6 +12,8 @@ class Verdict(StrEnum):
 
 
 RANKS = {Verdict.ACT: 0, Verdict.WATCH: 1, Verdict.GOOD: 2}
+CLAUDE = "claude"
+FINDINGS = "findings"
 
 
 @dataclass(frozen=True, slots=True)

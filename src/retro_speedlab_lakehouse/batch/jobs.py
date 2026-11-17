@@ -13,6 +13,7 @@ from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, reco
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.cockpit.catalog import COCKPIT_TABLES
 from retro_speedlab_lakehouse.cockpit.job import build_cockpit
+from retro_speedlab_lakehouse.cockpit.summary import build_summary
 from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
 from retro_speedlab_lakehouse.engagement.jobs import build_community, build_engagement, build_engagement_experiments
 from retro_speedlab_lakehouse.experiments.job import build_experiments
@@ -80,6 +81,10 @@ def cockpit(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_cockpit(spark, settings.lake, settings.findings, gate, now())
 
 
+def cockpit_summary(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return build_summary(spark, settings.lake, settings.summary, gate, now())
+
+
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_platform(spark, ALL_TABLES, settings.lake, gate, now())
 
@@ -102,6 +107,7 @@ JOBS: dict[str, Job] = {
     "engagement-hourly": engagement_hourly,
     "engagement-nightly": engagement_nightly,
     "cockpit": cockpit,
+    "cockpit-summary": cockpit_summary,
     "platform": platform,
     "maintenance": maintenance,
     "mine-records": mine_records,

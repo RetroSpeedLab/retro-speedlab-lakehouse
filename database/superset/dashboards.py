@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 
-from charts import Chart, columns_over_time, findings, kpi, number, ranked, table, trend
+from charts import Chart, columns_over_time, findings, headline, kpi, number, ranked, table, trend
 from datasets import (
     AUDIENCE_HOURS,
     COCKPIT_DAYS,
     COCKPIT_FINDINGS,
+    COCKPIT_SUMMARY,
     COMMUNITY_DAILY,
     CONTENT_RANKING,
     ENGAGEMENT_EXPERIMENTS,
@@ -39,6 +40,7 @@ from datasets import (
 )
 
 TILE_HEIGHT = 24
+HEADLINE_HEIGHT = 16
 FINDINGS_HEIGHT = 70
 STRIP_HEIGHT = 40
 CHART_HEIGHT = 50
@@ -114,6 +116,7 @@ OVERVIEW = Dashboard(
     "cockpit",
     REFRESH_SECONDS,
     (
+        Section("Today", (Row(HEADLINE_HEIGHT, (headline(COCKPIT_SUMMARY, "Today in one line"),)),)),
         meaning(
             "Findings across the platform",
             ("search", "records", "lab", "platform", "audience", "cost", "data quality"),

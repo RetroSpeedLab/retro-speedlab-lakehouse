@@ -1,6 +1,7 @@
 from datasets import DISK_PERCENT, HOST_MINUTES, STREAM_LAG_MINUTES, UPTIME_PERCENT
 
 HINTS = {
+    "Today in one line": "Claude's summary of the findings below; it never adds a number of its own.",
     "Findings across the platform": "Read the red rows first: each one names its next step.",
     "Findings for search, records and the lab": "Red and amber rows here explain the charts below.",
     "Findings for the audience": "Amber rows mean a number fell below its own weekly level.",

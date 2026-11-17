@@ -17,6 +17,16 @@ FINDING_TEMPLATE = (
     '<span class="verdict">{{verdict}}</span><span class="area">{{area}}</span>{{statement}}'
     '{{#if action}}<div class="action">Next step: {{action}}</div>{{/if}}</div>{{/each}}</div>'
 )
+SUMMARY_COLUMNS = ("day", "summary", "source")
+SUMMARY_TEMPLATE = (
+    '{{#each data}}<div class="headline"><span class="day">{{day}}</span>{{summary}}'
+    '<span class="source">Source: {{source}}</span></div>{{/each}}'
+)
+SUMMARY_STYLE = """
+.headline { font-size: 17px; line-height: 1.45; color: #1f1f1f; }
+.headline .day { font-weight: 700; margin-right: 10px; }
+.headline .source { display: block; font-size: 12px; color: #666; margin-top: 4px; }
+"""
 FINDING_STYLE = """
 .findings { font-size: 14px; line-height: 1.45; }
 .finding { border-left: 6px solid; border-radius: 4px; padding: 6px 10px; margin: 0 0 6px; color: #1f1f1f; }
@@ -107,6 +117,19 @@ def table(dataset: Dataset, name: str, columns: tuple[str, ...], order: str, fil
         "include_search": True,
     }
     return Chart(name, "table", dataset, (*columns, ordered), (), filters, params)
+
+
+def headline(dataset: Dataset, name: str) -> Chart:
+    params = {
+        "query_mode": "raw",
+        "all_columns": list(SUMMARY_COLUMNS),
+        "order_by_cols": [json.dumps(["day", False])],
+        "adhoc_filters": [],
+        "row_limit": 1,
+        "handlebarsTemplate": SUMMARY_TEMPLATE,
+        "styleTemplate": SUMMARY_STYLE,
+    }
+    return Chart(name, "handlebars", dataset, SUMMARY_COLUMNS, (), (), params)
 
 
 def findings(dataset: Dataset, name: str, filters: tuple[str, ...]) -> Chart:

@@ -7,6 +7,7 @@ NIGHT_JOBS = frozenset(
         "search-allocation",
         "search-bandit",
         "engagement-nightly",
+        "cockpit-summary",
         "maintenance",
         "sources-nightly",
         "videos-nightly",

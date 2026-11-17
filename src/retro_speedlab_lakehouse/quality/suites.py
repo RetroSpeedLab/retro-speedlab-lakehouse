@@ -1,7 +1,13 @@
 from spark_data_quality import AllowedValues, Check, InRange, NotNull, QualitySuite, RowCount, Unique, UniqueKey
 
-from retro_speedlab_lakehouse.cockpit.catalog import AUDIENCE_HOURS, COCKPIT_DAYS, COCKPIT_FINDINGS, SEARCH_HOURS
-from retro_speedlab_lakehouse.cockpit.findings import RANKS
+from retro_speedlab_lakehouse.cockpit.catalog import (
+    AUDIENCE_HOURS,
+    COCKPIT_DAYS,
+    COCKPIT_FINDINGS,
+    COCKPIT_SUMMARY,
+    SEARCH_HOURS,
+)
+from retro_speedlab_lakehouse.cockpit.findings import CLAUDE, FINDINGS, RANKS
 from retro_speedlab_lakehouse.engagement.catalog import (
     COMMUNITY_DAILY,
     CONTENT_RANKING,
@@ -228,6 +234,11 @@ CHECKS: dict[Table, list[Check]] = {
         *at_least_zero("attempts", "improvements", "frames_saved", "records", "ppo_rounds"),
     ],
     AUDIENCE_HOURS: [*keyed(AUDIENCE_HOURS), *at_least_zero("viewers_peak", "live_minutes", "chat_messages")],
+    COCKPIT_SUMMARY: [
+        *keyed(COCKPIT_SUMMARY),
+        AllowedValues("source", frozenset({CLAUDE, FINDINGS})),
+        *present("summary"),
+    ],
     COCKPIT_FINDINGS: [
         *keyed(COCKPIT_FINDINGS),
         AllowedValues("verdict", frozenset(str(verdict) for verdict in RANKS)),

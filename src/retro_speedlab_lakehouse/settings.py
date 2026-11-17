@@ -78,6 +78,12 @@ class FindingsSettings(Frozen):
     actions: FindingActions
 
 
+class SummarySettings(Frozen):
+    model: str
+    max_tokens: PositiveInt
+    max_characters: PositiveInt
+
+
 class MiningSettings(Frozen):
     working: Path
     speedlab: Path
@@ -135,6 +141,7 @@ class Settings(Frozen):
     engagement: EngagementSettings
     chat: ChatSettings
     findings: FindingsSettings
+    summary: SummarySettings
     sources: Sources
 
 
@@ -172,6 +179,7 @@ def load_settings(config: Path) -> Settings:
         engagement=EngagementSettings(**document.engagement.to_dict()),
         chat=ChatSettings(channel=secret("TWITCH_CHANNEL").lower(), ignored=frozenset(document.chat.ignored)),
         findings=FindingsSettings(**document.findings.to_dict()),
+        summary=SummarySettings(**document.summary.to_dict()),
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),

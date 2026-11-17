@@ -23,7 +23,7 @@ NIGHTLY_JOBS = (
     "engagement-nightly",
     "platform",
 )
-NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance")
+NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance", "cockpit-summary")
 MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
 HOURLY_PRIORITY = 10
 NIGHTLY_PRIORITY = 1

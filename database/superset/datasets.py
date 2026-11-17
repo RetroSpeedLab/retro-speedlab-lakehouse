@@ -167,6 +167,11 @@ COCKPIT_FINDINGS = lake_table(
         ("computed_at", TIMESTAMPTZ),
     ),
 )
+COCKPIT_SUMMARY = lake_table(
+    "gold",
+    "cockpit_summary",
+    (("day", DATE), ("summary", VARCHAR), ("source", VARCHAR), ("computed_at", TIMESTAMPTZ)),
+)
 COMPARISON: Columns = (
     ("control_n", BIGINT),
     ("treatment_n", BIGINT),

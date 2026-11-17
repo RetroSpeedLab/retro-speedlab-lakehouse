@@ -27,7 +27,7 @@ home_app() {
     ensure_app "${HOME_LAB_DOKKU}" "${app}"
     ssh "${HOME_LAB_DOKKU}" ps:set "${app}" restart-policy unless-stopped
     ssh "${HOME_LAB_DOKKU}" docker-options:clear "${app}" deploy
-    ssh "${HOME_LAB_DOKKU}" docker-options:add "${app}" deploy "--cpu-shares ${INTERACTIVE_CPU_SHARES} ${options}"
+    ssh "${HOME_LAB_DOKKU}" docker-options:add "${app}" deploy "--cpu-shares ${INTERACTIVE_CPU_SHARES} --network-alias ${app} ${options}"
     ssh "${HOME_LAB_DOKKU}" resource:limit --memory "${memory}" --cpu "${cpu}" "${app}"
     ssh "${HOME_LAB_DOKKU}" network:set "${app}" initial-network "${network}"
     ssh "${HOME_LAB_DOKKU}" proxy:disable "${app}"
@@ -54,6 +54,9 @@ owner_proxy() {
 
 deploy_image() {
     local app="$1" image="$2"
-    [[ "$(ssh "${HOME_LAB_DOKKU}" git:report "${app}" --git-source-image)" == "${image}" ]] \
-        || ssh "${HOME_LAB_DOKKU}" git:from-image "${app}" "${image}"
+    if [[ "$(ssh "${HOME_LAB_DOKKU}" git:report "${app}" --git-source-image)" == "${image}" ]]; then
+        ssh "${HOME_LAB_DOKKU}" ps:restart "${app}"
+    else
+        ssh "${HOME_LAB_DOKKU}" git:from-image "${app}" "${image}"
+    fi
 }

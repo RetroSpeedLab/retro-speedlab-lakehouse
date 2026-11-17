@@ -55,9 +55,9 @@ deploy_image "${MONGO}" "${MONGO_IMAGE}"
 home_app "${GROWTHBOOK}" "${NETWORK}" 1280m 1 \
     "--publish 127.0.0.1:${UI_PORT}:3000 --publish 127.0.0.1:${API_PORT}:3100"
 ensure_mount "${GROWTHBOOK}" "${DATA}/uploads" /usr/local/src/app/packages/back-end/uploads
-dokku config:set --no-restart "${GROWTHBOOK}" NODE_ENV=production \
+dokku config:set --no-restart "${GROWTHBOOK}" NODE_ENV=production BACKEND_PORT=3100 \
     APP_ORIGIN="https://${UI_DOMAIN}" API_HOST="https://${API_DOMAIN}" \
-    MONGODB_HOST="${MONGO}.web" MONGODB_USERNAME="${DATABASE_USER}" GROWTHBOOK_ADMIN_EMAIL="${ADMIN_EMAIL}" >/dev/null
+    MONGODB_HOST="${MONGO}" MONGODB_USERNAME="${DATABASE_USER}" GROWTHBOOK_ADMIN_EMAIL="${ADMIN_EMAIL}" >/dev/null
 set_once "${GROWTHBOOK}" MONGODB_PASSWORD "dokku config:get ${MONGO} MONGO_INITDB_ROOT_PASSWORD"
 set_once "${GROWTHBOOK}" JWT_SECRET "openssl rand -hex 32"
 set_once "${GROWTHBOOK}" ENCRYPTION_KEY "openssl rand -hex 32"

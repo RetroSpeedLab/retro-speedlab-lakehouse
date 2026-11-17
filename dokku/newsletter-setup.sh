@@ -30,7 +30,7 @@ deploy_image "${POSTGRES}" "${POSTGRES_IMAGE}"
 home_app "${LISTMONK}" "${NETWORK}" 256m 0.5 "--publish 127.0.0.1:${PORT}:9000"
 ensure_mount "${LISTMONK}" "${DATA}/uploads" /listmonk/uploads
 dokku config:set --no-restart "${LISTMONK}" TZ=Etc/UTC LISTMONK_app__address=0.0.0.0:9000 \
-    LISTMONK_db__host="${POSTGRES}.web" LISTMONK_db__port=5432 LISTMONK_db__user="${DATABASE}" \
+    LISTMONK_db__host="${POSTGRES}" LISTMONK_db__port=5432 LISTMONK_db__user="${DATABASE}" \
     LISTMONK_db__database="${DATABASE}" LISTMONK_db__ssl_mode=disable LISTMONK_db__max_open=10 \
     LISTMONK_db__max_idle=10 LISTMONK_db__max_lifetime=300s LISTMONK_ADMIN_USER="${ADMIN_USER}" >/dev/null
 set_once "${LISTMONK}" LISTMONK_db__password "dokku config:get ${POSTGRES} POSTGRES_PASSWORD"

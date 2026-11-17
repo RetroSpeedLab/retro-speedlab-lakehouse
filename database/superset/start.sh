@@ -15,6 +15,7 @@ sync_datasets() {
 superset db upgrade
 python /app/dataset_names.py
 superset init
+python /app/owner.py
 python /app/assets.py
 sync_datasets &
 exec /usr/bin/run-server.sh

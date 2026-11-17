@@ -53,7 +53,7 @@ mining:
   working: /runner
   speedlab: /lakehouse/speedlab
   games_url: https://games.retrospeedlab.com
-  min_available_mb: 6300
+  min_available_mb: 3000
 
 bandit:
   min_share: 0.1

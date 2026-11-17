@@ -17,9 +17,11 @@ PLAYS = "plays"
 DROPOFF = "dropoff"
 LAB_COSTS = "lab_costs"
 DAILY = "daily"
+HOURLY_LANGFUSE_DAYS = 1
+NIGHTLY_LANGFUSE_DAYS = 8
 
 
-def hourly_sources(sources: Sources) -> list[Source]:
+def each_run_sources(sources: Sources) -> list[Source]:
     return [
         SnapshotSource("uptime", NUMBERS, lambda now: uptime_numbers(sources.uptime)),
         SnapshotSource("twitch", NUMBERS, lambda now: twitch_numbers(sources.twitch)),
@@ -30,14 +32,21 @@ def hourly_sources(sources: Sources) -> list[Source]:
         SnapshotSource("itch", NUMBERS, lambda now: itch_numbers(sources.umami, now)),
         SnapshotSource("itch", PLAYS, lambda now: umami_plays(sources.umami, sources.umami.itch_website, now)),
         SnapshotSource("itch", DAILY, lambda now: itch_days(sources.umami, now)),
-        SnapshotSource("langfuse", NUMBERS, lambda now: langfuse_numbers(sources.langfuse, now)),
         SnapshotSource("langfuse", LAB_COSTS, lambda now: langfuse_lab_costs(sources.langfuse, now)),
-        SnapshotSource("langfuse", DAILY, lambda now: langfuse_days(sources.langfuse, now)),
         SnapshotSource("wandb", NUMBERS, lambda now: wandb_numbers(sources.wandb)),
         SnapshotSource("bugsink", NUMBERS, lambda now: bugsink_numbers(sources.bugsink)),
     ]
 
 
+def hourly_sources(sources: Sources) -> list[Source]:
+    today = SnapshotSource("langfuse", DAILY, lambda now: langfuse_days(sources.langfuse, now, HOURLY_LANGFUSE_DAYS))
+    return [*each_run_sources(sources), today]
+
+
 def nightly_sources(sources: Sources) -> list[Source]:
-    github = SnapshotSource("github", NUMBERS, lambda now: github_numbers(sources.github, now))
-    return [*hourly_sources(sources), github]
+    return [
+        *each_run_sources(sources),
+        SnapshotSource("langfuse", NUMBERS, lambda now: langfuse_numbers(sources.langfuse, now)),
+        SnapshotSource("langfuse", DAILY, lambda now: langfuse_days(sources.langfuse, now, NIGHTLY_LANGFUSE_DAYS)),
+        SnapshotSource("github", NUMBERS, lambda now: github_numbers(sources.github, now)),
+    ]

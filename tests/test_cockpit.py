@@ -118,7 +118,7 @@ def test_langfuse_costs_are_loaded_per_utc_day() -> None:
         return httpx.Response(200, json={"data": [{"count_count": 3, "sum_totalTokens": 900, "sum_totalCost": 0.25}]})
 
     respx.get("https://langfuse.test/api/public/v2/metrics").mock(side_effect=answer)
-    days = langfuse_days(source_settings().langfuse, NOW)
+    days = langfuse_days(source_settings().langfuse, NOW, 8)
     assert [day.date.isoformat() for day in days[:2]] == ["2026-11-16", "2026-11-15"]
     assert days[0].record.body == {"date": "2026-11-16", "observations": 3, "tokens": 900, "cost_usd": 0.25}
     assert (queries[0]["fromTimestamp"], queries[0]["toTimestamp"]) == ("2026-11-16T00:00:00Z", "2026-11-16T12:30:00Z")
@@ -128,7 +128,7 @@ def test_langfuse_costs_are_loaded_per_utc_day() -> None:
 def test_a_langfuse_day_without_priced_observations_costs_nothing() -> None:
     unpriced = {"data": [{"count_count": 2, "sum_totalTokens": None, "sum_totalCost": None}]}
     respx.get("https://langfuse.test/api/public/v2/metrics").mock(return_value=httpx.Response(200, json=unpriced))
-    day = langfuse_days(source_settings().langfuse, NOW)[0]
+    day = langfuse_days(source_settings().langfuse, NOW, 8)[0]
     assert day.record.body == {"date": "2026-11-16", "observations": 2, "tokens": 0, "cost_usd": 0.0}
 
 

@@ -1,6 +1,8 @@
+import time
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 import respx
 from pyspark.sql import SparkSession
 
@@ -9,12 +11,13 @@ from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS
+from retro_speedlab_lakehouse.sources.http import ATTEMPTS, get_json
 from retro_speedlab_lakehouse.sources.itch import itch_days
 from retro_speedlab_lakehouse.sources.job import SourcesFailed, ingest_sources
 from retro_speedlab_lakehouse.sources.number import Number
 from retro_speedlab_lakehouse.sources.plays import umami_plays
 from retro_speedlab_lakehouse.sources.record import SnapshotSource
-from retro_speedlab_lakehouse.sources.registry import DAILY, NUMBERS, PLAYS
+from retro_speedlab_lakehouse.sources.registry import DAILY, NUMBERS, PLAYS, hourly_sources, nightly_sources
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
 
 NOW = datetime(2026, 11, 15, 12, 0, tzinfo=UTC)
@@ -116,3 +119,49 @@ def test_itch_days_reach_gold_per_game_and_day(spark: SparkSession, settings: Se
     today = datetime.now(UTC).date()
     assert counted[("comet_courier", today.isoformat())] == (3, 3, 4)
     assert counted[("blinkwisp", (today - timedelta(days=1)).isoformat())] == (0, 0, 0)
+
+
+def rate_limited(retry_after: str) -> httpx.Response:
+    return httpx.Response(429, headers={"Retry-After": retry_after})
+
+
+@pytest.fixture
+def waits(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    slept: list[float] = []
+    monkeypatch.setattr(time, "sleep", slept.append)
+    return slept
+
+
+@respx.mock
+def test_a_rate_limit_waits_as_long_as_the_server_asks(waits: list[float]) -> None:
+    route = respx.get("https://api.test/numbers").mock(side_effect=[rate_limited("30"), httpx.Response(200, json=[1])])
+    with httpx.Client(base_url="https://api.test") as session:
+        assert get_json(session, "/numbers", {}) == [1]
+    assert (route.call_count, waits) == (2, [30.0])
+
+
+@respx.mock
+def test_a_rate_limit_that_persists_fails(waits: list[float]) -> None:
+    route = respx.get("https://api.test/numbers").mock(return_value=rate_limited("1"))
+    with httpx.Client(base_url="https://api.test") as session, pytest.raises(httpx.HTTPStatusError):
+        get_json(session, "/numbers", {})
+    assert (route.call_count, len(waits)) == (ATTEMPTS, ATTEMPTS - 1)
+
+
+@respx.mock
+def test_a_rate_limit_longer_than_a_run_can_wait_fails_at_once(waits: list[float]) -> None:
+    route = respx.get("https://api.test/numbers").mock(return_value=rate_limited("3600"))
+    with httpx.Client(base_url="https://api.test") as session, pytest.raises(httpx.HTTPStatusError):
+        get_json(session, "/numbers", {})
+    assert (route.call_count, waits) == (1, [])
+
+
+@respx.mock
+def test_langfuse_is_asked_twice_an_hour_and_ten_times_a_night(settings: Settings) -> None:
+    data = {"data": [{"count_count": 1, "sum_totalTokens": 1, "sum_totalCost": 0.1, "sessionId": "lab-run 1"}]}
+    route = respx.get("https://langfuse.test/api/public/v2/metrics").respond(json=data)
+    for sources, calls in ((hourly_sources, 2), (nightly_sources, 12)):
+        for source in sources(settings.sources):
+            if source.name == "langfuse":
+                source.fetch(None, NOW)
+        assert route.call_count == calls

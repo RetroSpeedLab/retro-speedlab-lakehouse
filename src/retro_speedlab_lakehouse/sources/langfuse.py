@@ -13,7 +13,6 @@ from retro_speedlab_lakehouse.sources.settings import LangfuseSettings
 METRICS = "/api/public/v2/metrics"
 WEEK = timedelta(days=7)
 DAY = timedelta(days=1)
-DAYS = 8
 WINDOW = "last 7 days"
 MEASURES = [
     {"measure": "count", "aggregation": "count"},
@@ -91,9 +90,9 @@ def daily_cost(settings: LangfuseSettings, start: datetime, now: datetime) -> Da
     return DailyCost(start.date(), int(day["count_count"]), tokens, total(day["sum_totalCost"]))
 
 
-def langfuse_days(settings: LangfuseSettings, now: datetime) -> list[DailyCost]:
+def langfuse_days(settings: LangfuseSettings, now: datetime, days: int) -> list[DailyCost]:
     midnight = now.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    return [daily_cost(settings, midnight - back * DAY, now) for back in range(DAYS)]
+    return [daily_cost(settings, midnight - back * DAY, now) for back in range(days)]
 
 
 def langfuse_lab_costs(settings: LangfuseSettings, now: datetime) -> list[LabCost]:

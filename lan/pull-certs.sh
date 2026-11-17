@@ -10,7 +10,10 @@ trap 'rm -rf "${download}"' EXIT
 ssh -i "${CERTS}/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
     -o UserKnownHostsFile="${CERTS}/known_hosts" "lan-certs@${MAIN_ADDRESS}" \
     | tar -x --no-same-owner -C "${download}" server.crt server.key
-cmp -s "${download}/server.crt" "${CERTS}/server.crt" && exit 0
+if cmp -s "${download}/server.crt" "${CERTS}/server.crt"; then
+    echo "The LAN certificate is current, $(openssl x509 -enddate -noout -in "${CERTS}/server.crt")"
+    exit 0
+fi
 openssl x509 -checkend "${VALID_SECONDS}" -noout -in "${download}/server.crt"
 [[ "$(openssl x509 -pubkey -noout -in "${download}/server.crt")" == "$(openssl pkey -pubout -in "${download}/server.key")" ]] \
     || { echo "The downloaded certificate and key do not match" >&2; exit 1; }

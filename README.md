@@ -196,57 +196,53 @@ memory.
 
 ## Database
 
-[database.retrospeedlab.com](https://database.retrospeedlab.com) serves Apache Superset's SQL Lab and dashboards on
-the lake, for the maintainer only.
+Apache Superset serves SQL Lab and dashboards on the lake, for the maintainer only and on the home LAN only.
 
 ```mermaid
 flowchart LR
-    browser[Browser] -->|HTTPS| proxy[retro-speedlab-database on Main]
-    proxy -->|reverse SSH tunnel| superset[retro-speedlab-superset on Home Lab]
-    superset -->|PyHive| thrift[retro-speedlab-thrift on Home Lab]
+    browser[Browser on the LAN] -->|HTTPS| nginx[nginx on Home Lab]
+    nginx --> superset[retro-speedlab-superset]
+    superset -->|PyHive| thrift[retro-speedlab-thrift]
     thrift -->|s3a, read-only key| lake[(Garage lake)]
     thrift -->|read-only mount| bronze[(Bronze Delta)]
 ```
 
 - `retro-speedlab-thrift` runs the Spark Thrift Server with Delta and registers every catalog table as
   `<layer>.<table>` at start and every hour. Only Superset can reach it.
-- `retro-speedlab-superset` listens on localhost only and is reached through a reverse SSH tunnel to Main, held by a
-  systemd service. The tunnel's user has no shell, and its key may only open the owner tools' remote forwards
-  (`database/tunnel/sshd.conf`).
-- Superset has no login of its own: it signs in the user the owner sign-in names in `X-Gate-User`
-  (`AUTH_REMOTE_USER`), and only the owner's account exists. Self-registration is off and the public role has no
-  permissions.
+- Superset signs in with its own database login. Its only admin, `owner`, gets the password in
+  `SUPERSET_ADMIN_PASSWORD` at every start (`database/superset/owner.py`). Self-registration is off and the public role
+  has no permissions.
 - The lake connection forbids DML, CTAS and file uploads. Every start imports the cockpit's dashboards, defined in
   `database/superset/dashboards.py`.
 - Every registered table is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
   refreshes their columns at start and every hour.
 
-## Owner tools
+## Owner tools on the LAN
 
-GrowthBook and Listmonk run on the Home Lab and reach the web the same way as Superset: each listens on localhost, the
-database tunnel forwards its port to Main's docker bridge, and a socat proxy on Main (`database/proxy`, its target
-port in `TUNNEL_PORT`) serves its domain with TLS from Let's Encrypt.
+Superset and GrowthBook run on the Home Lab and are reachable from the home LAN only, under their own names with TLS.
 
-| URL | Home Lab apps | Main proxy | Tunnel port |
-|-----|---------------|------------|-------------|
-| [growthbook.retrospeedlab.com](https://growthbook.retrospeedlab.com) | `retro-speedlab-growthbook`, `retro-speedlab-growthbook-mongo` | `retro-speedlab-growthbook-ui` | 18089 |
-| [growthbook-api.retrospeedlab.com](https://growthbook-api.retrospeedlab.com) | `retro-speedlab-growthbook` | `retro-speedlab-growthbook-api` | 18090 |
-| [newsletter.retrospeedlab.com](https://newsletter.retrospeedlab.com) | `retro-speedlab-listmonk`, `retro-speedlab-listmonk-postgres` | `retro-speedlab-newsletter` | 18091 |
+| Name | Tool | Login |
+|------|------|-------|
+| `database` | Superset | `owner`, password in `SUPERSET_ADMIN_PASSWORD` |
+| `growthbook` | GrowthBook | `owner@retrospeedlab.com`, password in `GROWTHBOOK_ADMIN_PASSWORD` |
+| `growthbook-api` | GrowthBook's API and SDK endpoint | |
 
-- Images are pinned by version and digest in `dokku/growthbook-setup.sh`, `dokku/newsletter-setup.sh` and
-  `database/listmonk/Dockerfile`; data lives in `/mnt/fastdata/growthbook` and `/mnt/fastdata/newsletter`.
-- Every password and key is generated on the server once and kept only in the apps' dokku config.
-- GrowthBook's setup creates its only admin, `owner@retrospeedlab.com`, and the API proxy refuses `/auth/register` and
-  `/auth/firsttime` (`gate/apps/retro-speedlab-growthbook-api.conf`), so nobody else can sign up. A second account
-  needs that block lifted while an invite is accepted.
-- Listmonk creates its admin `owner` on first start. Sending is not configured until an SMTP provider is chosen.
-
-Read the admin passwords with `ssh dokku-black-omen config:get retro-speedlab-growthbook GROWTHBOOK_ADMIN_PASSWORD`
-and `ssh dokku-black-omen config:get retro-speedlab-listmonk LISTMONK_ADMIN_PASSWORD`.
+- Every tool publishes its port on localhost only. nginx on the Home Lab serves the names on the LAN address only
+  (`lan/tools.conf`), and the firewall opens HTTP and HTTPS on the LAN interface only. The LAN's DNS points the names
+  at the Home Lab; outside the LAN they reach Main, which answers only Let's Encrypt challenges for them.
+- One Let's Encrypt certificate covers the names. A placeholder app on Main holds them, so the certificate renews there
+  over HTTP-01. The Home Lab fetches it daily with a key that may only read that certificate (`lan/pull-certs.sh`),
+  checks that it is valid and matches its key, and reloads nginx.
+- Main answers names it does not serve with nothing (`lan/main-default.conf`), never with another app.
+- Images are pinned by version and digest in `dokku/growthbook-setup.sh`.
+- Every password and key is generated on the server once and kept only in the apps' dokku config, readable with
+  `config:get`.
+- GrowthBook's setup creates its only admin, and nginx refuses `/auth/register` and `/auth/firsttime` on the API, so
+  nobody else can sign up. A second account needs that block lifted while an invite is accepted.
 
 ## Owner sign-in
 
-Every owner tool signs in through one Discord sign-in at [sso.retrospeedlab.com](https://sso.retrospeedlab.com),
+Every owner tool on Main signs in through one Discord sign-in at [sso.retrospeedlab.com](https://sso.retrospeedlab.com),
 served by the backend. nginx on Main asks the backend's `/check` before each request to a tool (`auth_request`); a
 stranger goes to the sign-in page, through Discord and back to the tool. Only the owner's Discord account gets a
 session: a signed, HttpOnly cookie for the whole domain, valid 30 days and renewed on use. A tool on another domain
@@ -254,9 +250,6 @@ takes the session over with a one-minute ticket at `/_gate/adopt`.
 
 | Tool | Sign-in behind the gate | Public without the gate |
 |------|-------------------------|-------------------------|
-| Superset | trusts `X-Gate-User` | `/health` for the monitor |
-| GrowthBook | its own login, 30-day refresh cookie | the SDK and REST API under `/api/` |
-| Listmonk | the gate signs in as `owner` at `/admin/login`; the session lasts 7 days and renews silently | subscription, archive, link and campaign pages, `/api/public/` |
 | Bugsink | trusts `X-Gate-User` (`gate/bugsink`, set by `DJANGO_SETTINGS_MODULE=gate.settings`) | ingest and the token API under `/api/` |
 | Uptime Kuma | its own auth is off | status pages, push and badge URLs and their assets |
 | Umami | the gate signs in at `/login` and hands the token to the browser | `script.js` and the API under `/api/` |
@@ -300,9 +293,9 @@ stream triggers, sources and the Thrift Server. Secrets come from the environmen
 | `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; the Thrift Server holds its own read-only pair |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
 | `SUPERSET_SECRET_KEY` | Superset's session key |
+| `SUPERSET_ADMIN_PASSWORD` | Superset's `owner` login |
 
-`dokku/sources.sh` copies the sources' credentials from the backend's and the runner's config, and
-`dokku/database-setup.sh` copies the Discord app's, without printing them.
+`dokku/sources.sh` copies the sources' credentials from the backend's and the runner's config without printing them.
 
 ## Deploy
 
@@ -317,16 +310,15 @@ ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
 bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
-bash dokku/database-setup.sh  # once: the Thrift Server, Superset and the proxy on Main with TLS
-bash dokku/database-tunnel.sh # the tunnel's user, key, sshd block, firewall rules and service
-bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB, both proxies and the admin; rerun after a pin bump
-bash dokku/newsletter-setup.sh # Listmonk, its Postgres and the proxy; rerun after a pin bump
-bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool; rerun after a tool's proxy changes
+bash dokku/database-setup.sh  # once: the Thrift Server and Superset
+bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB and the admin; rerun after a pin bump
+bash dokku/lan-setup.sh       # the LAN proxy, its certificate and Main's default site; safe to rerun
+bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main
 bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse retro-speedlab-thrift
 ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml
-bash dokku/database-deploy.sh # the Thrift Server, Superset and the proxy
+bash dokku/database-deploy.sh # the Thrift Server and Superset
 bash dokku/hosts-setup.sh     # once: the collector app on both servers, after the topics exist
 bash dokku/hosts-deploy.sh    # the collectors
 ```

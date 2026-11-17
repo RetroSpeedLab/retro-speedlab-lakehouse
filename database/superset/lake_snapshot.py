@@ -20,10 +20,10 @@ SECRET = (
 )
 SERVING_TABLES = f"SELECT \"table\" FROM delta_scan('{BUCKET}/gold/platform_tables') WHERE store = 'lake'"
 COMMITS = "main.commits"
-MEMORY_LIMIT = "512MB"
+MEMORY_LIMIT = "768MB"
 SPILL = "/tmp/lake-snapshot"
-READ_THREADS = 16
-COPIES = 8
+READ_THREADS = 8
+COPIES = 4
 REFRESH_SECONDS = 30
 
 
@@ -36,6 +36,7 @@ def connect() -> duckdb.DuckDBPyConnection:
             "threads": READ_THREADS,
             "enable_http_metadata_cache": True,
             "enable_external_file_cache": False,
+            "preserve_insertion_order": False,
         }
     )
     secret = {"key_id": os.environ["LAKE_ACCESS_KEY_ID"], "secret": os.environ["LAKE_SECRET_ACCESS_KEY"]}

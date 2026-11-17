@@ -373,18 +373,36 @@ SOURCE_NUMBERS = lake_table(
         ("computed_at", TIMESTAMP),
     ),
 )
-GAME_PLAYS = lake_table(
+PLAY_COLUMNS = (
+    ("game", STRING),
+    ("mode", STRING),
+    ("window", STRING),
+    ("started", BIGINT),
+    ("won", BIGINT),
+    ("measured_at", TIMESTAMP),
+    ("computed_at", TIMESTAMP),
+)
+GAME_PLAYS = lake_table("gold", "game_plays", PLAY_COLUMNS)
+ITCH_PLAYS = lake_table("gold", "itch_plays", PLAY_COLUMNS)
+ITCH_DAILY = lake_table(
     "gold",
-    "game_plays",
+    "itch_daily",
     (
         ("game", STRING),
-        ("mode", STRING),
-        ("window", STRING),
-        ("started", BIGINT),
+        ("date", DATE),
+        ("views", BIGINT),
+        ("campaign", BIGINT),
+        ("endless", BIGINT),
+        ("cleared", BIGINT),
         ("won", BIGINT),
         ("measured_at", TIMESTAMP),
         ("computed_at", TIMESTAMP),
     ),
+)
+ITCH_VISITS = lake_table(
+    "silver",
+    "itch_daily",
+    (("date", DATE), ("pageviews", BIGINT), ("visitors", BIGINT), ("measured_at", TIMESTAMP)),
 )
 COMMUNITY_DAILY = lake_table(
     "silver",

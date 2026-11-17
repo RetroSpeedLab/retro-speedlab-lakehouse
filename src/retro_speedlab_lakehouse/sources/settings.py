@@ -37,6 +37,7 @@ class UmamiSettings(SourceSettings):
     password: str
     website: str
     games_website: str
+    itch_website: str
     dropoff_since: datetime
 
 
@@ -68,7 +69,7 @@ class Sources(SourceSettings):
 
 
 def load_sources(
-    github: GithubSettings, uptime: UptimeSettings, games_website: str, dropoff_since: datetime
+    github: GithubSettings, uptime: UptimeSettings, games_website: str, itch_website: str, dropoff_since: datetime
 ) -> Sources:
     return Sources(
         github=github,
@@ -85,6 +86,7 @@ def load_sources(
             password=secret("UMAMI_PASSWORD"),
             website=secret("UMAMI_WEBSITE_ID"),
             games_website=games_website,
+            itch_website=itch_website,
             dropoff_since=dropoff_since,
         ),
         langfuse=LangfuseSettings(

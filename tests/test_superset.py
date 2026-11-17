@@ -28,7 +28,7 @@ from retro_speedlab_lakehouse.lake.catalog import Layer
 from retro_speedlab_lakehouse.promotion.roi import PROMOTION
 from retro_speedlab_lakehouse.quality.gate import REPORT
 from retro_speedlab_lakehouse.sources.bronze import RECORD
-from retro_speedlab_lakehouse.sources.silver import NUMBER, langfuse_daily, newest
+from retro_speedlab_lakehouse.sources.silver import DAILY_COST, ITCH_DAY, NUMBER, daily, newest
 from retro_speedlab_lakehouse.stream import rows, search_rows
 from retro_speedlab_lakehouse.stream.status import STATUS
 
@@ -82,7 +82,8 @@ def code_tables(spark: SparkSession) -> dict[str, DataFrame]:
         "live.host_metrics": rows.host_status(backend),
         "silver.host_metrics": rows.host_history(backend),
         "silver.lab_runs": rows.lab_runs(backend),
-        "silver.langfuse_daily": langfuse_daily(records),
+        "silver.langfuse_daily": daily(records, DAILY_COST),
+        "silver.itch_daily": daily(records, ITCH_DAY),
         "gold.source_numbers": newest(records, "numbers", NUMBER).withColumn("computed_at", F.lit(NOW)),
         "gold.platform_jobs": spark.createDataFrame([], JOB_RUN),
         "gold.platform_tables": spark.createDataFrame([], TABLE_STATS),

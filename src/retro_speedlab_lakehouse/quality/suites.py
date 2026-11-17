@@ -52,8 +52,12 @@ from retro_speedlab_lakehouse.lake.catalog import (
 from retro_speedlab_lakehouse.sources.catalog import (
     GAME_PLAYS,
     HUMAN_DROPOFF,
+    ITCH_DAILY,
+    ITCH_PLAYS,
     LANGFUSE_DAILY,
     SILVER_DROPOFF,
+    SILVER_ITCH_DAILY,
+    SILVER_ITCH_PLAYS,
     SILVER_LAB_COSTS,
     SILVER_NUMBERS,
     SILVER_PLAYS,
@@ -198,11 +202,24 @@ CHECKS: dict[Table, list[Check]] = {
     ],
     SILVER_NUMBERS: [*keyed(SILVER_NUMBERS), *present("label", "value", "unit", "window", "measured_at")],
     SOURCE_NUMBERS: [*keyed(SOURCE_NUMBERS), *present("label", "value", "unit", "window", "computed_at")],
-    SILVER_PLAYS: [
-        *keyed(SILVER_PLAYS),
-        AllowedValues("mode", PLAY_MODES),
-        AllowedValues("window", PLAY_WINDOWS),
-        *present("started", "won", "measured_at"),
+    **{
+        table: [
+            *keyed(table),
+            AllowedValues("mode", PLAY_MODES),
+            AllowedValues("window", PLAY_WINDOWS),
+            *present("started", "won", "measured_at"),
+        ]
+        for table in (SILVER_PLAYS, SILVER_ITCH_PLAYS)
+    },
+    SILVER_ITCH_DAILY: [
+        *keyed(SILVER_ITCH_DAILY),
+        *present("views", "campaign", "endless", "cleared", "won", "measured_at"),
+        *at_least_zero("pageviews", "visitors"),
+    ],
+    ITCH_DAILY: [
+        *keyed(ITCH_DAILY),
+        *at_least_zero("views", "campaign", "endless", "cleared", "won"),
+        *present("measured_at", "computed_at"),
     ],
     COCKPIT_DAYS: [*keyed(COCKPIT_DAYS), *present("day", "computed_at"), InRange("days_ago", min_value=0)],
     SEARCH_HOURS: [
@@ -211,13 +228,16 @@ CHECKS: dict[Table, list[Check]] = {
     ],
     AUDIENCE_HOURS: [*keyed(AUDIENCE_HOURS), *at_least_zero("viewers_peak", "live_minutes", "chat_messages")],
     LANGFUSE_DAILY: [*keyed(LANGFUSE_DAILY), *at_least_zero("observations", "tokens", "cost_usd")],
-    GAME_PLAYS: [
-        *keyed(GAME_PLAYS),
-        AllowedValues("mode", PLAY_MODES),
-        AllowedValues("window", PLAY_WINDOWS),
-        *at_least_zero("started", "won"),
-        *present("started", "won", "measured_at", "computed_at"),
-    ],
+    **{
+        table: [
+            *keyed(table),
+            AllowedValues("mode", PLAY_MODES),
+            AllowedValues("window", PLAY_WINDOWS),
+            *at_least_zero("started", "won"),
+            *present("started", "won", "measured_at", "computed_at"),
+        ]
+        for table in (GAME_PLAYS, ITCH_PLAYS)
+    },
     SILVER_DROPOFF: [*keyed(SILVER_DROPOFF), *present("ended", "won", "since", "measured_at"), *at_least_zero("won")],
     HUMAN_DROPOFF: [
         *keyed(HUMAN_DROPOFF),

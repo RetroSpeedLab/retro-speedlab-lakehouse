@@ -113,6 +113,7 @@ sources:
     page: retrospeedlab
   umami:
     games_website: 5a373581-adde-48eb-a9d1-dd4955f108a7
+    itch_website: 9f79bbcd-8016-43c5-958a-589d149354b5
     dropoff_since: 2026-11-16T10:00:00Z
 
 thrift:

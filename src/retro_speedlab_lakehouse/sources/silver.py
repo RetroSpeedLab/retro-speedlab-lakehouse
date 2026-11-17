@@ -20,6 +20,8 @@ from retro_speedlab_lakehouse.sources.bronze import latest
 from retro_speedlab_lakehouse.sources.catalog import (
     LANGFUSE_DAILY,
     SILVER_DROPOFF,
+    SILVER_ITCH_DAILY,
+    SILVER_ITCH_PLAYS,
     SILVER_LAB_COSTS,
     SILVER_NUMBERS,
     SILVER_PLAYS,
@@ -61,6 +63,18 @@ DROPOFF_COUNTS = StructType(
         StructField("since", TimestampType(), False),
     ]
 )
+ITCH_DAY = StructType(
+    [
+        StructField("date", DateType(), False),
+        StructField("pageviews", LongType(), False),
+        StructField("visitors", LongType(), False),
+        StructField("views", COUNTS, False),
+        StructField("campaign", COUNTS, False),
+        StructField("endless", COUNTS, False),
+        StructField("cleared", COUNTS, False),
+        StructField("won", COUNTS, False),
+    ]
+)
 LAB_COST = StructType(
     [
         StructField("stamp", StringType(), False),
@@ -81,8 +95,12 @@ def newest(records: DataFrame, stream: str, schema: StructType) -> DataFrame:
     )
 
 
-def langfuse_daily(days: DataFrame) -> DataFrame:
-    return days.select(F.from_json("body", DAILY_COST).alias("day"), F.col("fetched_at").alias("measured_at")).select(
+def plays_of(records: DataFrame, source: str) -> DataFrame:
+    return newest(records.where(F.col("source") == source), PLAYS, MODE_PLAYS).drop("source")
+
+
+def daily(days: DataFrame, schema: StructType) -> DataFrame:
+    return days.select(F.from_json("body", schema).alias("day"), F.col("fetched_at").alias("measured_at")).select(
         "day.*", "measured_at"
     )
 
@@ -93,10 +111,12 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
     records = read(spark, SOURCES, lake)
     streams = [
         (SILVER_NUMBERS, newest(records, NUMBERS, NUMBER)),
-        (SILVER_PLAYS, newest(records, PLAYS, MODE_PLAYS).drop("source")),
+        (SILVER_PLAYS, plays_of(records, "umami")),
+        (SILVER_ITCH_PLAYS, plays_of(records, "itch")),
         (SILVER_DROPOFF, newest(records, DROPOFF, DROPOFF_COUNTS).drop("source")),
         (SILVER_LAB_COSTS, newest(records, LAB_COSTS, LAB_COST).drop("source")),
-        (LANGFUSE_DAILY, langfuse_daily(latest(spark, lake, "langfuse", DAILY))),
+        (LANGFUSE_DAILY, daily(latest(spark, lake, "langfuse", DAILY), DAILY_COST)),
+        (SILVER_ITCH_DAILY, daily(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
     ]
     for table, rows in streams:
         replace(table, lake, rows, gate)

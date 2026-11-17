@@ -78,6 +78,7 @@ def source_settings() -> Sources:
             password="password",
             website="site",
             games_website="games",
+            itch_website="itch",
             dropoff_since=DROPOFF_SINCE,
         ),
         langfuse=LangfuseSettings(url="https://langfuse.test", public_key="public", secret_key="secret"),

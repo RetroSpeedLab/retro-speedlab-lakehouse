@@ -3,21 +3,28 @@ from datetime import datetime, timedelta
 from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 
-from retro_speedlab_lakehouse.lake.catalog import GAMES, SPLIT_COMPARISON
+from retro_speedlab_lakehouse.lake.catalog import GAMES, SPLIT_COMPARISON, Table
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import replace
+from retro_speedlab_lakehouse.lake.write import replace, replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 from retro_speedlab_lakehouse.sources.catalog import (
     GAME_PLAYS,
     HUMAN_DROPOFF,
+    ITCH_DAILY,
+    ITCH_PLAYS,
     SILVER_DROPOFF,
+    SILVER_ITCH_DAILY,
+    SILVER_ITCH_PLAYS,
     SILVER_NUMBERS,
     SILVER_PLAYS,
     SOURCE_NUMBERS,
 )
 
 FRESH = timedelta(days=2)
+PLAY_DIMENSIONS = ("mode", "window")
+PLAY_COUNTS = ("started", "won")
+ITCH_COUNTS = ("views", "campaign", "endless", "cleared", "won")
 NO_SPLITS = "game string, level_index int, level string, human_median_frames long, ai_frames long, humans long"
 
 
@@ -34,17 +41,34 @@ def build_numbers_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now:
     return numbers.count()
 
 
-def build_plays_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
-    if not exists(spark, SILVER_PLAYS, lake) or not exists(spark, GAMES, lake):
+def build_per_game(
+    spark: SparkSession,
+    lake: LakeSettings,
+    gate: Gate,
+    now: datetime,
+    tables: tuple[Table, Table],
+    dimensions: tuple[str, ...],
+    counts: tuple[str, ...],
+) -> int:
+    silver, gold = tables
+    if not exists(spark, silver, lake) or not exists(spark, GAMES, lake):
         return 0
     games = read(spark, GAMES, lake).select(F.col("slug").alias("game"))
-    plays = (
-        games.crossJoin(read(spark, SILVER_PLAYS, lake))
-        .select("game", "mode", "window", count_of("started"), count_of("won"), "measured_at")
+    rows = (
+        games.crossJoin(read(spark, silver, lake))
+        .select("game", *dimensions, *(count_of(column) for column in counts), "measured_at")
         .withColumn("computed_at", F.lit(now))
     )
-    replace(GAME_PLAYS, lake, plays, gate)
-    return plays.count()
+    return replace_counted(gold, lake, rows, gate)
+
+
+def build_plays_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
+    plays = ((SILVER_PLAYS, GAME_PLAYS), (SILVER_ITCH_PLAYS, ITCH_PLAYS))
+    return sum(build_per_game(spark, lake, gate, now, tables, PLAY_DIMENSIONS, PLAY_COUNTS) for tables in plays)
+
+
+def build_itch_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
+    return build_per_game(spark, lake, gate, now, (SILVER_ITCH_DAILY, ITCH_DAILY), ("date",), ITCH_COUNTS)
 
 
 def ended_levels(dropoff: DataFrame) -> DataFrame:
@@ -95,5 +119,5 @@ def build_dropoff_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now:
 
 
 def build_source_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
-    built = (build_numbers_gold, build_plays_gold, build_dropoff_gold)
+    built = (build_numbers_gold, build_plays_gold, build_itch_gold, build_dropoff_gold)
     return sum(build(spark, lake, gate, now) for build in built)

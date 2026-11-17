@@ -12,6 +12,9 @@ from datasets import (
     HEALTH,
     HOST_METRICS,
     HOSTS,
+    ITCH_DAILY,
+    ITCH_PLAYS,
+    ITCH_VISITS,
     LAB_EXPERIMENTS,
     LAB_OUTCOMES,
     LAB_ROI,
@@ -355,7 +358,7 @@ AUDIENCE = Dashboard(
                         (),
                         ("`window` = 'last_week'",),
                     ),
-                    numbers_table("Site and channel numbers", "'umami', 'twitch', 'discord'"),
+                    numbers_table("Site and channel numbers", "'umami', 'itch', 'twitch', 'discord'"),
                 ),
                 charts(
                     columns_over_time(
@@ -363,6 +366,35 @@ AUDIENCE = Dashboard(
                     ),
                     columns_over_time(
                         COMMUNITY_DAILY, "Discord joins per day", "date", "P1D", "SUM(discord_joins)", (), ()
+                    ),
+                ),
+            ),
+        ),
+        Section(
+            "LAB24 on itch.io",
+            (
+                tiles(
+                    source_tile("itch.io visitors, 7 days", "itch", "visitors"),
+                    source_tile("itch.io game starts, 7 days", "itch", "game_plays"),
+                    source_tile("itch.io campaigns won, 7 days", "itch", "game_wins"),
+                ),
+                charts(
+                    ranked(
+                        ITCH_PLAYS,
+                        "itch.io game starts per game, 7 days",
+                        "game",
+                        "SUM(started)",
+                        (),
+                        ("`window` = 'last_week'",),
+                    ),
+                    columns_over_time(
+                        ITCH_DAILY, "itch.io game starts per day", "date", "P1D", "SUM(campaign + endless)", (), ()
+                    ),
+                ),
+                charts(
+                    columns_over_time(ITCH_VISITS, "itch.io visitors per day", "date", "P1D", "SUM(visitors)", (), ()),
+                    columns_over_time(
+                        ITCH_DAILY, "itch.io levels cleared per day", "date", "P1D", "SUM(cleared)", (), ()
                     ),
                 ),
             ),

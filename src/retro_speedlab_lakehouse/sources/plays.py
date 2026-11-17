@@ -50,6 +50,6 @@ def mode_plays(session: httpx.Client, website: str, mode: str, window: str, now:
     return ModePlays(mode, window, counts["started"], counts["won"])
 
 
-def umami_plays(settings: UmamiSettings, now: datetime) -> list[ModePlays]:
+def umami_plays(settings: UmamiSettings, website: str, now: datetime) -> list[ModePlays]:
     with signed_in(settings) as session:
-        return [mode_plays(session, settings.games_website, mode, window, now) for mode in MODES for window in WINDOWS]
+        return [mode_plays(session, website, mode, window, now) for mode in MODES for window in WINDOWS]

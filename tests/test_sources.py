@@ -9,12 +9,13 @@ from retro_speedlab_lakehouse.lake.catalog import GAMES, SOURCES_STATUS
 from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
-from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, SOURCE_NUMBERS, SOURCE_TABLES
+from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS, SOURCE_TABLES
+from retro_speedlab_lakehouse.sources.itch import itch_days
 from retro_speedlab_lakehouse.sources.job import SourcesFailed, ingest_sources
 from retro_speedlab_lakehouse.sources.number import Number
 from retro_speedlab_lakehouse.sources.plays import umami_plays
 from retro_speedlab_lakehouse.sources.record import SnapshotSource
-from retro_speedlab_lakehouse.sources.registry import NUMBERS, PLAYS
+from retro_speedlab_lakehouse.sources.registry import DAILY, NUMBERS, PLAYS
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
 
 NOW = datetime(2026, 11, 15, 12, 0, tzinfo=UTC)
@@ -37,7 +38,13 @@ PER_GAME = {
     "campaign-started": [{"value": "comet_courier", "total": 3}],
     "campaign-won": [{"value": "comet_courier", "total": 1}],
     "endless-started": [{"value": "comet_courier", "total": 2}],
+    "level-cleared": [{"value": "comet_courier", "total": 4}],
 }
+PATHS = [
+    {"x": "/html/123/index.html", "y": 5},
+    {"x": "/html/123/comet_courier/index.html", "y": 2},
+    {"x": "/html/124/comet_courier/index.html#again", "y": 1},
+]
 COLLECTION = [("comet_courier", 1, "Comet Courier", "1.2.0"), ("blinkwisp", 2, "Blinkwisp", "1.2.1")]
 
 
@@ -84,7 +91,7 @@ def test_human_plays_reach_gold_for_every_game_mode_and_window(spark: SparkSessi
     append_rows(
         GAMES, settings.lake, spark.createDataFrame(COLLECTION, "slug string, number int, title string, version string")
     )
-    plays = SnapshotSource("umami", PLAYS, lambda now: umami_plays(settings.sources.umami, now))
+    plays = SnapshotSource("umami", PLAYS, lambda now: umami_plays(settings.sources.umami, "games", now))
     ingest_sources(spark, settings.lake, Gate("sources"), [plays], NOW)
     rows = read(spark, GAME_PLAYS, settings.lake).collect()
     counted = {(row["game"], row["mode"], row["window"]): (row["started"], row["won"]) for row in rows}
@@ -92,3 +99,22 @@ def test_human_plays_reach_gold_for_every_game_mode_and_window(spark: SparkSessi
     assert counted[("comet_courier", "campaign", "all_time")] == (3, 1)
     assert counted[("comet_courier", "endless", "last_day")] == (2, 0)
     assert counted[("blinkwisp", "campaign", "last_week")] == (0, 0)
+
+
+@respx.mock
+def test_itch_days_reach_gold_per_game_and_day(spark: SparkSession, settings: Settings) -> None:
+    respx.post(f"{UMAMI}/auth/login").respond(json={"token": "token"})
+    respx.get(f"{UMAMI}/websites/itch/stats").respond(json={"pageviews": 8, "visitors": 3})
+    respx.get(f"{UMAMI}/websites/itch/metrics").respond(json=PATHS)
+    respx.get(f"{UMAMI}/websites/itch/event-data/values").mock(side_effect=per_game)
+    append_rows(
+        GAMES, settings.lake, spark.createDataFrame(COLLECTION, "slug string, number int, title string, version string")
+    )
+    days = SnapshotSource("itch", DAILY, lambda now: itch_days(settings.sources.umami, now))
+    ingest_sources(spark, settings.lake, Gate("sources"), [days], NOW)
+    rows = read(spark, ITCH_DAILY, settings.lake).collect()
+    counted = {(row["game"], row["date"].isoformat()): (row["views"], row["campaign"], row["cleared"]) for row in rows}
+    assert len(counted) == len(COLLECTION) * 2
+    today = datetime.now(UTC).date()
+    assert counted[("comet_courier", today.isoformat())] == (3, 3, 4)
+    assert counted[("blinkwisp", (today - timedelta(days=1)).isoformat())] == (0, 0, 0)

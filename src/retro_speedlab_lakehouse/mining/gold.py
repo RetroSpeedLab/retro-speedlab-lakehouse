@@ -98,6 +98,7 @@ def won_runs(events: DataFrame) -> DataFrame:
     return runs.select(
         F.col("key").alias("game"),
         F.col("event_at").alias("at"),
+        field("game.version").alias("version"),
         field("frames").cast("long").alias("frames"),
         field("frame_rate").cast("double").alias("frame_rate"),
         F.from_json(field("splits"), ArrayType(SPLIT)).alias("splits"),
@@ -110,8 +111,7 @@ def changed(rows: DataFrame, keys: list[str], value: str) -> DataFrame:
     return marked.where(F.col("before").isNull() | (F.col("before") != F.col(value))).drop("before")
 
 
-def level_history(events: DataFrame) -> DataFrame:
-    runs = won_runs(events)
+def level_history(runs: DataFrame) -> DataFrame:
     splits = runs.select("game", "at", "frame_rate", "levels", F.explode("splits").alias("split"))
     levels = splits.where(F.exists("levels", lambda level: level["name"] == F.col("split.level")))
     rows = levels.select(

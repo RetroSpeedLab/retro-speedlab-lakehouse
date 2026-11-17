@@ -15,7 +15,7 @@ from retro_speedlab_lakehouse.batch.api import GAMES as GAMES_ENDPOINT
 from retro_speedlab_lakehouse.batch.api import HOURLY_GAME_ENDPOINTS
 from retro_speedlab_lakehouse.lake.catalog import API, GAME_RUNS, GAMES, HISTORY, KNOWLEDGE, LAB_PROGRESS, SPLITS
 from retro_speedlab_lakehouse.lake.tables import exists, read
-from retro_speedlab_lakehouse.lake.write import merge, replace
+from retro_speedlab_lakehouse.lake.write import insert_new, replace
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 
@@ -94,14 +94,17 @@ def splits(runs: DataFrame) -> DataFrame:
     ordered = rows.join(levels, ["game", "level"]).withColumn(
         "position", F.row_number().over(Window.partitionBy("game").orderBy("seconds"))
     )
-    frame_rates = runs.select("game", F.get_json_object("payload", "$.frame_rate").cast("double").alias("frame_rate"))
+    frame_rates = runs.select(
+        "game", "version", F.get_json_object("payload", "$.frame_rate").cast("double").alias("frame_rate")
+    )
     return ordered.join(frame_rates, "game").withColumn(
         "frames", F.round(F.col("level_seconds") * F.col("frame_rate")).cast("long")
     )
 
 
 def history(runs: DataFrame) -> DataFrame:
-    return payload(runs, "history", ArrayType(POINT)).select("game", "item.at", "item.seconds").distinct()
+    points = payload(runs, "history", ArrayType(POINT)).select("game", "item.at", "item.seconds")
+    return points.join(runs.select("game", "version"), "game").distinct()
 
 
 def knowledge(runs: DataFrame) -> DataFrame:
@@ -132,6 +135,6 @@ def build_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> int:
             replace(table, lake, rows, gate)
             written += rows.count()
         points = history(runs)
-        merge(HISTORY, lake, points, gate)
+        insert_new(HISTORY, lake, points, gate)
         written += points.count()
     return written

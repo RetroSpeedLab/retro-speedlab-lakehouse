@@ -3,9 +3,11 @@ from datetime import datetime, timedelta
 from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 
+from retro_speedlab_lakehouse.batch.major import current_major
 from retro_speedlab_lakehouse.lake.catalog import (
     GAME_RUNS,
     GAME_SUMMARY,
+    GAMES,
     HISTORY,
     IMPROVEMENT,
     LAB_OUTCOMES,
@@ -14,6 +16,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     RECORDS_DAILY,
     RUN_VERSIONS,
     SPLITS,
+    Table,
 )
 from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.time_travel import as_of
@@ -125,15 +128,20 @@ def with_yesterday(summary: DataFrame, yesterday: DataFrame | None) -> DataFrame
 
 
 def build_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
-    costs = level_costs(read(spark, SPLITS, lake))
-    history = read(spark, HISTORY, lake)
+    games = read(spark, GAMES, lake)
+
+    def current(table: Table) -> DataFrame:
+        return current_major(read(spark, table, lake), "version", games)
+
+    costs = level_costs(current(SPLITS))
+    history = current(HISTORY)
     lab_runs = read(spark, LAB_RUNS, lake)
-    summary = game_summary(read(spark, GAME_RUNS, lake), costs, history, lab_runs)
+    summary = game_summary(current(GAME_RUNS), costs, history, lab_runs)
     yesterday = as_of(spark, GAME_SUMMARY, lake, now - DAY) if exists(spark, GAME_SUMMARY, lake) else None
     tables = [
         (LEVEL_COSTS, costs),
         (IMPROVEMENT, improvement_curve(history)),
-        (RECORDS_DAILY, records_daily(read(spark, RUN_VERSIONS, lake))),
+        (RECORDS_DAILY, records_daily(current(RUN_VERSIONS))),
         (LAB_OUTCOMES, lab_outcomes(lab_runs)),
         (GAME_SUMMARY, with_yesterday(summary, yesterday).withColumn("computed_at", F.lit(now))),
     ]

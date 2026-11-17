@@ -32,6 +32,10 @@ def merge(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> None
     merging(table, lake, rows, gate).whenMatchedUpdateAll().whenNotMatchedInsertAll().execute()
 
 
+def insert_new(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> None:
+    merging(table, lake, rows, gate).whenNotMatchedInsertAll().execute()
+
+
 def merge_newer(table: Table, lake: LakeSettings, rows: DataFrame, gate: Gate) -> None:
     newer = f"source.`{EVENT_ID}` > target.`{EVENT_ID}`"
     merging(table, lake, rows, gate).whenMatchedUpdateAll(condition=newer).whenNotMatchedInsertAll().execute()

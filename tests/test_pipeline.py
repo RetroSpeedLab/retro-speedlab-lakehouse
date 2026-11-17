@@ -48,6 +48,11 @@ def run(seconds: float, won: bool) -> dict[str, Any]:
     return {**speedrun, "seconds": seconds, "won": won, "updated_at": START.isoformat()}
 
 
+def old_major_run(seconds: float) -> dict[str, Any]:
+    speedrun = run(seconds, True)
+    return {**speedrun, "game": {**speedrun["game"], "version": "0.9.0"}}
+
+
 def events() -> list[dict[str, Any]]:
     lab_run = fixture("lab-runs.json")[0]
     report = {
@@ -88,16 +93,16 @@ def api_snapshots(spark: SparkSession, settings: Settings) -> None:
     append(API, settings.lake, snapshots, Gate("test"))
 
 
-def stream_events(spark: SparkSession, settings: Settings) -> None:
+def stream_events(spark: SparkSession, settings: Settings, streamed: list[dict[str, Any]]) -> None:
     ensure_served(spark, settings)
-    parsed = rows.parsed(kafka_rows(spark, events()))
+    parsed = rows.parsed(kafka_rows(spark, streamed))
     entities_batch(settings, Gate("entities"), parsed, 0)
     entities_batch(settings, Gate("entities"), parsed, 0)
     live_batch(settings, StreamStatus(settings, Gate("live")), parsed.where("topic = 'runs.live'"))
 
 
 def test_stream_serves_the_newest_live_run_and_keeps_every_event(spark: SparkSession, settings: Settings) -> None:
-    stream_events(spark, settings)
+    stream_events(spark, settings, events())
     live = read(spark, LIVE_RUN, settings.lake).collect()
     assert [(row["slot"], row["game"], row["event_id"]) for row in live] == [("live", "comet_courier", 6)]
     assert json.loads(live[0]["payload"])["seconds"] == 144.0
@@ -115,14 +120,14 @@ def test_stream_serves_the_newest_live_run_and_keeps_every_event(spark: SparkSes
 
 
 def test_an_older_event_never_replaces_a_newer_run(spark: SparkSession, settings: Settings) -> None:
-    stream_events(spark, settings)
+    stream_events(spark, settings, events())
     older = rows.parsed(kafka_rows(spark, [event(2, "runs.live", "comet_courier", run(200.0, False), START)]))
     live_batch(settings, StreamStatus(settings, Gate("live")), older)
     assert read(spark, LIVE_RUN, settings.lake).first()["event_id"] == 6  # type: ignore[index]
 
 
 def test_silver_and_gold_answer_the_questions(spark: SparkSession, settings: Settings) -> None:
-    stream_events(spark, settings)
+    stream_events(spark, settings, events())
     api_snapshots(spark, settings)
     build_silver(spark, settings.lake, Gate("silver"))
     assert read(spark, GAMES, settings.lake).count() == len(fixture("games.json"))
@@ -141,8 +146,18 @@ def test_silver_and_gold_answer_the_questions(spark: SparkSession, settings: Set
     assert [(row["record_seconds"], row["saved_seconds"]) for row in records] == [(144.0, 0.0)]
 
 
+def test_gold_shows_only_the_current_major(spark: SparkSession, settings: Settings) -> None:
+    stream_events(spark, settings, [event(0, "runs.snapshots", "comet_courier", old_major_run(90.0), START), *events()])
+    api_snapshots(spark, settings)
+    build_silver(spark, settings.lake, Gate("silver"))
+    build_gold(spark, settings.lake, Gate("gold"), START + timedelta(hours=1))
+    assert read(spark, RUN_VERSIONS, settings.lake).count() == 4
+    records = read(spark, RECORDS_DAILY, settings.lake).collect()
+    assert [row["record_seconds"] for row in records] == [144.0]
+
+
 def test_platform_measures_tables_and_records_jobs(spark: SparkSession, settings: Settings) -> None:
-    stream_events(spark, settings)
+    stream_events(spark, settings, events())
     gate = Gate("platform")
     record_job(spark, settings.lake, gate, JobRun("hourly", "run-1", "silver", START, START, "success", 3, None))
     build_platform(spark, CORE_TABLES, settings.lake, gate, START)

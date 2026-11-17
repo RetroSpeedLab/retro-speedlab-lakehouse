@@ -1,7 +1,6 @@
 from pyspark.sql import Column, DataFrame, Window
 from pyspark.sql import functions as F
 
-from retro_speedlab_lakehouse.mining.gold import won_runs
 from retro_speedlab_lakehouse.mining.verify import AI, AI_NAME, HUMAN, NO_INPUTS, REJECTED, UNSERVED, VERIFIED
 from retro_speedlab_lakehouse.stream.rows import HIGHSCORES_TOPIC, field
 
@@ -16,7 +15,7 @@ def improvements(rows: DataFrame, keys: list[str]) -> DataFrame:
     return marked.where(F.col("best_before").isNull() | (F.col("frames") < F.col("best_before"))).drop("best_before")
 
 
-def board_history(events: DataFrame) -> DataFrame:
+def board_history(events: DataFrame, won: DataFrame) -> DataFrame:
     humans = events.where(F.col("topic") == HIGHSCORES_TOPIC).select(
         field("game").alias("game"),
         field("version").alias("version"),
@@ -25,9 +24,9 @@ def board_history(events: DataFrame) -> DataFrame:
         F.to_timestamp(field("set_at")).alias("at"),
         field("frames").cast("long").alias("frames"),
     )
-    ai = won_runs(events).select(
+    ai = won.select(
         "game",
-        F.lit(None).cast("string").alias("version"),
+        "version",
         F.lit(AI).alias("side"),
         F.lit(AI_NAME).alias("holder"),
         "at",

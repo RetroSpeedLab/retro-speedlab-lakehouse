@@ -4,7 +4,7 @@ from typing import Any
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
-from retro_speedlab_lakehouse.mining.gold import level_segments, mining_summary, ram_heatmap
+from retro_speedlab_lakehouse.mining.gold import level_segments, mining_summary, ram_heatmap, won_runs
 from retro_speedlab_lakehouse.mining.humans import board_history, split_comparison
 from retro_speedlab_lakehouse.mining.records import FRAME, PIECE, piece_rows
 from retro_speedlab_lakehouse.mining.verify import SPLIT, splits_of
@@ -60,7 +60,8 @@ def test_wide_ram_values_fold_into_bins(spark: SparkSession) -> None:
 def test_the_board_keeps_only_improvements(spark: SparkSession) -> None:
     scores = [(1, 9000, "2026-11-15T10:00:00Z"), (2, 9500, "2026-11-15T11:00:00Z"), (3, 8000, "2026-11-15T12:00:00Z")]
     events = [event(index, TOPIC, str(index), score(index, frames, at), MINED_AT) for index, frames, at in scores]
-    history = board_history(parsed(kafka_rows(spark, events))).orderBy("at").collect()
+    parsed_events = parsed(kafka_rows(spark, events))
+    history = board_history(parsed_events, won_runs(parsed_events)).orderBy("at").collect()
     assert [row["frames"] for row in history] == [9000, 8000]
 
 

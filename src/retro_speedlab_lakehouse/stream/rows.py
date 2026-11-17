@@ -127,6 +127,7 @@ def run_columns(events: DataFrame) -> DataFrame:
         "event_id",
         "event_at",
         field("game.title").alias("title"),
+        field("game.version").alias("version"),
         field("won").cast("boolean").alias("won"),
         field("seconds").cast("double").alias("seconds"),
         field("frames").cast("long").alias("frames"),

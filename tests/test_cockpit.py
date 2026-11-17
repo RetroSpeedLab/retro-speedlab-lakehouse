@@ -124,6 +124,14 @@ def test_langfuse_costs_are_loaded_per_utc_day() -> None:
     assert (queries[0]["fromTimestamp"], queries[0]["toTimestamp"]) == ("2026-11-16T00:00:00Z", "2026-11-16T12:30:00Z")
 
 
+@respx.mock
+def test_a_langfuse_day_without_priced_observations_costs_nothing() -> None:
+    unpriced = {"data": [{"count_count": 2, "sum_totalTokens": None, "sum_totalCost": None}]}
+    respx.get("https://langfuse.test/api/public/v2/metrics").mock(return_value=httpx.Response(200, json=unpriced))
+    day = langfuse_days(source_settings().langfuse, NOW)[0]
+    assert day.record.body == {"date": "2026-11-16", "observations": 2, "tokens": 0, "cost_usd": 0.0}
+
+
 class TaskInstance:
     dag_id = "lakehouse_hourly"
     task_id = "gold"
@@ -141,3 +149,4 @@ def test_a_failed_task_reports_its_error() -> None:
         "tries": 2,
         "error": "gold.game_summary failed",
     }
+

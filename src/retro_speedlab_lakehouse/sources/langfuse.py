@@ -54,6 +54,10 @@ def stamp(moment: datetime) -> str:
     return moment.isoformat().replace("+00:00", "Z")
 
 
+def total(value: float | str | None) -> float:
+    return 0.0 if value is None else float(value)
+
+
 def measured(settings: LangfuseSettings, query: dict[str, Any]) -> list[dict[str, Any]]:
     auth = (settings.public_key, settings.secret_key)
     with httpx.Client(base_url=settings.url, auth=auth, timeout=TIMEOUT_SECONDS) as session:
@@ -76,14 +80,15 @@ def langfuse_numbers(settings: LangfuseSettings, now: datetime) -> list[Number]:
     week = totals(settings, now - WEEK, now)
     return [
         Number("observations", "Traced steps", week["count_count"], "", WINDOW),
-        Number("tokens", "Tokens", week["sum_totalTokens"], "", WINDOW),
-        Number("cost", "Model cost", round(week["sum_totalCost"], 2), "USD", WINDOW),
+        Number("tokens", "Tokens", int(total(week["sum_totalTokens"])), "", WINDOW),
+        Number("cost", "Model cost", round(total(week["sum_totalCost"]), 2), "USD", WINDOW),
     ]
 
 
 def daily_cost(settings: LangfuseSettings, start: datetime, now: datetime) -> DailyCost:
     day = totals(settings, start, min(start + DAY, now))
-    return DailyCost(start.date(), int(day["count_count"]), int(day["sum_totalTokens"]), float(day["sum_totalCost"]))
+    tokens = int(total(day["sum_totalTokens"]))
+    return DailyCost(start.date(), int(day["count_count"]), tokens, total(day["sum_totalCost"]))
 
 
 def langfuse_days(settings: LangfuseSettings, now: datetime) -> list[DailyCost]:
@@ -107,8 +112,8 @@ def langfuse_lab_costs(settings: LangfuseSettings, now: datetime) -> list[LabCos
         LabCost(
             row["sessionId"].removeprefix(LAB_SESSION),
             int(row["count_count"]),
-            int(row["sum_totalTokens"]),
-            float(row["sum_totalCost"]),
+            int(total(row["sum_totalTokens"])),
+            total(row["sum_totalCost"]),
         )
         for row in sessions
     ]

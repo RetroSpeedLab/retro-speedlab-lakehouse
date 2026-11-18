@@ -12,6 +12,8 @@ SILVER_DROPOFF = table(Layer.SILVER, "game_dropoff", ("game",))
 HUMAN_DROPOFF = table(Layer.GOLD, "human_dropoff", ("game", "level_index"))
 SILVER_LAB_COSTS = table(Layer.SILVER, "lab_costs", ("stamp",))
 LANGFUSE_DAILY = table(Layer.SILVER, "langfuse_daily", ("date",))
+SILVER_BLUESKY_POSTS = table(Layer.SILVER, "bluesky_posts", ("uri", "measured_at"))
+BLUESKY_POSTS = table(Layer.GOLD, "bluesky_posts", ("uri",))
 SOURCE_TABLES: tuple[Table, ...] = (
     SILVER_NUMBERS,
     SOURCE_NUMBERS,
@@ -25,4 +27,6 @@ SOURCE_TABLES: tuple[Table, ...] = (
     HUMAN_DROPOFF,
     SILVER_LAB_COSTS,
     LANGFUSE_DAILY,
+    SILVER_BLUESKY_POSTS,
+    BLUESKY_POSTS,
 )

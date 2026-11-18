@@ -56,6 +56,10 @@ class BugsinkSettings(SourceSettings):
     token: str
 
 
+class BlueskySettings(SourceSettings):
+    handle: str
+
+
 class Sources(SourceSettings):
     github: GithubSettings
     uptime: UptimeSettings
@@ -65,10 +69,16 @@ class Sources(SourceSettings):
     langfuse: LangfuseSettings
     wandb: WandbSettings
     bugsink: BugsinkSettings
+    bluesky: BlueskySettings
 
 
 def load_sources(
-    github: GithubSettings, uptime: UptimeSettings, games_website: str, itch_website: str, dropoff_since: datetime
+    github: GithubSettings,
+    uptime: UptimeSettings,
+    bluesky: BlueskySettings,
+    games_website: str,
+    itch_website: str,
+    dropoff_since: datetime,
 ) -> Sources:
     return Sources(
         github=github,
@@ -95,4 +105,5 @@ def load_sources(
         ),
         wandb=WandbSettings(api_key=secret("WANDB_API_KEY"), project=secret("WANDB_PROJECT")),
         bugsink=BugsinkSettings(url=secret("BUGSINK_API_BASE"), token=secret("BUGSINK_API_TOKEN")),
+        bluesky=bluesky,
     )

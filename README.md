@@ -69,6 +69,7 @@ are readable only by Superset.
 | `silver.itch_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of game starts and campaign wins per game in the LAB24 pack on itch.io |
 | `silver.itch_daily` | `sources-hourly`, `sources-nightly` | `date` | The itch.io pack's page views and visitors per UTC day, with views, starts, levels cleared and wins per game |
 | `silver.game_dropoff` | `sources-hourly`, `sources-nightly` | `game` | Umami's campaign runs that ended without a win, per level, and the wins since tracking began |
+| `silver.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri`, `measured_at` | Every load's likes, reposts, replies and quotes of each of the Bluesky account's own posts, so the counts keep their history |
 | `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | Langfuse's traced steps, tokens and model cost of every lab run's session |
 | `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Human highscore runs and the AI's newest records replayed through the served game's verifier |
 | `gold.game_summary` | `gold` | `game` | Record, levels cleared, seconds saved, costliest level, lab runs, change since yesterday |
@@ -80,7 +81,7 @@ are readable only by Superset.
 | `gold.lab_roi` | `experiments` | `game`, `stamp` | Every lab run's Langfuse cost, the frames its change saved with an interval, frames per dollar, running totals and the early harm flag |
 | `gold.promotion_roi` | `gold` | `channel`, `variant` | Claude cost, views, likes and follows of the published drafts, with views and likes per dollar and their intervals |
 | `silver.promotion_decisions` | `gold` | `draft` | Every approved or rejected promotion draft: network, kind, game, variant, text, when, and its length, numbers, opening and tone |
-| `gold.promotion_preferences` | `gold` | `channel`, `feature`, `value` | The maintainer's approval rate per network and kind, variant and text feature, with counts and a 90% interval |
+| `gold.promotion_preferences` | `gold` | `channel`, `feature`, `value` | The maintainer's approval rate per network and kind, variant and text feature, with counts and a 90% interval, and the Bluesky interactions per post at 24 h |
 | `gold.search_allocation` | `search-allocation` | `game`, `role` | The search bandit's recommended share of workers per kind |
 | `gold.search_bandit` | `search-bandit` | `metric` | Bandit turns against held-out static turns |
 | `silver.engagement_events` | `engagement-hourly` | `surface`, `item`, `arm`, `hour` | Exposures and outcomes per item: views and clicks from Umami, stream minutes with the chat they overlapped, promotion posts with their interactions |
@@ -92,6 +93,7 @@ are readable only by Superset.
 | `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
 | `gold.itch_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Starts and campaign wins of every game in the itch.io pack, served on the highscore boards |
 | `gold.itch_daily` | `sources-hourly`, `sources-nightly` | `game`, `date` | Views, starts, levels cleared and campaign wins of every game in the itch.io pack per UTC day |
+| `gold.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri` | Each of the account's Bluesky posts: text, when, its newest likes, reposts, replies and quotes, and its interactions at 24 h |
 | `gold.human_dropoff` | `sources-hourly`, `sources-nightly` | `game`, `level_index` | Per level the campaign runs that reached it, the share that ended there, and the humans' median time against the AI's split |
 | `gold.level_segments`, `gold.mining_summary`, `gold.level_history` | `mining-gold` | `game` | Frames per level and piece of the newest record, and every change of a level's frames |
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
@@ -117,7 +119,8 @@ The sources jobs load only aggregated, public, non-personal numbers, never a mes
 Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (including the game site's starts,
 campaign wins and the level where a campaign run ends without a win per game, the itch.io pack's views, visitors, starts,
 levels cleared and wins per game and day, and hourly the engagement events),
-Langfuse (including the cost of every lab run's session), W&B, Bugsink and GitHub. Each source loads on its own; one
+Langfuse (including the cost of every lab run's session), W&B, Bugsink, GitHub and Bluesky (the account's own public
+posts with their likes, reposts, replies and quotes, from the public AppView). Each source loads on its own; one
 that fails keeps the others and fails the job afterwards.
 
 ## Lab experiments
@@ -185,7 +188,9 @@ The promotion drafts also learn what the maintainer approves. Every approved or 
 `network:variant` of `promotion_variants`, Beta over decisions with approvals as the outcome, so the backend favours
 the variant that gets approved while the floor and the holdout keep trying the other. `gold.promotion_preferences`
 shows the approval rate per kind, variant, opening, tone, length and count of numbers with its counts and interval,
-in the Audience dashboard's "Your promotion picks".
+in the Audience dashboard's "Your promotion picks". Beside each rate stand the Bluesky interactions per post at 24 h
+of the drafts that went out, linked by the post in the draft's URL, so a kind or tone that gets approved but draws
+nobody shows up there.
 
 `engagement-nightly` compares adaptive with holdout per surface, the site A/B tests per goal rate and the stream A/B
 tests per 30-minute block on viewers, chat messages per minute and follows per hour, with experimentation-toolkit, an
@@ -299,7 +304,7 @@ Five Superset dashboards hold the owner's numbers, every one from the lake and n
 | Cockpit | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members and the Claude cost of the last full day. Then the return on cost: the lab's frames saved per Claude dollar, the promotion's views per Claude dollar, the search's frames saved per CPU-hour and the lab changes flagged as harmful |
 | Return on cost | The lab's frames saved per Claude dollar per game and per run, with intervals and harm flags; the promotion's views and likes per Claude dollar per network and variant, with intervals; the search's frames saved per CPU-hour per worker kind and per game |
 | Search and AI | Records per game, frames saved per hour and per game, the bandit's shares and its holdout, PPO reward and loss, the policy now, lab runs and their experiments |
-| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, the itch.io pack per game and day, Discord activity, the engagement ranking and the A/B results |
+| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, the itch.io pack per game and day, Discord activity, the promotion picks with the Bluesky interactions per post, the engagement ranking and the A/B results |
 | Platform and cost | Stream lag, Airflow runs and failures, average job minutes, source loads, failed quality gates, disk, memory and load per server, the largest tables, the Claude cost per day, errors and uptime |
 
 The heavy numbers come from the hourly `cockpit` job, so a dashboard reads small gold tables; health reads the `live`

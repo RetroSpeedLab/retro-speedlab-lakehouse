@@ -10,6 +10,7 @@ from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.promotion.preferences import build_promotion_preferences, promotion_decisions
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
+from retro_speedlab_lakehouse.sources.catalog import BLUESKY_POSTS
 from retro_speedlab_lakehouse.stream import rows
 
 from .conftest import event, kafka_rows
@@ -22,6 +23,7 @@ DRAFTS = [
     ("lab", "bluesky", 0, {"text": "A lab run moved the search 3.5 s on!"}, "approved"),
     ("record", "youtube", 0, {"title": "8.6 s gone from Stage 5", "hook": "8.6 s gone"}, "failed"),
 ]
+POSTED = "https://bsky.app/profile/retrospeedlab.bsky.social/post/3m5a"
 
 
 def promotion_events() -> list[dict[str, Any]]:
@@ -29,7 +31,8 @@ def promotion_events() -> list[dict[str, Any]]:
     for draft, (kind, channel, variant, copy, status) in enumerate(DRAFTS):
         drafted = {"id": draft, "event": f"{kind}:{draft}", "kind": kind, "game": "comet_courier", "channel": channel}
         drafted |= {"variant": variant, "copy": copy, "status": "pending", "decided": None}
-        decided = {**drafted, "status": status, "decided": DECIDED.isoformat()}
+        url = POSTED if status == "published" else None
+        decided = {**drafted, "status": status, "decided": DECIDED.isoformat(), "url": url}
         found += [
             event(draft * 10 + 1, "promotion.drafts", str(draft), drafted, NOW - timedelta(hours=3)),
             event(draft * 10 + 2, "promotion.drafts", str(draft), decided, DECIDED),
@@ -77,6 +80,23 @@ def test_preferences_count_every_decision_so_small_samples_stay_visible(
     assert found[("bluesky", "variant", "1")]["decisions"] == 1
     assert found[("bluesky", "numbers", "3+")]["approved"] == 1
     assert found[("youtube", "length", "under 120")]["decisions"] == 1
+    assert (everything["posts"], everything["engagement"], everything["engagement_per_post"]) == (0, 0, None)
+
+
+def test_bluesky_engagement_at_a_day_joins_the_decision_of_its_post(spark: SparkSession, settings: Settings) -> None:
+    append_rows(EVENTS, settings.lake, bronze(spark))
+    posts = spark.createDataFrame([("3m5a", 7), ("3m5b", 40), ("3m5c", None)], "post string, engagement_24h long")
+    append_rows(BLUESKY_POSTS, settings.lake, posts)
+
+    build_promotion_preferences(spark, settings.lake, Gate("gold"), NOW)
+
+    found = {
+        (row["feature"], row["value"]): (row["posts"], row["engagement"], row["engagement_per_post"])
+        for row in read(spark, PROMOTION_PREFERENCES, settings.lake).where("channel = 'bluesky'").collect()
+    }
+    assert found[("all", "all")] == (1, 7, 7.0)
+    assert found[("kind", "record")] == (1, 7, 7.0)
+    assert found[("kind", "lab")] == (0, 0, None)
 
 
 def test_decisions_rank_each_networks_variants_by_approval(spark: SparkSession) -> None:

@@ -371,6 +371,7 @@ PROMOTION_DECISIONS = lake_table(
         ("numbers", INTEGER),
         ("opening", VARCHAR),
         ("tone", VARCHAR),
+        ("url", VARCHAR),
     ),
 )
 PROMOTION_PREFERENCES = lake_table(
@@ -386,6 +387,27 @@ PROMOTION_PREFERENCES = lake_table(
         ("approval_rate", DOUBLE),
         ("lower", DOUBLE),
         ("upper", DOUBLE),
+        ("posts", BIGINT),
+        ("engagement", BIGINT),
+        ("engagement_per_post", DOUBLE),
+        ("computed_at", TIMESTAMPTZ),
+    ),
+)
+BLUESKY_POSTS = lake_table(
+    "gold",
+    "bluesky_posts",
+    (
+        ("uri", VARCHAR),
+        ("post", VARCHAR),
+        ("text", VARCHAR),
+        ("created_at", TIMESTAMPTZ),
+        ("likes", BIGINT),
+        ("reposts", BIGINT),
+        ("replies", BIGINT),
+        ("quotes", BIGINT),
+        ("engagement", BIGINT),
+        ("engagement_24h", BIGINT),
+        ("measured_at", TIMESTAMPTZ),
         ("computed_at", TIMESTAMPTZ),
     ),
 )

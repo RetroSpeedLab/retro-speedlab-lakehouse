@@ -9,10 +9,12 @@ from retro_speedlab_lakehouse.lake.write import replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 from retro_speedlab_lakehouse.sources.catalog import (
+    BLUESKY_POSTS,
     GAME_PLAYS,
     HUMAN_DROPOFF,
     ITCH_DAILY,
     ITCH_PLAYS,
+    SILVER_BLUESKY_POSTS,
     SILVER_DROPOFF,
     SILVER_ITCH_DAILY,
     SILVER_ITCH_PLAYS,
@@ -25,6 +27,9 @@ FRESH = timedelta(days=2)
 PLAY_DIMENSIONS = ("mode", "window")
 PLAY_COUNTS = ("started", "won")
 ITCH_COUNTS = ("views", "campaign", "endless", "cleared", "won")
+DAY_SECONDS = 24 * 3600
+DAY_TOLERANCE_SECONDS = 6 * 3600
+INTERACTIONS = ("likes", "reposts", "replies", "quotes")
 NO_SPLITS = "game string, level_index int, level string, human_median_frames long, ai_frames long, humans long"
 
 
@@ -116,6 +121,38 @@ def build_dropoff_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now:
     return replace_counted(HUMAN_DROPOFF, lake, dropoff, gate)
 
 
+def engagement_at_a_day(history: DataFrame) -> DataFrame:
+    age = F.col("measured_at").cast("long") - F.col("created_at").cast("long")
+    at_a_day = history.where(age.between(DAY_SECONDS, DAY_SECONDS + DAY_TOLERANCE_SECONDS))
+    return at_a_day.groupBy("uri").agg(F.min_by("engagement", "measured_at").alias("engagement_24h"))
+
+
+def bluesky_posts(history: DataFrame, now: datetime) -> DataFrame:
+    engaged = history.withColumn("engagement", F.col("likes") + F.col("reposts") + F.col("replies") + F.col("quotes"))
+    newest = engaged.groupBy("uri").agg(F.max("measured_at").alias("measured_at"))
+    return (
+        engaged.join(newest, ["uri", "measured_at"])
+        .join(engagement_at_a_day(engaged), "uri", "left")
+        .select(
+            "uri",
+            F.element_at(F.split("uri", "/"), -1).alias("post"),
+            "text",
+            "created_at",
+            *INTERACTIONS,
+            "engagement",
+            "engagement_24h",
+            "measured_at",
+            F.lit(now).alias("computed_at"),
+        )
+    )
+
+
+def build_bluesky_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
+    if not exists(spark, SILVER_BLUESKY_POSTS, lake):
+        return 0
+    return replace_counted(BLUESKY_POSTS, lake, bluesky_posts(read(spark, SILVER_BLUESKY_POSTS, lake), now), gate)
+
+
 def build_source_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
-    built = (build_numbers_gold, build_plays_gold, build_itch_gold, build_dropoff_gold)
+    built = (build_numbers_gold, build_plays_gold, build_itch_gold, build_dropoff_gold, build_bluesky_gold)
     return sum(build(spark, lake, gate, now) for build in built)

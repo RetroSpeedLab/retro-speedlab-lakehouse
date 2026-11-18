@@ -6,7 +6,13 @@ from box import Box
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveFloat, PositiveInt
 
 from retro_speedlab_lakehouse.environment import secret
-from retro_speedlab_lakehouse.sources.settings import GithubSettings, Sources, UptimeSettings, load_sources
+from retro_speedlab_lakehouse.sources.settings import (
+    BlueskySettings,
+    GithubSettings,
+    Sources,
+    UptimeSettings,
+    load_sources,
+)
 
 
 class Frozen(BaseModel):
@@ -183,6 +189,7 @@ def load_settings(config: Path) -> Settings:
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),
+            BlueskySettings(**document.sources.bluesky.to_dict()),
             document.sources.umami.games_website,
             document.sources.umami.itch_website,
             document.sources.umami.dropoff_since,

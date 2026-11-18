@@ -135,6 +135,8 @@ sources:
   uptime:
     url: https://uptime.datenwissenschaften.com
     page: retrospeedlab
+  bluesky:
+    handle: retrospeedlab.bsky.social
   umami:
     games_website: 5a373581-adde-48eb-a9d1-dd4955f108a7
     itch_website: 9f79bbcd-8016-43c5-958a-589d149354b5

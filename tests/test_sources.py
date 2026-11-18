@@ -1,5 +1,6 @@
 import time
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import httpx
 import pytest
@@ -10,14 +11,16 @@ from retro_speedlab_lakehouse.lake.catalog import GAMES, SOURCES_STATUS
 from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
-from retro_speedlab_lakehouse.sources.catalog import GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS
+from retro_speedlab_lakehouse.sources.bluesky import bluesky_posts
+from retro_speedlab_lakehouse.sources.catalog import BLUESKY_POSTS, GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS
+from retro_speedlab_lakehouse.sources.gold import bluesky_posts as posts_gold
 from retro_speedlab_lakehouse.sources.http import ATTEMPTS, get_json
 from retro_speedlab_lakehouse.sources.itch import itch_days
 from retro_speedlab_lakehouse.sources.job import SourcesFailed, ingest_sources
 from retro_speedlab_lakehouse.sources.number import Number
 from retro_speedlab_lakehouse.sources.plays import umami_plays
 from retro_speedlab_lakehouse.sources.record import SnapshotSource
-from retro_speedlab_lakehouse.sources.registry import DAILY, NUMBERS, PLAYS, hourly_sources, nightly_sources
+from retro_speedlab_lakehouse.sources.registry import DAILY, NUMBERS, PLAYS, POSTS, hourly_sources, nightly_sources
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
 
 NOW = datetime(2026, 11, 15, 12, 0, tzinfo=UTC)
@@ -47,6 +50,25 @@ PATHS = [
     {"x": "/html/123/comet_courier/index.html", "y": 2},
     {"x": "/html/124/comet_courier/index.html#again", "y": 1},
 ]
+FEED = "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed"
+CREATED = datetime(2026, 11, 14, 12, 0, tzinfo=UTC)
+
+
+def feed_post(key: str, likes: int, created: str) -> dict[str, Any]:
+    record = {"text": f"Post {key}", "createdAt": created}
+    counts = {"likeCount": likes, "repostCount": 1, "replyCount": 2, "quoteCount": 3}
+    return {"post": {"uri": f"at://did:plc:lab/app.bsky.feed.post/{key}", "record": record, **counts}}
+
+
+def feed(request: httpx.Request) -> httpx.Response:
+    if "cursor" not in request.url.params:
+        shared = {**feed_post("other", 99, "2026-11-13T09:00:00Z"), "reason": {"$type": "reasonRepost"}}
+        return httpx.Response(
+            200, json={"feed": [feed_post("3m5a", 4, "2026-11-14T12:00:00.000Z"), shared], "cursor": "c"}
+        )
+    return httpx.Response(200, json={"feed": [feed_post("3m5b", 0, "2026-11-14T10:30:00Z")]})
+
+
 COLLECTION = [("comet_courier", 1, "Comet Courier", "1.2.0"), ("blinkwisp", 2, "Blinkwisp", "1.2.1")]
 
 
@@ -165,3 +187,31 @@ def test_langfuse_is_asked_twice_an_hour_and_ten_times_a_night(settings: Setting
             if source.name == "langfuse":
                 source.fetch(None, NOW)
         assert route.call_count == calls
+
+
+@respx.mock
+def test_bluesky_keeps_the_accounts_own_posts_of_every_page(spark: SparkSession, settings: Settings) -> None:
+    route = respx.get(FEED).mock(side_effect=feed)
+    posts = SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(settings.sources.bluesky))
+    ingest_sources(spark, settings.lake, Gate("sources"), [posts], NOW)
+    rows = {row["post"]: row for row in read(spark, BLUESKY_POSTS, settings.lake).collect()}
+    assert sorted(rows) == ["3m5a", "3m5b"]
+    assert (rows["3m5a"]["text"], rows["3m5a"]["likes"], rows["3m5a"]["engagement"]) == ("Post 3m5a", 4, 10)
+    assert route.calls[0].request.url.params["actor"] == "retrospeedlab.bsky.social"
+    assert route.calls[1].request.url.params["cursor"] == "c"
+
+
+def test_bluesky_engagement_at_a_day_is_the_first_count_after_24_hours(spark: SparkSession) -> None:
+    measured = [(2, 23), (5, 25), (9, 27), (30, 200)]
+    history = spark.createDataFrame(
+        [
+            ("at://lab/post/a", "A", CREATED, likes, 0, 0, 0, CREATED + timedelta(hours=hours))
+            for likes, hours in measured
+        ]
+        + [("at://lab/post/b", "B", CREATED, 6, 0, 0, 0, CREATED + timedelta(hours=40))],
+        "uri string, text string, created_at timestamp, likes long, reposts long, replies long, quotes long, "
+        "measured_at timestamp",
+    )
+    rows = {row["post"]: row for row in posts_gold(history, NOW).collect()}
+    assert (rows["a"]["likes"], rows["a"]["engagement_24h"]) == (30, 5)
+    assert (rows["b"]["likes"], rows["b"]["engagement_24h"]) == (6, None)

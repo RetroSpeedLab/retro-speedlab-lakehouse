@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from charts import Chart, columns_over_time, findings, headline, kpi, number, ranked, table, trend
 from datasets import (
     AUDIENCE_HOURS,
+    BLUESKY_POSTS,
     COCKPIT_DAYS,
     COCKPIT_FINDINGS,
     COCKPIT_SUMMARY,
@@ -55,6 +56,7 @@ SAVED_SINCE_FIRST_CLEAR = "saved_since_first_clear_seconds"
 LAB_PER_DOLLAR = "MAX(total_frames_per_dollar)"
 PROMOTION_PER_DOLLAR = "SUM(views) / NULLIF(SUM(cost_usd), 0)"
 APPROVAL_RATE = "SUM(approved) / SUM(decisions)"
+ENGAGEMENT_PER_POST = "SUM(engagement) / NULLIF(SUM(posts), 0)"
 LAB_RUN_PER_DOLLAR = "SUM(frames_saved) / NULLIF(SUM(cost_usd), 0)"
 SEARCH_PER_CPU_HOUR = "SUM(saved) / NULLIF(SUM(worker_seconds) / 3600, 0)"
 COMPARISON = ("control_n", "treatment_n", "control_estimate", "treatment_estimate", "effect", "ci_lower", "ci_upper")
@@ -416,6 +418,23 @@ AUDIENCE = Dashboard(
                         "Recent promotion decisions",
                         ("decided_at", "channel", "kind", "game", "variant", "approved", "text"),
                         "-decided_at",
+                        (),
+                    ),
+                ),
+                tables(
+                    ranked(
+                        PROMOTION_PREFERENCES,
+                        "Bluesky engagement per post by kind, first 24 h",
+                        "value",
+                        ENGAGEMENT_PER_POST,
+                        (),
+                        ("channel = 'bluesky'", "feature = 'kind'"),
+                    ),
+                    table(
+                        BLUESKY_POSTS,
+                        "Bluesky posts",
+                        ("created_at", "text", "likes", "reposts", "replies", "quotes", "engagement_24h"),
+                        "-created_at",
                         (),
                     ),
                 ),

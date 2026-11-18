@@ -72,6 +72,8 @@ HINTS = {
     "Approval rate by variant": "Drafting favours the variant with the longer bar, and still tries the other.",
     "Approval by text feature": "Trust a rate only when its interval is narrow; few decisions mean a wide one.",
     "Recent promotion decisions": "Your newest approvals and rejections, the examples the next drafts learn from.",
+    "Bluesky engagement per post by kind, first 24 h": "Long bars are the kinds that draw the most interactions.",
+    "Bluesky posts": "Each post's likes, reposts, replies and quotes now and at 24 h; copy what the top ones did.",
     "Engagement ranking": "Rank 1 per surface is the item to show first.",
     "A/B and holdout results": "Ship the winner of settled experiments; ignore unsettled ones.",
     "Twitch new followers per hour by category and title": "Stream the categories and titles with long bars.",

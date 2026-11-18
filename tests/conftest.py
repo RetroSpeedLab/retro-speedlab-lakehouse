@@ -26,6 +26,7 @@ from retro_speedlab_lakehouse.settings import (
     load_document,
 )
 from retro_speedlab_lakehouse.sources.settings import (
+    BlueskySettings,
     BugsinkSettings,
     DiscordSettings,
     GithubSettings,
@@ -88,6 +89,7 @@ def source_settings() -> Sources:
         langfuse=LangfuseSettings(url="https://langfuse.test", public_key="public", secret_key="secret"),
         wandb=WandbSettings(api_key="key", project="datenwissenschaften/retro-speedlab"),
         bugsink=BugsinkSettings(url="https://bugsink.test/api", token="token"),
+        bluesky=BlueskySettings(handle="retrospeedlab.bsky.social"),
     )
 
 

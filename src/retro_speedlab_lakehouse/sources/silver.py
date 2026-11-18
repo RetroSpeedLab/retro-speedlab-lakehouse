@@ -19,6 +19,7 @@ from retro_speedlab_lakehouse.settings import LakeSettings
 from retro_speedlab_lakehouse.sources.bronze import latest
 from retro_speedlab_lakehouse.sources.catalog import (
     LANGFUSE_DAILY,
+    SILVER_BLUESKY_POSTS,
     SILVER_DROPOFF,
     SILVER_ITCH_DAILY,
     SILVER_ITCH_PLAYS,
@@ -26,7 +27,7 @@ from retro_speedlab_lakehouse.sources.catalog import (
     SILVER_NUMBERS,
     SILVER_PLAYS,
 )
-from retro_speedlab_lakehouse.sources.registry import DAILY, DROPOFF, LAB_COSTS, NUMBERS, PLAYS
+from retro_speedlab_lakehouse.sources.registry import DAILY, DROPOFF, LAB_COSTS, NUMBERS, PLAYS, POSTS
 
 NUMBER = StructType(
     [
@@ -83,6 +84,17 @@ LAB_COST = StructType(
         StructField("cost_usd", DoubleType(), False),
     ]
 )
+BLUESKY_POST = StructType(
+    [
+        StructField("uri", StringType(), False),
+        StructField("text", StringType(), False),
+        StructField("created_at", TimestampType(), False),
+        StructField("likes", LongType(), False),
+        StructField("reposts", LongType(), False),
+        StructField("replies", LongType(), False),
+        StructField("quotes", LongType(), False),
+    ]
+)
 
 
 def newest(records: DataFrame, stream: str, schema: StructType) -> DataFrame:
@@ -99,10 +111,14 @@ def plays_of(records: DataFrame, source: str) -> DataFrame:
     return newest(records.where(F.col("source") == source), PLAYS, MODE_PLAYS).drop("source")
 
 
-def daily(days: DataFrame, schema: StructType) -> DataFrame:
-    return days.select(F.from_json("body", schema).alias("day"), F.col("fetched_at").alias("measured_at")).select(
-        "day.*", "measured_at"
+def parsed(records: DataFrame, schema: StructType) -> DataFrame:
+    return records.select(F.from_json("body", schema).alias("item"), F.col("fetched_at").alias("measured_at")).select(
+        "item.*", "measured_at"
     )
+
+
+def stream_of(records: DataFrame, source: str, stream: str) -> DataFrame:
+    return records.where((F.col("source") == source) & (F.col("stream") == stream))
 
 
 def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> int:
@@ -115,7 +131,8 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
         (SILVER_ITCH_PLAYS, plays_of(records, "itch")),
         (SILVER_DROPOFF, newest(records, DROPOFF, DROPOFF_COUNTS).drop("source")),
         (SILVER_LAB_COSTS, newest(records, LAB_COSTS, LAB_COST).drop("source")),
-        (LANGFUSE_DAILY, daily(latest(spark, lake, "langfuse", DAILY), DAILY_COST)),
-        (SILVER_ITCH_DAILY, daily(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
+        (LANGFUSE_DAILY, parsed(latest(spark, lake, "langfuse", DAILY), DAILY_COST)),
+        (SILVER_ITCH_DAILY, parsed(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
+        (SILVER_BLUESKY_POSTS, parsed(stream_of(records, "bluesky", POSTS), BLUESKY_POST)),
     ]
     return sum(replace_counted(table, lake, rows, gate) for table, rows in streams)

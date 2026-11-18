@@ -59,11 +59,13 @@ from retro_speedlab_lakehouse.lake.catalog import (
     Table,
 )
 from retro_speedlab_lakehouse.sources.catalog import (
+    BLUESKY_POSTS,
     GAME_PLAYS,
     HUMAN_DROPOFF,
     ITCH_DAILY,
     ITCH_PLAYS,
     LANGFUSE_DAILY,
+    SILVER_BLUESKY_POSTS,
     SILVER_DROPOFF,
     SILVER_ITCH_DAILY,
     SILVER_ITCH_PLAYS,
@@ -230,6 +232,16 @@ CHECKS: dict[Table, list[Check]] = {
         *at_least_zero("views", "campaign", "endless", "cleared", "won"),
         *present("measured_at", "computed_at"),
     ],
+    SILVER_BLUESKY_POSTS: [
+        *keyed(SILVER_BLUESKY_POSTS),
+        *present("text", "created_at"),
+        *at_least_zero("likes", "reposts", "replies", "quotes"),
+    ],
+    BLUESKY_POSTS: [
+        *keyed(BLUESKY_POSTS),
+        *present("post", "text", "created_at", "measured_at", "computed_at"),
+        *at_least_zero("likes", "reposts", "replies", "quotes", "engagement", "engagement_24h"),
+    ],
     COCKPIT_DAYS: [*keyed(COCKPIT_DAYS), *present("day", "computed_at"), InRange("days_ago", min_value=0)],
     SEARCH_HOURS: [
         *keyed(SEARCH_HOURS),
@@ -285,7 +297,7 @@ CHECKS: dict[Table, list[Check]] = {
     PROMOTION_PREFERENCES: [
         *keyed(PROMOTION_PREFERENCES),
         InRange("decisions", min_value=1),
-        *at_least_zero("approved", "rejected"),
+        *at_least_zero("approved", "rejected", "posts", "engagement", "engagement_per_post"),
         *(InRange(column, min_value=0, max_value=1) for column in ("approval_rate", "lower", "upper")),
         *present("computed_at"),
     ],

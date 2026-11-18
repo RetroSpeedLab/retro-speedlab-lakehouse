@@ -21,6 +21,7 @@ from retro_speedlab_lakehouse.sources.number import Number
 from retro_speedlab_lakehouse.sources.plays import umami_plays
 from retro_speedlab_lakehouse.sources.record import SnapshotSource
 from retro_speedlab_lakehouse.sources.registry import DAILY, NUMBERS, PLAYS, POSTS, hourly_sources, nightly_sources
+from retro_speedlab_lakehouse.sources.streamelements import streamelements_numbers
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
 
 NOW = datetime(2026, 11, 15, 12, 0, tzinfo=UTC)
@@ -223,3 +224,39 @@ def test_bluesky_engagement_at_a_day_is_the_first_count_after_24_hours(spark: Sp
     rows = {row["post"]: row for row in posts_gold(history, NOW).collect()}
     assert (rows["a"]["likes"], rows["a"]["engagement_24h"]) == (30, 5)
     assert (rows["b"]["likes"], rows["b"]["engagement_24h"]) == (6, None)
+
+
+@respx.mock
+def test_streamelements_counts_the_channel_and_the_human_chat(settings: Settings) -> None:
+    api = "https://api.streamelements.com/kappa/v2"
+    session = {
+        "follower-total": {"count": 39},
+        "follower-month": {"count": 3},
+        "subscriber-total": {"count": 0},
+        "tip-count": {"count": 2},
+        "tip-total": {"amount": 7.5},
+        "cheer-total": {"amount": 100},
+    }
+    chat = {
+        "chatters": [
+            {"name": "StreamElements", "amount": 90},
+            {"name": "ada", "amount": 8},
+            {"name": "bo", "amount": 2},
+        ],
+        "commands": [{"command": "!website", "amount": 7}, {"command": "!games", "amount": 1}],
+    }
+    respx.get(f"{api}/channels/me").respond(json={"_id": "c1"})
+    respx.get(f"{api}/sessions/c1").respond(json={"data": session})
+    respx.get(f"{api}/chatstats/retrospeedlab/stats").respond(json=chat)
+    numbers = {number.metric: number.value for number in streamelements_numbers(settings.sources.streamelements)}
+    assert numbers == {
+        "followers": 39,
+        "followers_month": 3,
+        "subscribers": 0,
+        "tips": 2,
+        "tip_amount": 7.5,
+        "cheers": 100,
+        "chat_messages": 10,
+        "chatters": 2,
+        "commands": 8,
+    }

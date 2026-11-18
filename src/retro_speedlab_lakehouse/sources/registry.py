@@ -8,6 +8,7 @@ from retro_speedlab_lakehouse.sources.langfuse import langfuse_days, langfuse_la
 from retro_speedlab_lakehouse.sources.plays import umami_plays
 from retro_speedlab_lakehouse.sources.record import SnapshotSource, Source
 from retro_speedlab_lakehouse.sources.settings import Sources
+from retro_speedlab_lakehouse.sources.streamelements import streamelements_numbers
 from retro_speedlab_lakehouse.sources.twitch import twitch_numbers
 from retro_speedlab_lakehouse.sources.umami import umami_numbers
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
@@ -39,6 +40,7 @@ def each_run_sources(sources: Sources) -> list[Source]:
         SnapshotSource("bugsink", NUMBERS, lambda now: bugsink_numbers(sources.bugsink)),
         SnapshotSource("bluesky", NUMBERS, lambda now: bluesky_numbers(sources.bluesky)),
         SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(sources.bluesky)),
+        SnapshotSource("streamelements", NUMBERS, lambda now: streamelements_numbers(sources.streamelements)),
     ]
 
 

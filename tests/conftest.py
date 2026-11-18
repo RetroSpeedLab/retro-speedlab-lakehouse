@@ -32,6 +32,7 @@ from retro_speedlab_lakehouse.sources.settings import (
     GithubSettings,
     LangfuseSettings,
     Sources,
+    StreamElementsSettings,
     TwitchSettings,
     UmamiSettings,
     UptimeSettings,
@@ -90,6 +91,9 @@ def source_settings() -> Sources:
         wandb=WandbSettings(api_key="key", project="datenwissenschaften/retro-speedlab"),
         bugsink=BugsinkSettings(url="https://bugsink.test/api", token="token"),
         bluesky=BlueskySettings(handle="retrospeedlab.bsky.social"),
+        streamelements=StreamElementsSettings(
+            token="token", channel="retrospeedlab", ignored=frozenset({"streamelements"})
+        ),
     )
 
 

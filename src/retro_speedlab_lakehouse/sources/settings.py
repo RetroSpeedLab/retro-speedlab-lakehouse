@@ -60,6 +60,12 @@ class BlueskySettings(SourceSettings):
     handle: str
 
 
+class StreamElementsSettings(SourceSettings):
+    token: str
+    channel: str
+    ignored: frozenset[str]
+
+
 class Sources(SourceSettings):
     github: GithubSettings
     uptime: UptimeSettings
@@ -70,12 +76,14 @@ class Sources(SourceSettings):
     wandb: WandbSettings
     bugsink: BugsinkSettings
     bluesky: BlueskySettings
+    streamelements: StreamElementsSettings
 
 
 def load_sources(
     github: GithubSettings,
     uptime: UptimeSettings,
     bluesky: BlueskySettings,
+    ignored_chatters: frozenset[str],
     games_website: str,
     itch_website: str,
     dropoff_since: datetime,
@@ -106,4 +114,7 @@ def load_sources(
         wandb=WandbSettings(api_key=secret("WANDB_API_KEY"), project=secret("WANDB_PROJECT")),
         bugsink=BugsinkSettings(url=secret("BUGSINK_API_BASE"), token=secret("BUGSINK_API_TOKEN")),
         bluesky=bluesky,
+        streamelements=StreamElementsSettings(
+            token=secret("STREAM_ELEMENTS_JWT"), channel=secret("TWITCH_CHANNEL").lower(), ignored=ignored_chatters
+        ),
     )

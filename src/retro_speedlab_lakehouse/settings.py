@@ -190,6 +190,7 @@ def load_settings(config: Path) -> Settings:
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),
             BlueskySettings(**document.sources.bluesky.to_dict()),
+            frozenset(document.chat.ignored),
             document.sources.umami.games_website,
             document.sources.umami.itch_website,
             document.sources.umami.dropoff_since,

@@ -11,7 +11,7 @@ from retro_speedlab_lakehouse.lake.catalog import GAMES, SOURCES_STATUS
 from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
-from retro_speedlab_lakehouse.sources.bluesky import bluesky_posts
+from retro_speedlab_lakehouse.sources.bluesky import bluesky_numbers, bluesky_posts
 from retro_speedlab_lakehouse.sources.catalog import BLUESKY_POSTS, GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS
 from retro_speedlab_lakehouse.sources.gold import bluesky_posts as posts_gold
 from retro_speedlab_lakehouse.sources.http import ATTEMPTS, get_json
@@ -199,6 +199,14 @@ def test_bluesky_keeps_the_accounts_own_posts_of_every_page(spark: SparkSession,
     assert (rows["3m5a"]["text"], rows["3m5a"]["likes"], rows["3m5a"]["engagement"]) == ("Post 3m5a", 4, 10)
     assert route.calls[0].request.url.params["actor"] == "retrospeedlab.bsky.social"
     assert route.calls[1].request.url.params["cursor"] == "c"
+
+
+@respx.mock
+def test_bluesky_counts_the_followers_and_the_likes_of_the_accounts_own_posts(settings: Settings) -> None:
+    respx.get("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile").respond(json={"followersCount": 12})
+    respx.get(FEED).mock(side_effect=feed)
+    numbers = {number.metric: number.value for number in bluesky_numbers(settings.sources.bluesky)}
+    assert numbers == {"followers": 12, "likes": 4}
 
 
 def test_bluesky_engagement_at_a_day_is_the_first_count_after_24_hours(spark: SparkSession) -> None:

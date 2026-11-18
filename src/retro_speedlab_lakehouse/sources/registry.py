@@ -1,4 +1,4 @@
-from retro_speedlab_lakehouse.sources.bluesky import bluesky_posts
+from retro_speedlab_lakehouse.sources.bluesky import bluesky_numbers, bluesky_posts
 from retro_speedlab_lakehouse.sources.bugsink import bugsink_numbers
 from retro_speedlab_lakehouse.sources.discord import discord_numbers
 from retro_speedlab_lakehouse.sources.dropoff import umami_dropoff
@@ -37,6 +37,7 @@ def each_run_sources(sources: Sources) -> list[Source]:
         SnapshotSource("langfuse", LAB_COSTS, lambda now: langfuse_lab_costs(sources.langfuse, now)),
         SnapshotSource("wandb", NUMBERS, lambda now: wandb_numbers(sources.wandb)),
         SnapshotSource("bugsink", NUMBERS, lambda now: bugsink_numbers(sources.bugsink)),
+        SnapshotSource("bluesky", NUMBERS, lambda now: bluesky_numbers(sources.bluesky)),
         SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(sources.bluesky)),
     ]
 

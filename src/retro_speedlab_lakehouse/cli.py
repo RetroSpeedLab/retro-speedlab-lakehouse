@@ -17,7 +17,7 @@ from retro_speedlab_lakehouse.settings import load_settings
 from retro_speedlab_lakehouse.spark.session import spark_session
 from retro_speedlab_lakehouse.stream.job import start
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 
 
 def stopping(name: str) -> threading.Event:

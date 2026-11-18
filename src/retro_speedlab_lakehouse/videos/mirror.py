@@ -1,6 +1,6 @@
 import hashlib
 from dataclasses import astuple, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
 
@@ -19,6 +19,7 @@ from retro_speedlab_lakehouse.sources.http import get_json
 
 SCREENS = ("movie", "compare", "run")
 TIMEOUT_SECONDS = 300.0
+BUDGET = timedelta(minutes=40)
 CHUNK = 1024 * 1024
 FILES = "videos"
 MP4 = ".mp4"
@@ -94,18 +95,27 @@ def known_versions(spark: SparkSession, settings: Settings) -> dict[tuple[str, s
     return {(row["game"], row["name"]): row["version"] for row in newest.collect()}
 
 
+def wanted(session: httpx.Client) -> list[tuple[str, str]]:
+    return [
+        (game["slug"], name) for game in get_json(session, "/games", {}) for name in video_names(session, game["slug"])
+    ]
+
+
 def mirror_videos(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     known = known_versions(spark, settings)
     root = Path(settings.lake.bronze) / FILES
+    deadline = datetime.now(UTC) + BUDGET
     copied: list[Mirrored] = []
     with httpx.Client(base_url=settings.backend.url, timeout=TIMEOUT_SECONDS) as session:
-        for game in get_json(session, "/games", {}):
-            slug = game["slug"]
-            for name in video_names(session, slug):
-                version = known[(slug, name)] if (slug, name) in known else None
-                video = mirrored(session, root, slug, name, version)
-                if video is not None:
-                    copied.append(video)
+        for slug, name in wanted(session):
+            if datetime.now(UTC) >= deadline:
+                logger.warning(
+                    f"Mirroring took {BUDGET}; {slug}/{name} and the videos after it wait for the next night"
+                )
+                break
+            video = mirrored(session, root, slug, name, known[(slug, name)] if (slug, name) in known else None)
+            if video is not None:
+                copied.append(video)
     rows = spark.createDataFrame([astuple(video) for video in copied], VIDEO).withColumn(
         "date", F.to_date("mirrored_at")
     )

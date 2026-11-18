@@ -98,7 +98,7 @@ are readable only by Superset.
 | `gold.level_segments`, `gold.mining_summary`, `gold.level_history` | `mining-gold` | `game` | Frames per level and piece of the newest record, and every change of a level's frames |
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
-| `gold.platform_tables`, `gold.platform_jobs` | `platform`, every job | | Size and versions per table, measured nightly and after mining, and every job run |
+| `gold.platform_tables`, `gold.platform_jobs` | `platform`, every job | | Size and versions per table, measured nightly, and every job run |
 | `gold.sources_status` | `sources-hourly`, `sources-nightly` | `source`, `stream` | Each source's newest load and its records |
 | `gold.quality_reports`, `gold.quality_failures` | every write | | The data-quality report of every silver, gold and live write, and the failed ones again |
 | `gold.cockpit_days` | `cockpit` | `metric`, `days_ago` | The cockpit's numbers per 24-hour window ending now, for the last 8 windows |
@@ -203,7 +203,7 @@ ratio mismatch. The `chat` process also publishes Helix's viewers and followers 
 |-----|----------------|------|
 | `lakehouse_hourly` | minute 10 of every hour outside 02:00 to 06:00 | `api-hourly`, `silver`, `sources-hourly`, `engagement-hourly`, `cockpit`, then `gold` |
 | `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `sources-nightly`, `videos-nightly`, `maintenance`, then `platform` |
-| `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold`, `platform` |
+| `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold` |
 
 The nightly DAG starts after the first lab run of the day and may run until 06:00. Nightly-only jobs skip when started
 outside 02:00 to 06:00 UTC; the hourly DAG pauses in that window, so the nightly and mining jobs have Airflow's single

@@ -26,7 +26,7 @@ NIGHTLY_JOBS = (
     "platform",
 )
 NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance", "cockpit-summary")
-MINING_JOBS = ("mine-records", "verify-replays", "mining-gold", "platform")
+MINING_JOBS = ("mine-records", "verify-replays", "mining-gold")
 HOURLY_PRIORITY = 10
 NIGHTLY_PRIORITY = 1
 TASK_TIMEOUT = timedelta(minutes=40)

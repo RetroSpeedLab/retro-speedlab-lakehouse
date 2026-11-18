@@ -9,6 +9,7 @@ MULTIPART_BYTES = "16M"
 LOOPBACK = "127.0.0.1"
 IDLE_HEAP_RETURN = "-XX:G1PeriodicGCInterval=60000"
 SNAPSHOT_STALENESS = "60s"
+PARQUET_BATCH_ROWS = "512"
 
 
 def lake_options(lake: LakeSettings) -> dict[str, str]:
@@ -33,6 +34,7 @@ def session_builder(name: str, spark: SparkSettings, lake: LakeSettings) -> Spar
         .config("spark.driver.memory", spark.driver_memory)
         .config("spark.driver.extraJavaOptions", IDLE_HEAP_RETURN)
         .config("spark.sql.shuffle.partitions", str(spark.shuffle_partitions))
+        .config("spark.sql.parquet.columnarReaderBatchSize", PARQUET_BATCH_ROWS)
         .config("spark.databricks.delta.snapshotPartitions", str(spark.shuffle_partitions))
         .config("spark.databricks.delta.stalenessLimit", SNAPSHOT_STALENESS)
         .config("spark.sql.extensions", DELTA_EXTENSION)

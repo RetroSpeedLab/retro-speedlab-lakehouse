@@ -5,12 +5,14 @@ from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk import DAG, TriggerRule, chain
 
 from retro_speedlab_lakehouse.alerts.airflow import FAILED, SUCCESS, TaskReporter
+from retro_speedlab_lakehouse.batch.night import NIGHT_END, NIGHT_START
 
 CONFIG = "/lakehouse/config.yaml"
 NICE = 15
 START = datetime(2026, 11, 15)
 RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
+HOURLY_SCHEDULE = f"10 0-{NIGHT_START.hour - 1},{NIGHT_END.hour}-23 * * *"
 HOURLY_JOBS = ("api-hourly", "silver", "gold")
 HOURLY_ASIDE = ("sources-hourly", "engagement-hourly", "cockpit")
 NIGHTLY_JOBS = (
@@ -80,7 +82,7 @@ def chained(
 
 hourly = chained(
     "lakehouse_hourly",
-    "10 * * * *",
+    HOURLY_SCHEDULE,
     HOURLY_JOBS,
     HOURLY_ASIDE,
     timedelta(minutes=115),
@@ -92,7 +94,7 @@ nightly = chained(
     "30 2 * * *",
     NIGHTLY_JOBS,
     NIGHTLY_ASIDE,
-    timedelta(hours=3),
+    timedelta(hours=3, minutes=30),
     NIGHTLY_PRIORITY,
     NIGHTLY_TASK_TIMEOUT,
 )

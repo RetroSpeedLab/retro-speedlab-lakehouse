@@ -38,8 +38,7 @@ flowchart LR
 Bronze keeps the complete raw history for 12 months and stays on the Home Lab server; only what the site serves goes
 to the lake on Main. Spark writes the lake over HTTPS with s3a; the backend reads it with a read-only key and
 delta-rs. No console and no Airflow or Spark UI is public, and the lake's proxy drops Garage's wildcard CORS
-headers. The lakehouse runs as an unprivileged user that owns its data; Superset's metadata and its copy of the lake
-are readable only by Superset.
+headers. The lakehouse runs as an unprivileged user that owns its data.
 
 ## Tables
 
@@ -182,13 +181,13 @@ order as the holdout.
 The Twitch channel learns its category and title the same way: each turn's pair is an item of `twitch_channel`,
 measured in `gold.twitch_channel_outcomes` against the viewers, followers and chat minutes it overlapped. Its reward
 is new followers per hour, Gamma over the turn's hours, because a follow is the growth that lasts: it brings the
-viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in Superset.
+viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in the cockpit.
 
 The promotion drafts also learn what the maintainer approves. Every approved or rejected draft is an item
 `network:variant` of `promotion_variants`, Beta over decisions with approvals as the outcome, so the backend favours
 the variant that gets approved while the floor and the holdout keep trying the other. `gold.promotion_preferences`
 shows the approval rate per kind, variant, opening, tone, length and count of numbers with its counts and interval,
-in the Audience dashboard's "Your promotion picks". Beside each rate stand the Bluesky interactions per post at 24 h
+on the cockpit's Audience page. Beside each rate stand the Bluesky interactions per post at 24 h
 of the drafts that went out, linked by the post in the draft's URL, so a kind or tone that gets approved but draws
 nobody shows up there.
 
@@ -214,44 +213,14 @@ retro-speedlab-core, retro-speedlab-engine and retro-speedlab-games bundled in t
 game's served verifier exactly as the backend does. Both refuse to start below `mining.min_available_mb` of available
 memory.
 
-## Database
-
-Apache Superset serves SQL Lab and dashboards on the lake, for the maintainer only and on the home LAN only.
-
-```mermaid
-flowchart LR
-    browser[Browser on the LAN] -->|HTTPS| nginx[nginx on Home Lab]
-    nginx -->|auth_request| sso[Owner sign-in on Main]
-    nginx -->|X-Gate-User| superset[retro-speedlab-superset]
-    superset -->|duckdb-engine| snapshot[(DuckDB copy of the lake)]
-    snapshot -->|delta, read-only key, every minute| lake[(Garage lake)]
-    snapshot -->|delta views, read-only mount| bronze[(Bronze Delta)]
-```
-
-- Superset queries a local DuckDB file instead of the lake, because every read of the lake crosses to Main and
-  costs seconds. `database/superset/lake_snapshot.py` rebuilds the file 30 seconds after the last build: every live,
-  silver and gold table that `gold.platform_tables` lists or a dashboard dataset reads is copied as `<layer>.<table>`,
-  from the lake only when its Delta log has a new commit, and every bronze table is a view on the read-only bronze
-  mount. A dashboard table that is not in the lake yet is an empty table with its declared columns, so its charts show
-  no data instead of an error. The new file replaces the old one in one rename, so the dashboards lag the lake by one
-  build.
-- Superset signs in the user the owner sign-in names in `X-Gate-User`; nginx sets that header after the sign-in and
-  overrides any a client sends. Its own database login stays as break-glass: its only admin, `owner`, gets the password
-  in `SUPERSET_ADMIN_PASSWORD` at every start (`database/superset/owner.py`). Self-registration is off and the public
-  role has no permissions.
-- Superset opens the DuckDB file read-only and forbids DML, CTAS and file uploads. Every start imports the cockpit's
-  dashboards, defined in `database/superset/dashboards.py`.
-- Every table in the DuckDB file is a Superset dataset: `database/superset/sync_datasets.py` creates missing ones and
-  refreshes their columns at start and every hour.
-
 ## Owner tools on the LAN
 
-Superset and GrowthBook run on the Home Lab and are reachable from the home LAN only, under their own names with TLS
-and behind the owner sign-in.
+The cockpit and GrowthBook run on the Home Lab and are reachable from the home LAN only, under their own names with
+TLS and behind the owner sign-in.
 
 | Name | Tool | Behind the sign-in | Break-glass login |
 |------|------|--------------------|-------------------|
-| `database` | Superset | trusts `X-Gate-User` | `owner`, password in `SUPERSET_ADMIN_PASSWORD` |
+| `database` | The cockpit | has no login of its own | |
 | `growthbook` | GrowthBook | the gate signs in as the admin | the admin, password in `GROWTHBOOK_ADMIN_PASSWORD` |
 | `growthbook-api` | GrowthBook's API | the UI's calls; `/api/` stays open for SDK and REST keys | |
 
@@ -297,18 +266,18 @@ takes the session over with a one-minute ticket at `/_gate/adopt`.
 
 ## Cockpit and alerts
 
-Five Superset dashboards hold the owner's numbers, every one from the lake and none of them public:
+The cockpit's pages hold the owner's numbers, every one from the lake and none of them public:
 
-| Dashboard | What it shows |
+| Page | What it shows |
 |-----------|---------------|
-| Cockpit | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members and the Claude cost of the last full day. Then the return on cost: the lab's frames saved per Claude dollar, the promotion's views per Claude dollar, the search's frames saved per CPU-hour and the lab changes flagged as harmful |
+| Overview | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members and the Claude cost of the last full day. Then the return on cost: the lab's frames saved per Claude dollar, the promotion's views per Claude dollar, the search's frames saved per CPU-hour and the lab changes flagged as harmful |
 | Return on cost | The lab's frames saved per Claude dollar per game and per run, with intervals and harm flags; the promotion's views and likes per Claude dollar per network and variant, with intervals; the search's frames saved per CPU-hour per worker kind and per game |
 | Search and AI | Records per game, frames saved per hour and per game, the bandit's shares and its holdout, PPO reward and loss, the policy now, lab runs and their experiments |
 | Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, the itch.io pack per game and day, Discord activity, the promotion picks with the Bluesky interactions per post, the engagement ranking and the A/B results |
 | Platform and cost | Stream lag, Airflow runs and failures, average job minutes, source loads, failed quality gates, disk, memory and load per server, the largest tables, the Claude cost per day, errors and uptime |
 
-The heavy numbers come from the hourly `cockpit` job, so a dashboard reads small gold tables; health reads the `live`
-tables directly. A table that does not exist yet shows as a chart error until its first write.
+The heavy numbers come from the hourly `cockpit` job, so a page reads small gold tables; health reads the `live`
+tables directly. A table that does not exist yet shows as empty until its first write.
 
 A small collector on each server (`hosts/`) reports disk, memory and load every minute to the backend, which keeps the
 newest values for its alerts and publishes them to `hosts.metrics` for `live.host_metrics` and `silver.host_metrics`.
@@ -324,10 +293,8 @@ stream triggers and sources. Secrets come from the environment:
 | Variable | Purpose |
 |----------|---------|
 | `UPLOAD_API_KEY` | The backend's events endpoint |
-| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; Superset holds its own read-only pair |
+| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; the cockpit holds its own read-only pair |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
-| `SUPERSET_SECRET_KEY` | Superset's session key |
-| `SUPERSET_ADMIN_PASSWORD` | Superset's `owner` login |
 
 `dokku/sources.sh` copies the sources' credentials from the backend's and the runner's config without printing them.
 
@@ -344,7 +311,7 @@ ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
 bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
-bash dokku/database-setup.sh  # Superset, its mounts and its read-only lake key; safe to rerun
+bash dokku/database-setup.sh  # the cockpit's read-only lake key, after the cockpit's setup; safe to rerun
 bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB and the admin; rerun after a pin bump
 bash dokku/lan-setup.sh       # the LAN proxy, its sign-in, its certificate and Main's default site; safe to rerun
 bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main; no APP only syncs its hosts
@@ -352,7 +319,6 @@ bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse
 ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml
-bash dokku/database-deploy.sh # Superset
 bash dokku/hosts-setup.sh     # once: the collector app on both servers, after the topics exist
 bash dokku/hosts-deploy.sh    # the collectors
 ```

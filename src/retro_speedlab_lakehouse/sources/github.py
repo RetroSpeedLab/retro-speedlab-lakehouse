@@ -25,13 +25,12 @@ def commits_since(session: httpx.Client, repository: str, since: datetime) -> in
 
 
 def github_numbers(settings: GithubSettings, now: datetime) -> list[Number]:
-    repositories = [f"{settings.owner}/{name}" for name in settings.repositories]
     with client(API, {"Authorization": f"Bearer {settings.token}"}) as session:
-        details = [get_json(session, f"/repos/{repository}", {}) for repository in repositories]
+        details = [get_json(session, f"/repos/{repository}", {}) for repository in settings.repositories]
         public = [repository for repository in details if not repository["private"]]
-        commits = sum(commits_since(session, repository, now - WEEK) for repository in repositories)
+        commits = sum(commits_since(session, repository, now - WEEK) for repository in settings.repositories)
     return [
-        Number("repositories", "Repositories", len(repositories), "", f"{len(public)} of them public"),
+        Number("repositories", "Repositories", len(settings.repositories), "", f"{len(public)} of them public"),
         Number("commits_7d", "Commits", commits, "", "last 7 days, every repository"),
         Number("stars", "Stars", sum(repository["stargazers_count"] for repository in public), "", PUBLIC),
         Number("forks", "Forks", sum(repository["forks_count"] for repository in public), "", PUBLIC),

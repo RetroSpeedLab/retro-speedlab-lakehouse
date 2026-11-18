@@ -72,7 +72,7 @@ def spark(tmp_path_factory: pytest.TempPathFactory) -> Iterator[SparkSession]:
 
 def source_settings() -> Sources:
     return Sources(
-        github=GithubSettings(owner="datenwissenschaften", repositories=["retro-speedlab-core"], token="token"),
+        github=GithubSettings(repositories=["RetroSpeedLab/retro-speedlab-core"], token="token"),
         uptime=UptimeSettings(url="https://uptime.test", page="retrospeedlab"),
         twitch=TwitchSettings(client_id="id", client_secret="secret", channel="retrospeedlab"),
         discord=DiscordSettings(token="token", channel="1"),

@@ -119,19 +119,18 @@ summary:
 
 sources:
   github:
-    owner: RetroSpeedLab
     repositories:
-      - retro-speedlab-core
-      - retro-speedlab-engine
-      - retro-speedlab-games
-      - retro-speedlab-runner
-      - retro-speedlab-backend
-      - retro-speedlab-frontend
-      - retro-speedlab-stream
-      - retro-speedlab-lakehouse
-      - retro-speedlab-maintainer
-      - spark-data-quality
-      - experimentation-toolkit
+      - RetroSpeedLab/retro-speedlab-core
+      - RetroSpeedLab/retro-speedlab-engine
+      - RetroSpeedLab/retro-speedlab-games
+      - RetroSpeedLab/retro-speedlab-runner
+      - RetroSpeedLab/retro-speedlab-backend
+      - RetroSpeedLab/retro-speedlab-frontend
+      - RetroSpeedLab/retro-speedlab-stream
+      - RetroSpeedLab/retro-speedlab-lakehouse
+      - RetroSpeedLab/retro-speedlab-maintainer
+      - datenwissenschaften/spark-data-quality
+      - datenwissenschaften/experimentation-toolkit
   uptime:
     url: https://uptime.datenwissenschaften.com
     page: retrospeedlab

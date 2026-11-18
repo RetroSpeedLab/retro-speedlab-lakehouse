@@ -10,7 +10,6 @@ class SourceSettings(BaseModel):
 
 
 class GithubSettings(SourceSettings):
-    owner: str
     repositories: list[str]
     token: str
 

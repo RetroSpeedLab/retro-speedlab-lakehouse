@@ -34,6 +34,7 @@ def session_builder(name: str, spark: SparkSettings, lake: LakeSettings) -> Spar
         .config("spark.driver.memory", spark.driver_memory)
         .config("spark.driver.extraJavaOptions", IDLE_HEAP_RETURN)
         .config("spark.sql.shuffle.partitions", str(spark.shuffle_partitions))
+        .config("spark.sql.sources.parallelPartitionDiscovery.parallelism", str(spark.shuffle_partitions))
         .config("spark.sql.parquet.columnarReaderBatchSize", PARQUET_BATCH_ROWS)
         .config("spark.databricks.delta.snapshotPartitions", str(spark.shuffle_partitions))
         .config("spark.databricks.delta.stalenessLimit", SNAPSHOT_STALENESS)

@@ -12,7 +12,7 @@ from retro_speedlab_lakehouse.sources.record import SourceRecord
 from retro_speedlab_lakehouse.sources.settings import UmamiSettings
 from retro_speedlab_lakehouse.sources.umami import event_counts, human_games, milliseconds, signed_in, week
 
-WINDOW = "LAB24 on itch.io, last 7 days"
+WINDOW = "RetroSpeedLab24 on itch.io, last 7 days"
 DAY = timedelta(days=1)
 DAYS = 2
 GAME_PATH = re.compile(r"([^/?#]+)/(?:index\.html)?(?:[?#].*)?$")

@@ -28,7 +28,9 @@ NIGHTLY_JOBS = (
 NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance", "cockpit-summary")
 MINING_JOBS = ("mine-records", "verify-replays", "mining-gold")
 HOURLY_PRIORITY = 10
-NIGHTLY_PRIORITY = 1
+NIGHTLY_PRIORITY = 3
+MINING_PRIORITY = 2
+NIGHTLY_ASIDE_PRIORITY = 1
 TASK_TIMEOUT = timedelta(minutes=40)
 NIGHTLY_TASK_TIMEOUT = timedelta(minutes=90)
 MINING_TIMEOUT = timedelta(hours=2, minutes=30)
@@ -61,6 +63,7 @@ def chained(
     aside: tuple[str, ...],
     timeout: timedelta,
     priority: int,
+    aside_priority: int,
     task_timeout: timedelta,
 ) -> DAG:
     with DAG(
@@ -76,7 +79,7 @@ def chained(
         tasks = [job(name, priority, task_timeout, TriggerRule.ALL_SUCCESS) for name in jobs[:-1]]
         last = job(jobs[-1], priority, task_timeout, TriggerRule.ALL_DONE)
         chain(*tasks, last)
-        last.set_upstream([job(name, priority, task_timeout, TriggerRule.ALL_SUCCESS) for name in aside])
+        last.set_upstream([job(name, aside_priority, task_timeout, TriggerRule.ALL_SUCCESS) for name in aside])
     return dag
 
 
@@ -87,6 +90,7 @@ hourly = chained(
     HOURLY_ASIDE,
     timedelta(minutes=115),
     HOURLY_PRIORITY,
+    HOURLY_PRIORITY,
     TASK_TIMEOUT,
 )
 nightly = chained(
@@ -96,6 +100,9 @@ nightly = chained(
     NIGHTLY_ASIDE,
     timedelta(hours=3, minutes=30),
     NIGHTLY_PRIORITY,
+    NIGHTLY_ASIDE_PRIORITY,
     NIGHTLY_TASK_TIMEOUT,
 )
-mining = chained("lakehouse_mining", "30 3 * * *", MINING_JOBS, (), MINING_TIMEOUT, NIGHTLY_PRIORITY, MINING_TIMEOUT)
+mining = chained(
+    "lakehouse_mining", "30 3 * * *", MINING_JOBS, (), MINING_TIMEOUT, MINING_PRIORITY, MINING_PRIORITY, MINING_TIMEOUT
+)

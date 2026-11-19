@@ -207,7 +207,9 @@ ratio mismatch. The `chat` process also publishes Helix's viewers and followers 
 
 The nightly DAG starts after the first lab run of the day and may run until 06:00. Nightly-only jobs skip when started
 outside 02:00 to 06:00 UTC; the hourly DAG pauses in that window, so the nightly and mining jobs have Airflow's single
-slot, and `videos-nightly` leaves the videos it has no time for after 40 minutes to the next night.
+slot, and `videos-nightly` leaves the videos it has no time for after 40 minutes to the next night. The slot goes to
+the nightly chain first, then to mining, then to the nightly jobs aside, so `maintenance` and the videos can no longer
+use up the night before `experiments`, `search-allocation`, `search-bandit` and `engagement-nightly` run.
 
 `mine-records` reads the runner's working directories read-only and replays each new record's pieces with
 retro-speedlab-core, retro-speedlab-engine and retro-speedlab-games bundled in the image. `verify-replays` runs each

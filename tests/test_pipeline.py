@@ -8,7 +8,7 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.batch.api import SNAPSHOT
 from retro_speedlab_lakehouse.batch.gold import build_gold
-from retro_speedlab_lakehouse.batch.maintenance import maintain
+from retro_speedlab_lakehouse.batch.maintenance import files, maintain, most_files_first
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.lake.catalog import (
@@ -166,6 +166,18 @@ def test_platform_measures_tables_and_records_jobs(spark: SparkSession, settings
     assert tables["live.live_run"]["store"] == "lake"
     assert read(spark, PLATFORM_JOBS, settings.lake).count() == 1
     assert maintain(spark, CORE_TABLES, settings.lake, START) >= 8
+
+
+def test_maintenance_starts_with_the_most_files_and_ends_at_its_budget(spark: SparkSession, settings: Settings) -> None:
+    stream_events(spark, settings, events())
+    gate = Gate("platform")
+    for run_id in ("run-1", "run-2", "run-3", "run-4", "run-5", "run-6", "run-7", "run-8", "run-9"):
+        record_job(spark, settings.lake, gate, JobRun("nightly", run_id, "silver", START, START, "success", 3, None))
+    assert most_files_first(spark, CORE_TABLES, settings.lake)[0] == PLATFORM_JOBS
+    assert maintain(spark, CORE_TABLES, settings.lake, START, timedelta(0)) == 0
+    assert files(spark, PLATFORM_JOBS, settings.lake) == 9
+    assert maintain(spark, CORE_TABLES, settings.lake, START) >= 8
+    assert files(spark, PLATFORM_JOBS, settings.lake) == 1
 
 
 def test_the_gate_blocks_a_failing_write_and_keeps_its_report(spark: SparkSession, settings: Settings) -> None:

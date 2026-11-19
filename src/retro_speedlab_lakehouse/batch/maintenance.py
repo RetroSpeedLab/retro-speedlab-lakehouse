@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from delta.tables import DeltaTable
 from loguru import logger
@@ -17,6 +17,7 @@ from retro_speedlab_lakehouse.lake.tables import exists
 from retro_speedlab_lakehouse.settings import LakeSettings
 
 JOB_HISTORY_DAYS = 30
+BUDGET = timedelta(minutes=30)
 HISTORY_COLUMNS = {PLATFORM_JOBS: "started_at", QUALITY_REPORTS: "checked_at"}
 
 
@@ -42,11 +43,32 @@ def expire(spark: SparkSession, table: Table, lake: LakeSettings, now: datetime)
         DeltaTable.forPath(spark, table.location(lake)).delete(F.col(column) < F.lit(cutoff_at))
 
 
-def maintain(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, now: datetime) -> int:
+def files(spark: SparkSession, table: Table, lake: LakeSettings) -> int:
+    detail = DeltaTable.forPath(spark, table.location(lake)).detail().first()
+    if detail is None:
+        raise ValueError(f"{table.full_name} has no detail")
+    return int(detail["numFiles"])
+
+
+def most_files_first(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings) -> list[Table]:
     kept = [table for table in tables if exists(spark, table, lake)]
-    for table in kept:
+    return sorted(kept, key=lambda table: files(spark, table, lake), reverse=True)
+
+
+def maintain(
+    spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, now: datetime, budget: timedelta = BUDGET
+) -> int:
+    deadline = datetime.now(UTC) + budget
+    maintained = 0
+    for table in most_files_first(spark, tables, lake):
+        if datetime.now(UTC) >= deadline:
+            logger.warning(
+                f"Maintenance took {budget}; {table.full_name} and the tables after it wait for a later night"
+            )
+            break
         expire(spark, table, lake, now)
         compact(spark, table, lake)
         vacuum(spark, table, lake)
         logger.info(f"Maintained {table.full_name}")
-    return len(kept)
+        maintained += 1
+    return maintained

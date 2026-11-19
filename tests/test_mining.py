@@ -65,6 +65,22 @@ def test_the_board_keeps_only_improvements(spark: SparkSession) -> None:
     assert [row["frames"] for row in history] == [9000, 8000]
 
 
+def test_the_board_history_of_a_minor_version_spans_its_patches(spark: SparkSession) -> None:
+    scores = [
+        (1, 9000, "1.2.0", "2026-11-15T10:00:00Z"),
+        (2, 9500, "1.2.1", "2026-11-15T11:00:00Z"),
+        (3, 8000, "1.2.1", "2026-11-15T12:00:00Z"),
+        (4, 9900, "1.3.0", "2026-11-15T13:00:00Z"),
+    ]
+    events = [
+        event(index, TOPIC, str(index), {**score(index, frames, at), "version": version}, MINED_AT)
+        for index, frames, version, at in scores
+    ]
+    parsed_events = parsed(kafka_rows(spark, events))
+    history = board_history(parsed_events, won_runs(parsed_events)).orderBy("at").collect()
+    assert [(row["version"], row["frames"]) for row in history] == [("1.2.0", 9000), ("1.2.1", 8000), ("1.3.0", 9900)]
+
+
 def test_human_splits_line_up_with_the_ai_levels(spark: SparkSession) -> None:
     ai = [("ai", "abc", "comet_courier", "1.2.0", *split) for split in splits_of([[0, 0], [32, 1]], 42)]
     human = [("human", "1:50", "comet_courier", "1.2.0", *split) for split in splits_of([[0, 0], [40, 1]], 50)]

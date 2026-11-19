@@ -1,6 +1,7 @@
 from pyspark.sql import Column, DataFrame, Window
 from pyspark.sql import functions as F
 
+from retro_speedlab_lakehouse.batch.major import board_line, current_line
 from retro_speedlab_lakehouse.mining.verify import AI, AI_NAME, HUMAN, NO_INPUTS, REJECTED, UNSERVED, VERIFIED
 from retro_speedlab_lakehouse.stream.rows import HIGHSCORES_TOPIC, field
 
@@ -9,7 +10,7 @@ PENDING = "pending"
 MEDIAN = 0.5
 
 
-def improvements(rows: DataFrame, keys: list[str]) -> DataFrame:
+def improvements(rows: DataFrame, keys: list[Column]) -> DataFrame:
     earlier = Window.partitionBy(*keys).orderBy("at").rowsBetween(Window.unboundedPreceding, -1)
     marked = rows.withColumn("best_before", F.min("frames").over(earlier))
     return marked.where(F.col("best_before").isNull() | (F.col("frames") < F.col("best_before"))).drop("best_before")
@@ -32,8 +33,9 @@ def board_history(events: DataFrame, won: DataFrame) -> DataFrame:
         "at",
         "frames",
     )
-    return improvements(humans.dropDuplicates(["game", "version", "at"]), ["game", "version"]).unionByName(
-        improvements(ai.dropDuplicates(["game", "at"]), ["game"])
+    board = [F.col("game"), board_line(F.col("version"))]
+    return improvements(humans.dropDuplicates(["game", "version", "at"]), board).unionByName(
+        improvements(ai.dropDuplicates(["game", "at"]), [F.col("game")])
     )
 
 
@@ -42,7 +44,7 @@ def entry_of(scores: DataFrame) -> DataFrame:
 
 
 def humans_vs_ai(highscores: DataFrame, games: DataFrame, runs: DataFrame, replays: DataFrame) -> DataFrame:
-    current = highscores.join(games.select(F.col("slug").alias("game"), "version"), ["game", "version"])
+    current = current_line(highscores, "version", games)
     statuses = replays.where(F.col("side") == HUMAN).select("entry", "status")
     ai = runs.where("won").select("game", F.col("frames").alias("ai_frames"))
     place = F.rank().over(Window.partitionBy("game").orderBy("frames", "set_at"))

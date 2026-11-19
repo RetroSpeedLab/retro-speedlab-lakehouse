@@ -104,7 +104,8 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.search_hours`, `gold.audience_hours` | `cockpit` | `hour` | Search, PPO, Twitch and chat per hour of the last 7 days |
 
 Writes use Delta MERGE (newest event wins); the live pulse tables are overwritten. The nightly `maintenance` job runs
-OPTIMIZE, VACUUM and the retention of each layer. The event schemas are in [EVENTS.md](EVENTS.md).
+OPTIMIZE, VACUUM and the retention of each layer, starting with the tables that have the most files, and leaves the
+tables it has no time for after 30 minutes to a later night. The event schemas are in [EVENTS.md](EVENTS.md).
 
 ## Quality gate
 

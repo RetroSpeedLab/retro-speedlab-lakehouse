@@ -37,6 +37,7 @@ from retro_speedlab_lakehouse.sources.settings import (
     UmamiSettings,
     UptimeSettings,
     WandbSettings,
+    YoutubeSettings,
 )
 from retro_speedlab_lakehouse.spark.session import spark_session
 from retro_speedlab_lakehouse.stream.rows import KAFKA_ROW
@@ -94,6 +95,7 @@ def source_settings() -> Sources:
         streamelements=StreamElementsSettings(
             token="token", channel="retrospeedlab", ignored=frozenset({"streamelements"})
         ),
+        youtube=YoutubeSettings(client_id="client", client_secret="secret", refresh_token="refresh"),
     )
 
 

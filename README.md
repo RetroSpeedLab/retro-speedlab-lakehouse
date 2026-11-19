@@ -67,6 +67,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.game_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of human game starts and campaign wins per game |
 | `silver.itch_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of game starts and campaign wins per game in the LAB24 pack on itch.io |
 | `silver.itch_daily` | `sources-hourly`, `sources-nightly` | `date` | The itch.io pack's page views and visitors per UTC day, with views, starts, levels cleared and wins per game |
+| `silver.youtube_daily` | `sources-hourly`, `sources-nightly` | `date` | The YouTube channel's views, minutes watched, average view, subscribers gained and lost, likes, comments and shares per day of the last 28, re-read each load because YouTube reports two to three days late |
 | `silver.game_dropoff` | `sources-hourly`, `sources-nightly` | `game` | Umami's campaign runs that ended without a win, per level, and the wins since tracking began |
 | `silver.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri`, `measured_at` | Every load's likes, reposts, replies and quotes of each of the Bluesky account's own posts, so the counts keep their history |
 | `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | Langfuse's traced steps, tokens and model cost of every lab run's session |
@@ -120,7 +121,8 @@ Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (i
 campaign wins and the level where a campaign run ends without a win per game, the itch.io pack's views, visitors, starts,
 levels cleared and wins per game and day, and hourly the engagement events),
 Langfuse (including the cost of every lab run's session), W&B, Bugsink, GitHub and Bluesky (the account's own public
-posts with their likes, reposts, replies and quotes, from the public AppView). Each source loads on its own; one
+posts with their likes, reposts, replies and quotes, from the public AppView) and the YouTube Analytics API (the
+channel's last 28 days in total and per day). Each source loads on its own; one
 that fails keeps the others and fails the job afterwards.
 
 ## Lab experiments
@@ -276,7 +278,7 @@ The cockpit's pages hold the owner's numbers, every one from the lake and none o
 | Overview | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members and the Claude cost of the last full day. Then the return on cost: the lab's frames saved per Claude dollar, the promotion's views per Claude dollar, the search's frames saved per CPU-hour and the lab changes flagged as harmful |
 | Return on cost | The lab's frames saved per Claude dollar per game and per run, with intervals and harm flags; the promotion's views and likes per Claude dollar per network and variant, with intervals; the search's frames saved per CPU-hour per worker kind and per game |
 | Search and AI | Records per game, frames saved per hour and per game, the bandit's shares and its holdout, PPO reward and loss, the policy now, lab runs and their experiments |
-| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, the itch.io pack per game and day, Discord activity, the promotion picks with the Bluesky interactions per post, the engagement ranking and the A/B results |
+| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, the itch.io pack per game and day, YouTube views and minutes watched per day, Discord activity, the promotion picks with the Bluesky interactions per post, the engagement ranking and the A/B results |
 | Platform and cost | Stream lag, Airflow runs and failures, average job minutes, source loads, failed quality gates, disk, memory and load per server, the largest tables, the Claude cost per day, errors and uptime |
 
 The heavy numbers come from the hourly `cockpit` job, so a page reads small gold tables; health reads the `live`

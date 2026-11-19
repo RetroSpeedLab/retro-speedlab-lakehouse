@@ -26,8 +26,10 @@ from retro_speedlab_lakehouse.sources.catalog import (
     SILVER_LAB_COSTS,
     SILVER_NUMBERS,
     SILVER_PLAYS,
+    YOUTUBE_DAILY,
 )
 from retro_speedlab_lakehouse.sources.registry import DAILY, DROPOFF, LAB_COSTS, NUMBERS, PLAYS, POSTS
+from retro_speedlab_lakehouse.sources.youtube import METRICS
 
 NUMBER = StructType(
     [
@@ -95,6 +97,12 @@ BLUESKY_POST = StructType(
         StructField("quotes", LongType(), False),
     ]
 )
+YOUTUBE_DAY = StructType(
+    [
+        StructField("date", DateType(), False),
+        *(StructField(name, LongType(), False) for _, name, _, _ in METRICS),
+    ]
+)
 
 
 def newest(records: DataFrame, stream: str, schema: StructType) -> DataFrame:
@@ -134,5 +142,6 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
         (LANGFUSE_DAILY, parsed(latest(spark, lake, "langfuse", DAILY), DAILY_COST)),
         (SILVER_ITCH_DAILY, parsed(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
         (SILVER_BLUESKY_POSTS, parsed(stream_of(records, "bluesky", POSTS), BLUESKY_POST)),
+        (YOUTUBE_DAILY, parsed(latest(spark, lake, "youtube", DAILY), YOUTUBE_DAY)),
     ]
     return sum(replace_counted(table, lake, rows, gate) for table, rows in streams)

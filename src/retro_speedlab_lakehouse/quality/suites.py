@@ -73,8 +73,10 @@ from retro_speedlab_lakehouse.sources.catalog import (
     SILVER_NUMBERS,
     SILVER_PLAYS,
     SOURCE_NUMBERS,
+    YOUTUBE_DAILY,
 )
 from retro_speedlab_lakehouse.sources.plays import MODES, WINDOWS
+from retro_speedlab_lakehouse.sources.youtube import METRICS
 
 OUTCOMES = frozenset({"rejected", "notes", "deployed"})
 KNOWLEDGE_KINDS = frozenset({"mechanics", "enemies", "powerups", "levels", "ram"})
@@ -222,6 +224,11 @@ CHECKS: dict[Table, list[Check]] = {
         ]
         for table in (SILVER_PLAYS, SILVER_ITCH_PLAYS)
     },
+    YOUTUBE_DAILY: [
+        *keyed(YOUTUBE_DAILY),
+        *at_least_zero(*(name for _, name, _, _ in METRICS)),
+        *present("measured_at"),
+    ],
     SILVER_ITCH_DAILY: [
         *keyed(SILVER_ITCH_DAILY),
         *present("views", "campaign", "endless", "cleared", "won", "measured_at"),

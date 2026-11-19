@@ -66,6 +66,12 @@ class StreamElementsSettings(SourceSettings):
     ignored: frozenset[str]
 
 
+class YoutubeSettings(SourceSettings):
+    client_id: str
+    client_secret: str
+    refresh_token: str
+
+
 class Sources(SourceSettings):
     github: GithubSettings
     uptime: UptimeSettings
@@ -77,6 +83,7 @@ class Sources(SourceSettings):
     bugsink: BugsinkSettings
     bluesky: BlueskySettings
     streamelements: StreamElementsSettings
+    youtube: YoutubeSettings
 
 
 def load_sources(
@@ -116,5 +123,10 @@ def load_sources(
         bluesky=bluesky,
         streamelements=StreamElementsSettings(
             token=secret("STREAM_ELEMENTS_JWT"), channel=secret("TWITCH_CHANNEL").lower(), ignored=ignored_chatters
+        ),
+        youtube=YoutubeSettings(
+            client_id=secret("YOUTUBE_CLIENT_ID"),
+            client_secret=secret("YOUTUBE_CLIENT_SECRET"),
+            refresh_token=secret("YOUTUBE_REFRESH_TOKEN"),
         ),
     )

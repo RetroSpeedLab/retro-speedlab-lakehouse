@@ -14,6 +14,7 @@ SILVER_LAB_COSTS = table(Layer.SILVER, "lab_costs", ("stamp",))
 LANGFUSE_DAILY = table(Layer.SILVER, "langfuse_daily", ("date",))
 SILVER_BLUESKY_POSTS = table(Layer.SILVER, "bluesky_posts", ("uri", "measured_at"))
 BLUESKY_POSTS = table(Layer.GOLD, "bluesky_posts", ("uri",))
+YOUTUBE_DAILY = table(Layer.SILVER, "youtube_daily", ("date",))
 SOURCE_TABLES: tuple[Table, ...] = (
     SILVER_NUMBERS,
     SOURCE_NUMBERS,
@@ -29,4 +30,5 @@ SOURCE_TABLES: tuple[Table, ...] = (
     LANGFUSE_DAILY,
     SILVER_BLUESKY_POSTS,
     BLUESKY_POSTS,
+    YOUTUBE_DAILY,
 )

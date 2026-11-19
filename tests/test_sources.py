@@ -12,7 +12,13 @@ from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.bluesky import bluesky_numbers, bluesky_posts
-from retro_speedlab_lakehouse.sources.catalog import BLUESKY_POSTS, GAME_PLAYS, ITCH_DAILY, SOURCE_NUMBERS
+from retro_speedlab_lakehouse.sources.catalog import (
+    BLUESKY_POSTS,
+    GAME_PLAYS,
+    ITCH_DAILY,
+    SOURCE_NUMBERS,
+    YOUTUBE_DAILY,
+)
 from retro_speedlab_lakehouse.sources.gold import bluesky_posts as posts_gold
 from retro_speedlab_lakehouse.sources.http import ATTEMPTS, get_json
 from retro_speedlab_lakehouse.sources.itch import itch_days
@@ -23,6 +29,7 @@ from retro_speedlab_lakehouse.sources.record import SnapshotSource
 from retro_speedlab_lakehouse.sources.registry import DAILY, NUMBERS, PLAYS, POSTS, hourly_sources, nightly_sources
 from retro_speedlab_lakehouse.sources.streamelements import streamelements_numbers
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
+from retro_speedlab_lakehouse.sources.youtube import youtube_days, youtube_numbers
 
 NOW = datetime(2026, 11, 15, 12, 0, tzinfo=UTC)
 PAGE = {
@@ -260,3 +267,28 @@ def test_streamelements_counts_the_channel_and_the_human_chat(settings: Settings
         "chatters": 2,
         "commands": 8,
     }
+
+
+def youtube_report(request: httpx.Request) -> httpx.Response:
+    metrics = request.url.params["metrics"].split(",")
+    if "dimensions" not in request.url.params:
+        return httpx.Response(200, json={"columnHeaders": [{"name": name} for name in metrics], "rows": [[47] * 8]})
+    headers = [{"name": name} for name in ["day", *metrics]]
+    rows = [["2026-11-12", 1, 19, 1174, 0, 0, 0, 0, 0], ["2026-11-13", 7, 32, 0, 1, 0, 1, 0, 1]]
+    return httpx.Response(200, json={"columnHeaders": headers, "rows": rows})
+
+
+@respx.mock
+def test_youtube_loads_the_channels_last_28_days_and_each_day(spark: SparkSession, settings: Settings) -> None:
+    respx.post("https://oauth2.googleapis.com/token").respond(json={"access_token": "token"})
+    route = respx.get("https://youtubeanalytics.googleapis.com/v2/reports").mock(side_effect=youtube_report)
+    numbers = {number.metric: number.value for number in youtube_numbers(settings.sources.youtube, NOW)}
+    assert (route.calls[0].request.url.params["startDate"], route.calls[0].request.url.params["endDate"]) == (
+        "2026-10-19",
+        "2026-11-15",
+    )
+    assert (len(numbers), numbers["views"], numbers["average_view_seconds"]) == (8, 47, 47)
+    days = SnapshotSource("youtube", DAILY, lambda now: youtube_days(settings.sources.youtube, now))
+    ingest_sources(spark, settings.lake, Gate("sources"), [days], NOW)
+    rows = {row["date"].isoformat(): row for row in read(spark, YOUTUBE_DAILY, settings.lake).collect()}
+    assert (rows["2026-11-12"]["minutes_watched"], rows["2026-11-13"]["subscribers_gained"]) == (19, 1)

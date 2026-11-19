@@ -13,6 +13,7 @@ from retro_speedlab_lakehouse.sources.twitch import twitch_numbers
 from retro_speedlab_lakehouse.sources.umami import umami_numbers
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
 from retro_speedlab_lakehouse.sources.wandb import wandb_numbers
+from retro_speedlab_lakehouse.sources.youtube import youtube_days, youtube_numbers
 
 NUMBERS = "numbers"
 PLAYS = "plays"
@@ -41,6 +42,8 @@ def each_run_sources(sources: Sources) -> list[Source]:
         SnapshotSource("bluesky", NUMBERS, lambda now: bluesky_numbers(sources.bluesky)),
         SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(sources.bluesky)),
         SnapshotSource("streamelements", NUMBERS, lambda now: streamelements_numbers(sources.streamelements)),
+        SnapshotSource("youtube", NUMBERS, lambda now: youtube_numbers(sources.youtube, now)),
+        SnapshotSource("youtube", DAILY, lambda now: youtube_days(sources.youtube, now)),
     ]
 
 

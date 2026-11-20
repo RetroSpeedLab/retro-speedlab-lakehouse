@@ -105,14 +105,26 @@ def test_a_failing_source_keeps_the_others_and_their_gold_numbers(spark: SparkSe
     first = SnapshotSource("discord", NUMBERS, lambda now: [Number("members", "Members", 4, "", "on the server")])
     later = SnapshotSource("discord", NUMBERS, lambda now: [Number("members", "Members", 5, "", "on the server")])
     ingest_sources(spark, settings.lake, gate, [first], NOW)
-    try:
+    with pytest.raises(SourcesFailed, match=r"these failed: twitch\.numbers \(ConnectError\)$"):
         ingest_sources(spark, settings.lake, gate, [later, SnapshotSource("twitch", NUMBERS, failing)], NOW)
-    except SourcesFailed as error:
-        assert "twitch" in str(error)
     numbers = read(spark, SOURCE_NUMBERS, settings.lake).collect()
     assert [(row["source"], row["metric"], row["value"]) for row in numbers] == [("discord", "members", 5.0)]
     status = read(spark, SOURCES_STATUS, settings.lake).collect()
     assert [(row["source"], row["last_records"], row["total_records"]) for row in status] == [("discord", 1, 2)]
+
+
+@respx.mock
+def test_a_refused_source_names_its_status_but_never_its_url(spark: SparkSession, settings: Settings) -> None:
+    respx.get("https://www.googleapis.com/youtube/v3/channels").respond(503)
+
+    def refused(now: datetime) -> list[Number]:
+        with httpx.Client() as session:
+            session.get("https://www.googleapis.com/youtube/v3/channels", params={"key": "secret"}).raise_for_status()
+        return []
+
+    with pytest.raises(SourcesFailed) as failure:
+        ingest_sources(spark, settings.lake, Gate("sources"), [SnapshotSource("youtube", NUMBERS, refused)], NOW)
+    assert str(failure.value) == "Kept the other sources; these failed: youtube.numbers (HTTP 503)"
 
 
 @respx.mock

@@ -79,7 +79,7 @@ def chained(
         tasks = [job(name, priority, task_timeout, TriggerRule.ALL_SUCCESS) for name in jobs[:-1]]
         last = job(jobs[-1], priority, task_timeout, TriggerRule.ALL_DONE)
         chain(*tasks, last)
-        last.set_upstream([job(name, aside_priority, task_timeout, TriggerRule.ALL_SUCCESS) for name in aside])
+        last.set_downstream([job(name, aside_priority, task_timeout, TriggerRule.ALL_DONE) for name in aside])
     return dag
 
 

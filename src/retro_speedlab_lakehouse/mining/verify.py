@@ -24,6 +24,7 @@ from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.write import merge
 from retro_speedlab_lakehouse.mining.gold import latest_pieces
 from retro_speedlab_lakehouse.mining.headroom import ensure_headroom
+from retro_speedlab_lakehouse.mining.records import listed
 from retro_speedlab_lakehouse.mining.replay import clocked_by, verified_by
 from retro_speedlab_lakehouse.mining.served import ServedGame, served_game
 from retro_speedlab_lakehouse.quality.gate import Gate
@@ -118,7 +119,8 @@ def entries(spark: SparkSession, settings: Settings) -> list[DataFrame]:
         found.append(unreplayed(spark, settings, human_entries(read(spark, EVENTS, settings.lake))))
     if exists(spark, TRACE_PIECES, settings.lake):
         found.append(ai_entries(read(spark, TRACE_PIECES, settings.lake)))
-    return found
+    games = list(listed(spark, settings))
+    return [rows.where(F.col("game").isin(games)) for rows in found]
 
 
 def splits_of(levels: list[list[int]], won_at: int) -> list[Split]:

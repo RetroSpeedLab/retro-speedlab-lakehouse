@@ -17,6 +17,12 @@ class SourcesFailed(RuntimeError):
     pass
 
 
+def reason(error: Exception) -> str:
+    if isinstance(error, httpx.HTTPStatusError):
+        return f"HTTP {error.response.status_code}"
+    return type(error).__name__
+
+
 def ingest_sources(spark: SparkSession, lake: LakeSettings, gate: Gate, sources: list[Source], now: datetime) -> int:
     loaded = 0
     failed: list[str] = []
@@ -25,7 +31,7 @@ def ingest_sources(spark: SparkSession, lake: LakeSettings, gate: Gate, sources:
             loaded += ingest(spark, lake, gate, source)
         except (httpx.HTTPError, KeyError, IndexError, ValueError) as error:
             logger.error(f"{source.name} could not be loaded: {error!r}")
-            failed.append(source.name)
+            failed.append(f"{source.name}.{source.stream} ({reason(error)})")
     built = build_source_silver(spark, lake, gate) + build_source_gold(spark, lake, gate, now)
     written = loaded + built + build_sources_status(spark, lake, gate)
     if failed:

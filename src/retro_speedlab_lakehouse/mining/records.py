@@ -24,7 +24,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from retro_speedlab_lakehouse.lake.catalog import FRAME_TRACES, TRACE_PIECES
+from retro_speedlab_lakehouse.lake.catalog import FRAME_TRACES, GAMES, TRACE_PIECES
 from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.write import append, overwrite_games
 from retro_speedlab_lakehouse.mining.headroom import ensure_headroom
@@ -79,15 +79,24 @@ class FoundRecord:
     digest: str
 
 
+def game_of(path: Path) -> str:
+    return path.parents[len(RECORD.parts) - 1].name
+
+
 def found_record(path: Path) -> FoundRecord:
-    game = path.parents[len(RECORD.parts) - 1].name
+    game = game_of(path)
     if not SLUG.fullmatch(game):
         raise ValueError(f"The runner's working directory holds a record of {game!r}, which is no game slug")
     return FoundRecord(game, path, hashlib.sha256(path.read_bytes()).hexdigest())
 
 
-def found_records(working: Path) -> list[FoundRecord]:
-    return [found_record(path) for path in sorted(working.glob(f"*/{RECORD.as_posix()}"))]
+def found_records(working: Path, games: set[str]) -> list[FoundRecord]:
+    paths = sorted(working.glob(f"*/{RECORD.as_posix()}"))
+    return [found_record(path) for path in paths if game_of(path) in games]
+
+
+def listed(spark: SparkSession, settings: Settings) -> set[str]:
+    return {row["slug"] for row in read(spark, GAMES, settings.lake).select("slug").collect()}
 
 
 def mined(spark: SparkSession, settings: Settings) -> set[tuple[str, str]]:
@@ -134,7 +143,8 @@ def verdicts(traced: DataFrame) -> DataFrame:
 def mine_records(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     ensure_headroom(settings.mining.min_available_mb)
     known = mined(spark, settings)
-    fresh = [record for record in found_records(settings.mining.working) if (record.game, record.digest) not in known]
+    found = found_records(settings.mining.working, listed(spark, settings))
+    fresh = [record for record in found if (record.game, record.digest) not in known]
     if not fresh:
         logger.info("Every record in the runner's working directory is mined already")
         return 0

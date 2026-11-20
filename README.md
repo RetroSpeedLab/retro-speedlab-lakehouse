@@ -215,7 +215,8 @@ use up the night before `experiments`, `search-allocation`, `search-bandit` and 
 
 `mine-records` reads the runner's working directories read-only and replays each new record's pieces with
 retro-speedlab-core, retro-speedlab-engine and retro-speedlab-games bundled in the image. `verify-replays` runs each
-game's served verifier exactly as the backend does. Both refuse to start below `mining.min_available_mb` of available
+game's served verifier exactly as the backend does. Both take only the games `silver.games` lists, so a game that
+left the collection is no longer replayed, and both refuse to start below `mining.min_available_mb` of available
 memory.
 
 ## Owner tools on the LAN

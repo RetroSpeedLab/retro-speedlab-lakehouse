@@ -1,13 +1,17 @@
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
+from retro_speedlab_lakehouse.lake.catalog import GAMES, TRACE_PIECES
+from retro_speedlab_lakehouse.lake.tables import append_rows
 from retro_speedlab_lakehouse.mining.gold import level_segments, mining_summary, ram_heatmap, won_runs
 from retro_speedlab_lakehouse.mining.humans import board_history, split_comparison
-from retro_speedlab_lakehouse.mining.records import FRAME, PIECE, piece_rows
-from retro_speedlab_lakehouse.mining.verify import SPLIT, splits_of
+from retro_speedlab_lakehouse.mining.records import FRAME, PIECE, RECORD, found_records, piece_rows
+from retro_speedlab_lakehouse.mining.verify import SPLIT, entries, splits_of
+from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.stream.rows import parsed
 
 from .conftest import event, kafka_rows
@@ -94,3 +98,18 @@ def test_human_splits_line_up_with_the_ai_levels(spark: SparkSession) -> None:
         ("Stage 1", 32, 40),
         ("Stage 2", 10, 10),
     ]
+
+
+def test_only_the_records_of_listed_games_are_mined(tmp_path: Path) -> None:
+    for game in ("blinkwisp", "hourgrit"):
+        record = tmp_path / game / RECORD
+        record.parent.mkdir(parents=True)
+        record.write_bytes(game.encode())
+    assert [found.game for found in found_records(tmp_path, {"blinkwisp", "comet_courier"})] == ["blinkwisp"]
+
+
+def test_only_the_runs_of_listed_games_are_replayed(spark: SparkSession, settings: Settings) -> None:
+    pieces = latest(spark).withColumn("inputs", F.unbase64("inputs")).withColumn("traced", F.lit(1))
+    append_rows(TRACE_PIECES, settings.lake, pieces)
+    append_rows(GAMES, settings.lake, spark.createDataFrame([("blinkwisp",)], "slug string"))
+    assert [rows.count() for rows in entries(spark, settings)] == [0]

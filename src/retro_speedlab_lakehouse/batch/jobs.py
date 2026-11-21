@@ -17,6 +17,7 @@ from retro_speedlab_lakehouse.cockpit.summary import build_summary
 from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
 from retro_speedlab_lakehouse.engagement.jobs import build_community, build_engagement, build_engagement_experiments
 from retro_speedlab_lakehouse.experiments.job import build_experiments
+from retro_speedlab_lakehouse.growthbook.job import export_growthbook
 from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, Table
 from retro_speedlab_lakehouse.mining.build import build_mining_gold
 from retro_speedlab_lakehouse.mining.records import mine_records
@@ -82,6 +83,10 @@ def engagement_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> i
     return build_engagement_experiments(spark, settings, gate, now()) + build_community(spark, settings, gate)
 
 
+def growthbook_export(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return export_growthbook(spark, settings, gate, now())
+
+
 def cockpit(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return build_cockpit(spark, settings.lake, settings.findings, gate, now())
 
@@ -111,6 +116,7 @@ JOBS: dict[str, Job] = {
     "videos-nightly": mirror_videos,
     "engagement-hourly": engagement_hourly,
     "engagement-nightly": engagement_nightly,
+    "growthbook-export": growthbook_export,
     "cockpit": cockpit,
     "cockpit-summary": cockpit_summary,
     "platform": platform,

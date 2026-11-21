@@ -199,12 +199,36 @@ tests per 30-minute block on viewers, chat messages per minute and follows per h
 SRM check, Holm and Benjamini-Hochberg. A variant wins only with a clear Holm verdict on its first metric and no sample
 ratio mismatch. The `chat` process also publishes Helix's viewers and followers per minute to `twitch.minutes`.
 
+## GrowthBook
+
+The owner's GrowthBook shows the lake's experiments with its own statistics, frequentist like the lake. GrowthBook
+cannot read Delta, so the nightly `growthbook-export` job writes every experiment's units and metric events to a small
+Postgres beside it, and creates the experiments GrowthBook does not have yet through its REST API and refreshes their
+results. A unit is one row of `units` (`unit_id`, `experiment_id`, `variation_id`, `assigned_at`), its metric values
+rows of `metric_events` (`unit_id`, `metric`, `value`, `measured_at`); each export replaces both in one transaction.
+
+| Experiment | Unit | Variations | Metrics |
+|------------|------|------------|---------|
+| Site tests (`cta_copy`, `hero_text`, `win_dialog`) | One variant view; Umami counts views per hour, so the hour's views are numbered | the two variants, even | the goals: `click`, `signin`, `saved` |
+| `holdout_home_games`, `holdout_home_sections`, `holdout_games_cards` | One ranked view, numbered per hour like the site tests | `holdout` 12 %, `adaptive` | `click` |
+| `holdout_stream_scenes`, `holdout_stream_clips` | One hour of an arm | `holdout` 12 %, `adaptive` | `chat_per_minute` |
+| Stream tests (`title_style`, `commentary_style`, `overlay_emphasis`) | One 30-minute block with Twitch numbers | the two variants, even | `viewers`, `chat_per_minute`, `follows_per_hour` |
+| `search_bandit` | One finished search turn of a game | `holdout` 20 %, `bandit` | `frames_saved_per_hour` |
+| `promotion_variants_<network>` | One decided promotion draft | variants `0` and `1` | `approved`, `interactions_24h` (zero for a draft not posted) |
+
+The windows are the lake's: 28 days for the engagement experiments, every turn for the search. The promotion variants
+rotate and then follow the bandit, so their split is not fixed and GrowthBook's sample ratio check does not apply.
+`growthbook/config.yml` declares the data source and the metrics; GrowthBook reads it on start, so they are rebuilt
+with it. The job writes as the database's owner, GrowthBook reads with a role that may only select
+(`growthbook/reader.sql`), and the Postgres has no published port: it is on the lakehouse's network, where GrowthBook's
+API is attached for the job.
+
 ## Jobs
 
 | DAG | Schedule (UTC) | Jobs |
 |-----|----------------|------|
 | `lakehouse_hourly` | minute 10 of every hour outside 02:00 to 06:00 | `api-hourly`, `silver`, `sources-hourly`, `engagement-hourly`, `cockpit`, then `gold` |
-| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `sources-nightly`, `videos-nightly`, `maintenance`, then `platform` |
+| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `growthbook-export`, `platform`, then `sources-nightly`, `videos-nightly`, `maintenance` and `cockpit-summary` |
 | `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold` |
 
 The nightly DAG starts after the first lab run of the day and may run until 06:00. Nightly-only jobs skip when started
@@ -301,6 +325,7 @@ stream triggers and sources. Secrets come from the environment:
 | `UPLOAD_API_KEY` | The backend's events endpoint |
 | `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; the cockpit holds its own read-only pair |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
+| `GROWTHBOOK_DATABASE_PASSWORD`, `GROWTHBOOK_API_KEY` | GrowthBook's Postgres and REST API, set by `dokku/growthbook-setup.sh` |
 
 `dokku/sources.sh` copies the sources' credentials from the backend's and the runner's config without printing them.
 
@@ -318,7 +343,7 @@ bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
 bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
 bash dokku/database-setup.sh  # the cockpit's read-only lake key, after the cockpit's setup; safe to rerun
-bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB and the admin; rerun after a pin bump
+bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB, its Postgres, the admin and the keys; rerun after a pin bump
 bash dokku/lan-setup.sh       # the LAN proxy, its sign-in, its certificate and Main's default site; safe to rerun
 bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main; no APP only syncs its hosts
 bash dokku/sources.sh         # whenever a source's credentials change

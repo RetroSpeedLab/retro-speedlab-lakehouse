@@ -23,6 +23,7 @@ NIGHTLY_JOBS = (
     "search-allocation",
     "search-bandit",
     "engagement-nightly",
+    "growthbook-export",
     "platform",
 )
 NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance", "cockpit-summary")

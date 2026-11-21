@@ -135,6 +135,23 @@ class ChatSettings(Frozen):
     ignored: frozenset[str]
 
 
+class GrowthbookDatabase(Frozen):
+    host: str
+    port: PositiveInt
+    name: str
+    user: str
+    password: str
+
+
+class GrowthbookSettings(Frozen):
+    api: str
+    api_key: str
+    datasource: str
+    assignment_query: str
+    identifier: str
+    database: GrowthbookDatabase
+
+
 class Settings(Frozen):
     backend: BackendSettings
     kafka: KafkaSettings
@@ -148,6 +165,7 @@ class Settings(Frozen):
     chat: ChatSettings
     findings: FindingsSettings
     summary: SummarySettings
+    growthbook: GrowthbookSettings
     sources: Sources
 
 
@@ -171,6 +189,18 @@ def load_backend_settings(config: Path) -> BackendSettings:
     return backend_settings(load_document(config))
 
 
+def growthbook_settings(document: Any) -> GrowthbookSettings:
+    growthbook = document.growthbook
+    return GrowthbookSettings(
+        api=growthbook.api,
+        api_key=secret("GROWTHBOOK_API_KEY"),
+        datasource=growthbook.datasource,
+        assignment_query=growthbook.assignment_query,
+        identifier=growthbook.identifier,
+        database=GrowthbookDatabase(**growthbook.database.to_dict(), password=secret("GROWTHBOOK_DATABASE_PASSWORD")),
+    )
+
+
 def load_settings(config: Path) -> Settings:
     document = load_document(config)
     return Settings(
@@ -186,6 +216,7 @@ def load_settings(config: Path) -> Settings:
         chat=ChatSettings(channel=secret("TWITCH_CHANNEL").lower(), ignored=frozenset(document.chat.ignored)),
         findings=FindingsSettings(**document.findings.to_dict()),
         summary=SummarySettings(**document.summary.to_dict()),
+        growthbook=growthbook_settings(document),
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),

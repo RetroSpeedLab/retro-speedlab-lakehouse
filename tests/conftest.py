@@ -15,6 +15,8 @@ from retro_speedlab_lakehouse.settings import (
     EngagementSettings,
     EngagementSurface,
     FindingsSettings,
+    GrowthbookDatabase,
+    GrowthbookSettings,
     KafkaSettings,
     LakeSettings,
     MiningSettings,
@@ -160,6 +162,14 @@ def settings(tmp_path: Path) -> Settings:
         chat=ChatSettings(channel="retrospeedlab", ignored=frozenset({"streamelements"})),
         findings=findings_settings(),
         summary=SummarySettings(**load_document(CONFIG).summary.to_dict()),
+        growthbook=GrowthbookSettings(
+            api="http://growthbook.test:3100",
+            api_key="key",
+            datasource="lake",
+            assignment_query="units",
+            identifier="unit_id",
+            database=GrowthbookDatabase(host="postgres", port=5432, name="growthbook", user="lakehouse", password="pw"),
+        ),
         sources=source_settings(),
     )
 

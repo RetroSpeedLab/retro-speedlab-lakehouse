@@ -83,11 +83,15 @@ def stream_blocks(minutes: DataFrame, experiment: str, block_minutes: int) -> Da
     )
 
 
+def stream_minutes(exposures: DataFrame, twitch: DataFrame, chat: DataFrame) -> DataFrame:
+    scenes = exposure_minutes(exposures.where(F.col("surface") == STREAM_SCENES))
+    return scenes.join(twitch, "minute", "left").join(chat, "minute", "left")
+
+
 def stream_findings(
     exposures: DataFrame, twitch: DataFrame, chat: DataFrame, settings: EngagementSettings
 ) -> list[Finding]:
-    scenes = exposure_minutes(exposures.where(F.col("surface") == STREAM_SCENES))
-    minutes = scenes.join(twitch, "minute", "left").join(chat, "minute", "left").cache()
+    minutes = stream_minutes(exposures, twitch, chat).cache()
     findings: list[Finding] = []
     for name, experiment in settings.experiments.items():
         if experiment.scope != "time":

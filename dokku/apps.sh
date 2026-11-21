@@ -3,7 +3,7 @@ readonly HOME_LAB_DOKKU=dokku-black-omen
 readonly MAIN_DOKKU=dokku
 readonly MAIN_SHELL=jumphost
 readonly INTERACTIVE_CPU_SHARES=2048
-readonly LAN_DOMAINS=(database.retrospeedlab.com growthbook.retrospeedlab.com growthbook-api.retrospeedlab.com)
+readonly LAN_DOMAINS=(tools.retrospeedlab.com growthbook.retrospeedlab.com growthbook-api.retrospeedlab.com aim.retrospeedlab.com)
 readonly SECRET_CHARACTERS='^[A-Za-z0-9._~@+-]+$'
 APPS_SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly APPS_SCRIPTS

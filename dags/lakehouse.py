@@ -14,7 +14,7 @@ RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
 HOURLY_SCHEDULE = f"10 0-{NIGHT_START.hour - 1},{NIGHT_END.hour}-23 * * *"
 HOURLY_JOBS = ("api-hourly", "silver", "gold")
-HOURLY_ASIDE = ("sources-hourly", "engagement-hourly", "cockpit")
+HOURLY_ASIDE = ("sources-hourly", "engagement-hourly")
 NIGHTLY_JOBS = (
     "api-nightly",
     "silver",
@@ -26,7 +26,7 @@ NIGHTLY_JOBS = (
     "growthbook-export",
     "platform",
 )
-NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance", "cockpit-summary")
+NIGHTLY_ASIDE = ("sources-nightly", "videos-nightly", "maintenance")
 MINING_JOBS = ("mine-records", "verify-replays", "mining-gold")
 HOURLY_PRIORITY = 10
 NIGHTLY_PRIORITY = 3

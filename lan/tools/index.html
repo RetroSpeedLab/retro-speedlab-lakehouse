@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>RetroSpeedLab tools</title>
+<style>
+:root {
+    color-scheme: dark;
+    --ink: #120f12;
+    --velvet: #1d171c;
+    --edge: #3a2c33;
+    --brass: #e6b85c;
+    --mint: #61e7cf;
+    --ivory: #fff8e8;
+    --muted: #c8bda9;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    padding: clamp(24px, 5vw, 56px) clamp(16px, 4vw, 40px);
+    background: radial-gradient(ellipse at 10% 0%, rgba(230, 184, 92, 0.08), transparent 40%), var(--ink);
+    color: var(--ivory);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+main {
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+header {
+    margin-bottom: 40px;
+}
+
+h1 {
+    margin: 0;
+    font-size: clamp(26px, 4vw, 34px);
+    letter-spacing: 0.02em;
+}
+
+h1 span {
+    color: var(--brass);
+}
+
+header p {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+section {
+    margin-bottom: 36px;
+}
+
+h2 {
+    margin: 0 0 14px;
+    color: var(--brass);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+a {
+    display: block;
+    height: 100%;
+    padding: 16px 18px;
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    background: var(--velvet);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+a:hover,
+a:focus-visible {
+    border-color: var(--mint);
+    transform: translateY(-2px);
+    outline: none;
+}
+
+a strong {
+    display: block;
+    font-size: 16px;
+}
+
+a strong::after {
+    content: " \2197";
+    color: var(--mint);
+    font-weight: 400;
+}
+
+a span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 13.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    a {
+        transition: none;
+    }
+
+    a:hover,
+    a:focus-visible {
+        transform: none;
+    }
+}
+</style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>RetroSpeedLab <span>tools</span></h1>
+        <p>Every dashboard behind the project, one click away.</p>
+    </header>
+
+    <section>
+        <h2>Analytics &amp; experiments</h2>
+        <ul>
+            <li><a href="https://tracking.datenwissenschaften.com" target="_blank" rel="noopener noreferrer"><strong>Umami</strong><span>Visitors, pages and events on the sites</span></a></li>
+            <li><a href="https://growthbook.retrospeedlab.com" target="_blank" rel="noopener noreferrer"><strong>GrowthBook</strong><span>The lake's experiments with their results</span></a></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Errors &amp; uptime</h2>
+        <ul>
+            <li><a href="https://bugs.datenwissenschaften.com" target="_blank" rel="noopener noreferrer"><strong>Bugsink</strong><span>Errors from every app</span></a></li>
+            <li><a href="https://uptime.datenwissenschaften.com" target="_blank" rel="noopener noreferrer"><strong>Uptime Kuma</strong><span>Monitors and status pages</span></a></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>AI &amp; lab</h2>
+        <ul>
+            <li><a href="https://cloud.langfuse.com" target="_blank" rel="noopener noreferrer"><strong>Langfuse</strong><span>Traces and cost of the lab's Claude calls</span></a></li>
+            <li><a href="https://aim.retrospeedlab.com" target="_blank" rel="noopener noreferrer"><strong>Aim</strong><span>Training runs</span></a></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Code &amp; deploys</h2>
+        <ul>
+            <li><a href="https://github.com/RetroSpeedLab" target="_blank" rel="noopener noreferrer"><strong>GitHub</strong><span>Repositories, pull requests and CI</span></a></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Channels</h2>
+        <ul>
+            <li><a href="https://dashboard.twitch.tv/u/retrospeedlab/home" target="_blank" rel="noopener noreferrer"><strong>Twitch</strong><span>Creator dashboard of the live stream</span></a></li>
+            <li><a href="https://studio.youtube.com" target="_blank" rel="noopener noreferrer"><strong>YouTube Studio</strong><span>Videos, Shorts and their analytics</span></a></li>
+            <li><a href="https://itch.io/dashboard" target="_blank" rel="noopener noreferrer"><strong>itch.io</strong><span>The game pack's page and its numbers</span></a></li>
+            <li><a href="https://discord.com/channels/1112317659812483092" target="_blank" rel="noopener noreferrer"><strong>Discord</strong><span>The community server</span></a></li>
+            <li><a href="https://console.cloud.google.com/home/dashboard?project=retro-speedlab" target="_blank" rel="noopener noreferrer"><strong>Google Cloud</strong><span>Console of the retro-speedlab project</span></a></li>
+            <li><a href="https://bsky.app/profile/retrospeedlab.bsky.social" target="_blank" rel="noopener noreferrer"><strong>Bluesky</strong><span>The project's posts</span></a></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Secrets</h2>
+        <ul>
+            <li><a href="https://vault.datenwissenschaften.com" target="_blank" rel="noopener noreferrer"><strong>Vaultwarden</strong><span>Passwords and keys</span></a></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Public site</h2>
+        <ul>
+            <li><a href="https://www.retrospeedlab.com" target="_blank" rel="noopener noreferrer"><strong>retrospeedlab.com</strong><span>The live run, records and the lab</span></a></li>
+            <li><a href="https://games.retrospeedlab.com" target="_blank" rel="noopener noreferrer"><strong>RetroSpeedLab24</strong><span>The 24 games, playable in the browser</span></a></li>
+        </ul>
+    </section>
+</main>
+</body>
+</html>

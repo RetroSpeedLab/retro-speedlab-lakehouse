@@ -61,35 +61,6 @@ class StreamSettings(Frozen):
     status_seconds: NonNegativeInt
 
 
-class FindingActions(Frozen):
-    search_idle: str
-    search_stuck: str
-    failed_jobs: str
-    quality: str
-    stream: str
-    disk: str
-
-
-class FindingsSettings(Frozen):
-    baseline_days: PositiveInt
-    min_baseline_days: PositiveInt
-    change: float = Field(gt=0, lt=1)
-    stuck_watch_hours: PositiveFloat
-    stuck_act_hours: PositiveFloat
-    failed_runs_act: PositiveInt
-    stream_watch_minutes: PositiveFloat
-    stream_act_minutes: PositiveFloat
-    disk_watch_percent: PositiveFloat
-    disk_act_percent: PositiveFloat
-    actions: FindingActions
-
-
-class SummarySettings(Frozen):
-    model: str
-    max_tokens: PositiveInt
-    max_characters: PositiveInt
-
-
 class MiningSettings(Frozen):
     working: Path
     speedlab: Path
@@ -163,8 +134,6 @@ class Settings(Frozen):
     bandit: BanditSettings
     engagement: EngagementSettings
     chat: ChatSettings
-    findings: FindingsSettings
-    summary: SummarySettings
     growthbook: GrowthbookSettings
     sources: Sources
 
@@ -214,8 +183,6 @@ def load_settings(config: Path) -> Settings:
         bandit=BanditSettings(**document.bandit.to_dict()),
         engagement=EngagementSettings(**document.engagement.to_dict()),
         chat=ChatSettings(channel=secret("TWITCH_CHANNEL").lower(), ignored=frozenset(document.chat.ignored)),
-        findings=FindingsSettings(**document.findings.to_dict()),
-        summary=SummarySettings(**document.summary.to_dict()),
         growthbook=growthbook_settings(document),
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),

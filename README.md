@@ -101,8 +101,6 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.platform_tables`, `gold.platform_jobs` | `platform`, every job | | Size and versions per table, measured nightly, and every job run |
 | `gold.sources_status` | `sources-hourly`, `sources-nightly` | `source`, `stream` | Each source's newest load and its records |
 | `gold.quality_reports`, `gold.quality_failures` | every write | | The data-quality report of every silver, gold and live write, and the failed ones again |
-| `gold.cockpit_days` | `cockpit` | `metric`, `days_ago` | The cockpit's numbers per 24-hour window ending now, for the last 8 windows |
-| `gold.search_hours`, `gold.audience_hours` | `cockpit` | `hour` | Search, PPO, Twitch and chat per hour of the last 7 days |
 
 Writes use Delta MERGE (newest event wins); the live pulse tables are overwritten. The nightly `maintenance` job runs
 OPTIMIZE, VACUUM and the retention of each layer, starting with the tables that have the most files, and leaves the
@@ -184,13 +182,13 @@ order as the holdout.
 The Twitch channel learns its category and title the same way: each turn's pair is an item of `twitch_channel`,
 measured in `gold.twitch_channel_outcomes` against the viewers, followers and chat minutes it overlapped. Its reward
 is new followers per hour, Gamma over the turn's hours, because a follow is the growth that lasts: it brings the
-viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in the cockpit.
+viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in the table.
 
 The promotion drafts also learn what the maintainer approves. Every approved or rejected draft is an item
 `network:variant` of `promotion_variants`, Beta over decisions with approvals as the outcome, so the backend favours
 the variant that gets approved while the floor and the holdout keep trying the other. `gold.promotion_preferences`
-shows the approval rate per kind, variant, opening, tone, length and count of numbers with its counts and interval,
-on the cockpit's Audience page. Beside each rate stand the Bluesky interactions per post at 24 h
+shows the approval rate per kind, variant, opening, tone, length and count of numbers with its counts and interval.
+Beside each rate stand the Bluesky interactions per post at 24 h
 of the drafts that went out, linked by the post in the draft's URL, so a kind or tone that gets approved but draws
 nobody shows up there.
 
@@ -227,8 +225,8 @@ API is attached for the job.
 
 | DAG | Schedule (UTC) | Jobs |
 |-----|----------------|------|
-| `lakehouse_hourly` | minute 10 of every hour outside 02:00 to 06:00 | `api-hourly`, `silver`, `sources-hourly`, `engagement-hourly`, `cockpit`, then `gold` |
-| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `growthbook-export`, `platform`, then `sources-nightly`, `videos-nightly`, `maintenance` and `cockpit-summary` |
+| `lakehouse_hourly` | minute 10 of every hour outside 02:00 to 06:00 | `api-hourly`, `silver`, `sources-hourly`, `engagement-hourly`, then `gold` |
+| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `growthbook-export`, `platform`, then `sources-nightly`, `videos-nightly` and `maintenance` |
 | `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold` |
 
 The nightly DAG starts after the first lab run of the day and may run until 06:00. Nightly-only jobs skip when started
@@ -245,18 +243,19 @@ memory.
 
 ## Owner tools on the LAN
 
-The cockpit and GrowthBook run on the Home Lab and are reachable from the home LAN only, under their own names with
+The tools page, GrowthBook and Aim run on the Home Lab and are reachable from the home LAN only, under their own names with
 TLS and behind the owner sign-in.
 
 | Name | Tool | Behind the sign-in | Break-glass login |
 |------|------|--------------------|-------------------|
-| `database` | The cockpit | has no login of its own | |
+| `tools` | The tools page: a link to every owner dashboard (`lan/tools/index.html`), served by nginx itself | has no login of its own | |
 | `growthbook` | GrowthBook | the gate signs in as the admin | the admin, password in `GROWTHBOOK_ADMIN_PASSWORD` |
 | `growthbook-api` | GrowthBook's API | the UI's calls; `/api/` stays open for SDK and REST keys | |
+| `aim` | Aim, the training runs | has no login of its own | |
 
 - Every tool publishes its port on localhost only. nginx on the Home Lab serves the names on the LAN address only
-  (`lan/tools.conf`), and the firewall opens HTTP and HTTPS on the LAN interface only. The LAN's DNS points the names
-  at the Home Lab; outside the LAN they reach Main, which answers only Let's Encrypt challenges for them.
+  (`lan/tools.conf`), and the firewall opens HTTP and HTTPS on the LAN interface only. The LAN's Pi-hole points the
+  names at the Home Lab; outside the LAN they reach Main, which answers only Let's Encrypt challenges for them.
 - One Let's Encrypt certificate covers the names. A placeholder app on Main holds them, so the certificate renews there
   over HTTP-01. The Home Lab fetches it daily with a key that may only read that certificate (`lan/pull-certs.sh`),
   checks that it is valid and matches its key, and reloads nginx.
@@ -294,20 +293,7 @@ takes the session over with a one-minute ticket at `/_gate/adopt`.
 - The backend needs `SSO_URL`, `SSO_SECRET`, `SSO_OWNER_ID` and `SSO_HOSTS` (the tools' hosts on Main and the LAN);
   Discord must list `https://sso.retrospeedlab.com/callback` as a redirect of the backend's app.
 
-## Cockpit and alerts
-
-The cockpit's pages hold the owner's numbers, every one from the lake and none of them public:
-
-| Page | What it shows |
-|-----------|---------------|
-| Overview | Health first: the runner, the search, the stream lag, the last Airflow job, failed jobs and quality gates, the monitors, and each server's disk, memory and load. Then the last 24 hours against the 24 hours before: records, frames saved, lab runs, highscores, human game starts, viewers, followers, chat, Discord members and the Claude cost of the last full day. Then the return on cost: the lab's frames saved per Claude dollar, the promotion's views per Claude dollar, the search's frames saved per CPU-hour and the lab changes flagged as harmful |
-| Return on cost | The lab's frames saved per Claude dollar per game and per run, with intervals and harm flags; the promotion's views and likes per Claude dollar per network and variant, with intervals; the search's frames saved per CPU-hour per worker kind and per game |
-| Search and AI | Records per game, frames saved per hour and per game, the bandit's shares and its holdout, PPO reward and loss, the policy now, lab runs and their experiments |
-| Audience | Followers, members, visitors and game starts, Twitch viewers and chat per hour, game starts per game, the itch.io pack per game and day, YouTube views and minutes watched per day, Discord activity, the promotion picks with the Bluesky interactions per post, the engagement ranking and the A/B results |
-| Platform and cost | Stream lag, Airflow runs and failures, average job minutes, source loads, failed quality gates, disk, memory and load per server, the largest tables, the Claude cost per day, errors and uptime |
-
-The heavy numbers come from the hourly `cockpit` job, so a page reads small gold tables; health reads the `live`
-tables directly. A table that does not exist yet shows as empty until its first write.
+## Alerts
 
 A small collector on each server (`hosts/`) reports disk, memory and load every minute to the backend, which keeps the
 newest values for its alerts and publishes them to `hosts.metrics` for `live.host_metrics` and `silver.host_metrics`.
@@ -323,7 +309,7 @@ stream triggers and sources. Secrets come from the environment:
 | Variable | Purpose |
 |----------|---------|
 | `UPLOAD_API_KEY` | The backend's events endpoint |
-| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; the cockpit holds its own read-only pair |
+| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
 | `GROWTHBOOK_DATABASE_PASSWORD`, `GROWTHBOOK_API_KEY` | GrowthBook's Postgres and REST API, set by `dokku/growthbook-setup.sh` |
 
@@ -342,9 +328,8 @@ ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
 bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
-bash dokku/database-setup.sh  # the cockpit's read-only lake key, after the cockpit's setup; safe to rerun
 bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB, its Postgres, the admin and the keys; rerun after a pin bump
-bash dokku/lan-setup.sh       # the LAN proxy, its sign-in, its certificate and Main's default site; safe to rerun
+bash dokku/lan-setup.sh       # the LAN proxy, sign-in, certificate, Main's default site and Pi-hole names; safe to rerun
 bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main; no APP only syncs its hosts
 bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change

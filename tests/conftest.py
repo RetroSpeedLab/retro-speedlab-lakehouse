@@ -14,7 +14,6 @@ from retro_speedlab_lakehouse.settings import (
     EngagementExperiment,
     EngagementSettings,
     EngagementSurface,
-    FindingsSettings,
     GrowthbookDatabase,
     GrowthbookSettings,
     KafkaSettings,
@@ -24,8 +23,6 @@ from retro_speedlab_lakehouse.settings import (
     Settings,
     SparkSettings,
     StreamSettings,
-    SummarySettings,
-    load_document,
 )
 from retro_speedlab_lakehouse.sources.settings import (
     BlueskySettings,
@@ -45,7 +42,6 @@ from retro_speedlab_lakehouse.spark.session import spark_session
 from retro_speedlab_lakehouse.stream.rows import KAFKA_ROW
 
 FIXTURES = Path(__file__).parent / "fixtures"
-CONFIG = Path(__file__).parents[1] / "config.yaml"
 DELTA = "io.delta:delta-spark_4.1_2.13:4.4.1"
 DROPOFF_SINCE = datetime(2026, 11, 16, 10, tzinfo=UTC)
 
@@ -123,10 +119,6 @@ def engagement_settings() -> EngagementSettings:
     )
 
 
-def findings_settings() -> FindingsSettings:
-    return FindingsSettings(**load_document(CONFIG).findings.to_dict())
-
-
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(
@@ -160,8 +152,6 @@ def settings(tmp_path: Path) -> Settings:
         bandit=BanditSettings(min_share=0.1, days=14, draws=2000),
         engagement=engagement_settings(),
         chat=ChatSettings(channel="retrospeedlab", ignored=frozenset({"streamelements"})),
-        findings=findings_settings(),
-        summary=SummarySettings(**load_document(CONFIG).summary.to_dict()),
         growthbook=GrowthbookSettings(
             api="http://growthbook.test:3100",
             api_key="key",

@@ -9,13 +9,15 @@ readonly CERTS=/etc/retro-speedlab/lan-certs
 readonly SERVICE=retro-speedlab-lan-certs
 readonly PULL=/usr/local/sbin/${SERVICE}
 readonly NGINX_FILES=/etc/nginx/retro-speedlab-lan
-readonly NGINX_INCLUDES=(server.conf proxy.conf gate.conf signed-in.conf growthbook-login.html)
+readonly NGINX_INCLUDES=(server.conf proxy.conf gate.conf signed-in.conf growthbook-login.html tools/index.html)
 readonly GROWTHBOOK=retro-speedlab-growthbook
 readonly BACKEND=retro-speedlab-backend
 readonly NGINX_SITE=/etc/nginx/conf.d/retro-speedlab-lan.conf
 readonly MAIN_DEFAULT=/etc/nginx/conf.d/00-default-site.conf
 readonly ROUTE_PROBE=1.1.1.1
 readonly ANSWER_SECONDS=10
+readonly LAN_DNS=gatekeeper
+readonly LAN_ZONE=retrospeedlab.com
 
 source "$(dirname "${BASH_SOURCE[0]}")/apps.sh"
 LAN_FILES="$(cd "${APPS_SCRIPTS}/../lan" && pwd)"
@@ -44,6 +46,11 @@ reload_nginx() {
         sudo systemctl reload nginx && echo '    reloaded nginx on ${host}'"
 }
 
+certificate_names() {
+    ssh "${MAIN_SHELL}" "sudo openssl x509 -noout -ext subjectAltName -in ${PLACEHOLDER_TLS}/server.crt" \
+        | grep -o 'DNS:[^,]*' | cut -d: -f2 | sort
+}
+
 placeholder() {
     step "Main: ${PLACEHOLDER} holds ${LAN_DOMAINS[*]} and renews their certificate"
     ensure_app "${MAIN_DOKKU}" "${PLACEHOLDER}"
@@ -54,8 +61,8 @@ placeholder() {
     else
         bash "${APPS_SCRIPTS}/push-dir.sh" "${MAIN_DOKKU}" "${PLACEHOLDER}" lan/placeholder
     fi
-    if [[ "$(ssh "${MAIN_DOKKU}" letsencrypt:active "${PLACEHOLDER}")" == true ]]; then
-        echo "    the certificate is already active"
+    if [[ "$(certificate_names)" == "$(printf '%s\n' "${LAN_DOMAINS[@]}" | sort)" ]]; then
+        echo "    the certificate covers exactly these names"
     else
         ssh "${MAIN_DOKKU}" letsencrypt:enable "${PLACEHOLDER}"
     fi
@@ -154,12 +161,25 @@ lan_proxy() {
         comment 'Retro Speedlab owner tools on the LAN'" | sed 's/^/    ufw: /'
 }
 
+lan_dns() {
+    step "${LAN_DNS}: the Pi-hole points ${LAN_DOMAINS[*]} at ${LAN_ADDRESS}"
+    local current hosts=() line name json
+    current="$(ssh "${LAN_DNS}" "sudo -n pihole-FTL --config dns.hosts")"
+    while read -r line; do
+        if [[ -n "${line}" && "${line}" != *".${LAN_ZONE}" ]]; then
+            hosts+=("${line}")
+        fi
+    done < <(tr -d '[]' <<< "${current}" | tr ',' '\n')
+    for name in "${LAN_DOMAINS[@]}"; do
+        hosts+=("${LAN_ADDRESS} ${name}")
+    done
+    json="$(printf '"%s",' "${hosts[@]}")"
+    ssh "${LAN_DNS}" "sudo -n pihole-FTL --config dns.hosts '[${json%,}]' && sudo -n pihole reloaddns" | sed 's/^/    /'
+}
+
 placeholder
 main_default_site
 owner_sign_in
 certificate_pull
 lan_proxy
-step "Point these names at ${LAN_ADDRESS} in the LAN's DNS"
-for name in "${LAN_DOMAINS[@]}"; do
-    echo "    ${LAN_ADDRESS} ${name}"
-done
+lan_dns

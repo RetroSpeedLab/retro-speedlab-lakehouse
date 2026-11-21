@@ -71,6 +71,10 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.game_dropoff` | `sources-hourly`, `sources-nightly` | `game` | Umami's campaign runs that ended without a win, per level, and the wins since tracking began |
 | `silver.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri`, `measured_at` | Every load's likes, reposts, replies and quotes of each of the Bluesky account's own posts, so the counts keep their history |
 | `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | The traced steps, tokens and model cost of every lab run, from its `lab scores` span in Tempo |
+| `silver.lab_rounds` | `sources-hourly`, `sources-nightly` | `stamp`, `round` | Every `claude -p` round of a lab run from its trace in Tempo: duration, model, cost, turns, tool calls and errors, subagents, input, output and cache tokens; read since the last run |
+| `gold.lab_run_rounds` | `sources-hourly`, `sources-nightly` | `stamp`, `round` | The rounds, for the website |
+| `gold.lab_run_traces` | `sources-hourly`, `sources-nightly` | `game`, `stamp` | Every traced lab run: rounds, minutes, first model, cost, tokens and tool calls, with its commits from `silver.lab_runs` and the frames its change saved from `gold.lab_roi` |
+| `gold.lab_trace_daily` | `sources-hourly`, `sources-nightly` | `date`, `game` | The traced lab runs, rounds, cost, tokens and tool calls per UTC day and game |
 | `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Human highscore runs and the AI's newest records replayed through the served game's verifier |
 | `gold.game_summary` | `gold` | `game` | Record, levels cleared, seconds saved, costliest level, lab runs, change since yesterday |
 | `gold.level_costs` | `gold` | `game`, `level` | Frames and share of the run per level |

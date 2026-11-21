@@ -7,6 +7,7 @@ from retro_speedlab_lakehouse.sources.github import github_numbers
 from retro_speedlab_lakehouse.sources.itch import itch_days, itch_numbers
 from retro_speedlab_lakehouse.sources.plays import umami_plays
 from retro_speedlab_lakehouse.sources.record import SnapshotSource, Source
+from retro_speedlab_lakehouse.sources.rounds import TempoRounds
 from retro_speedlab_lakehouse.sources.settings import Sources
 from retro_speedlab_lakehouse.sources.streamelements import streamelements_numbers
 from retro_speedlab_lakehouse.sources.tempo import tempo_days, tempo_lab_costs, tempo_numbers
@@ -37,6 +38,7 @@ def each_run_sources(sources: Sources) -> list[Source]:
         SnapshotSource("itch", PLAYS, lambda now: umami_plays(sources.umami, sources.umami.itch_website, now)),
         SnapshotSource("itch", DAILY, lambda now: itch_days(sources.umami, now)),
         SnapshotSource("tempo", LAB_COSTS, lambda now: tempo_lab_costs(sources.tempo, now)),
+        TempoRounds(sources.tempo),
         SnapshotSource("aim", NUMBERS, lambda now: aim_numbers(sources.aim)),
         SnapshotSource("bugsink", NUMBERS, lambda now: bugsink_numbers(sources.bugsink)),
         SnapshotSource("bluesky", NUMBERS, lambda now: bluesky_numbers(sources.bluesky)),

@@ -22,6 +22,7 @@ from retro_speedlab_lakehouse.sources.catalog import (
     SILVER_PLAYS,
     SOURCE_NUMBERS,
 )
+from retro_speedlab_lakehouse.sources.lab_traces import build_lab_traces_gold
 
 FRESH = timedelta(days=2)
 PLAY_DIMENSIONS = ("mode", "window")
@@ -154,5 +155,12 @@ def build_bluesky_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now:
 
 
 def build_source_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetime) -> int:
-    built = (build_numbers_gold, build_plays_gold, build_itch_gold, build_dropoff_gold, build_bluesky_gold)
+    built = (
+        build_numbers_gold,
+        build_plays_gold,
+        build_itch_gold,
+        build_dropoff_gold,
+        build_bluesky_gold,
+        build_lab_traces_gold,
+    )
     return sum(build(spark, lake, gate, now) for build in built)

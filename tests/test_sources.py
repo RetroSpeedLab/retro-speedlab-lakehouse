@@ -207,9 +207,9 @@ def test_a_rate_limit_longer_than_a_run_can_wait_fails_at_once(waits: list[float
 
 
 @respx.mock
-def test_tempo_is_searched_twice_an_hour_and_three_times_a_night(settings: Settings) -> None:
+def test_tempo_is_searched_three_times_an_hour_and_four_times_a_night(settings: Settings) -> None:
     route = respx.get("https://tempo.test/api/search").respond(json={"traces": []})
-    for sources, calls in ((hourly_sources, 2), (nightly_sources, 5)):
+    for sources, calls in ((hourly_sources, 3), (nightly_sources, 7)):
         for source in sources(settings.sources):
             if source.name == "tempo":
                 source.fetch(None, NOW)

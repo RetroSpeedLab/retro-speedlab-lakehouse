@@ -56,11 +56,15 @@ from retro_speedlab_lakehouse.sources.catalog import (
     HUMAN_DROPOFF,
     ITCH_DAILY,
     ITCH_PLAYS,
+    LAB_RUN_ROUNDS,
+    LAB_RUN_TRACES,
+    LAB_TRACE_DAILY,
     SILVER_BLUESKY_POSTS,
     SILVER_DROPOFF,
     SILVER_ITCH_DAILY,
     SILVER_ITCH_PLAYS,
     SILVER_LAB_COSTS,
+    SILVER_LAB_ROUNDS,
     SILVER_NUMBERS,
     SILVER_PLAYS,
     SOURCE_NUMBERS,
@@ -255,6 +259,28 @@ CHECKS: dict[Table, list[Check]] = {
         *at_least_zero("likes", "reposts", "replies", "quotes", "engagement", "engagement_24h"),
     ],
     TRACE_DAILY: [*keyed(TRACE_DAILY), *at_least_zero("observations", "tokens", "cost_usd")],
+    **{
+        table: [
+            *keyed(table),
+            AllowedValues("outcome", OUTCOMES),
+            InRange("round", min_value=1),
+            *at_least_zero("minutes", "cost_usd", "turns", "tool_calls", "tokens", "input_tokens", "output_tokens"),
+            *present("game", "started_at"),
+        ]
+        for table in (SILVER_LAB_ROUNDS, LAB_RUN_ROUNDS)
+    },
+    LAB_RUN_TRACES: [
+        *keyed(LAB_RUN_TRACES),
+        AllowedValues("outcome", OUTCOMES),
+        InRange("rounds", min_value=1),
+        *at_least_zero("minutes", "cost_usd", "turns", "tool_calls", "tokens", "input_tokens", "output_tokens"),
+        *present("started_at", "computed_at"),
+    ],
+    LAB_TRACE_DAILY: [
+        *keyed(LAB_TRACE_DAILY),
+        InRange("runs", min_value=1),
+        *at_least_zero("rounds", "minutes", "cost_usd", "tokens", "input_tokens", "output_tokens"),
+    ],
     **{
         table: [
             *keyed(table),

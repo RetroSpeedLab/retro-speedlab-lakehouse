@@ -23,12 +23,15 @@ from retro_speedlab_lakehouse.sources.catalog import (
     SILVER_ITCH_DAILY,
     SILVER_ITCH_PLAYS,
     SILVER_LAB_COSTS,
+    SILVER_LAB_ROUNDS,
     SILVER_NUMBERS,
     SILVER_PLAYS,
     TRACE_DAILY,
     YOUTUBE_DAILY,
 )
+from retro_speedlab_lakehouse.sources.lab_traces import LAB_ROUND
 from retro_speedlab_lakehouse.sources.registry import DAILY, DROPOFF, LAB_COSTS, NUMBERS, PLAYS, POSTS
+from retro_speedlab_lakehouse.sources.rounds import ROUNDS, TEMPO
 from retro_speedlab_lakehouse.sources.youtube import METRICS
 
 NUMBER = StructType(
@@ -139,7 +142,8 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
         (SILVER_ITCH_PLAYS, plays_of(records, "itch")),
         (SILVER_DROPOFF, newest(records, DROPOFF, DROPOFF_COUNTS).drop("source")),
         (SILVER_LAB_COSTS, newest(records, LAB_COSTS, LAB_COST).drop("source")),
-        (TRACE_DAILY, parsed(latest(spark, lake, "tempo", DAILY), DAILY_COST)),
+        (TRACE_DAILY, parsed(latest(spark, lake, TEMPO, DAILY), DAILY_COST)),
+        (SILVER_LAB_ROUNDS, parsed(latest(spark, lake, TEMPO, ROUNDS), LAB_ROUND)),
         (SILVER_ITCH_DAILY, parsed(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
         (SILVER_BLUESKY_POSTS, parsed(stream_of(records, "bluesky", POSTS), BLUESKY_POST)),
         (YOUTUBE_DAILY, parsed(latest(spark, lake, "youtube", DAILY), YOUTUBE_DAY)),

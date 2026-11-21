@@ -7,6 +7,7 @@ DELTA_CATALOG = "org.apache.spark.sql.delta.catalog.DeltaCatalog"
 S3A_FILESYSTEM = "org.apache.hadoop.fs.s3a.S3AFileSystem"
 MULTIPART_BYTES = "16M"
 UPLOAD_TIMEOUT = "2m"
+SOCKET_TIMEOUT = "60s"
 LOOPBACK = "127.0.0.1"
 IDLE_HEAP_RETURN = "-XX:G1PeriodicGCInterval=60000"
 SNAPSHOT_STALENESS = "60s"
@@ -23,6 +24,7 @@ def lake_options(lake: LakeSettings) -> dict[str, str]:
         "spark.hadoop.fs.s3a.secret.key": lake.secret_key,
         "spark.hadoop.fs.s3a.multipart.size": MULTIPART_BYTES,
         "spark.hadoop.fs.s3a.connection.part.upload.timeout": UPLOAD_TIMEOUT,
+        "spark.hadoop.fs.s3a.connection.timeout": SOCKET_TIMEOUT,
         "spark.hadoop.fs.s3a.fast.upload": "true",
         "spark.hadoop.fs.s3a.change.detection.mode": "none",
         "spark.delta.logStore.s3a.impl": "io.delta.storage.S3SingleDriverLogStore",

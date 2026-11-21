@@ -118,7 +118,7 @@ The sources jobs load only aggregated, public, non-personal numbers, never a mes
 Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (including the game site's starts,
 campaign wins and the level where a campaign run ends without a win per game, the itch.io pack's views, visitors, starts,
 levels cleared and wins per game and day, and hourly the engagement events),
-Langfuse (including the cost of every lab run's session), W&B, Bugsink, GitHub and Bluesky (the account's own public
+Langfuse (including the cost of every lab run's session), Aim (the PPO training runs), Bugsink, GitHub and Bluesky (the account's own public
 posts with their likes, reposts, replies and quotes, from the public AppView) and the YouTube Analytics API (the
 channel's last 28 days in total and per day). Each source loads on its own; one
 that fails keeps the others and fails the job afterwards.

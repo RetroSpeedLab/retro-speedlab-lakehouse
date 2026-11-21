@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveFloat
 
 from retro_speedlab_lakehouse.environment import secret
 from retro_speedlab_lakehouse.sources.settings import (
+    AimSettings,
     BlueskySettings,
     GithubSettings,
     Sources,
@@ -187,6 +188,7 @@ def load_settings(config: Path) -> Settings:
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),
+            AimSettings(**document.sources.aim.to_dict()),
             BlueskySettings(**document.sources.bluesky.to_dict()),
             frozenset(document.chat.ignored),
             document.sources.umami.games_website,

@@ -25,6 +25,7 @@ from retro_speedlab_lakehouse.settings import (
     StreamSettings,
 )
 from retro_speedlab_lakehouse.sources.settings import (
+    AimSettings,
     BlueskySettings,
     BugsinkSettings,
     DiscordSettings,
@@ -35,7 +36,6 @@ from retro_speedlab_lakehouse.sources.settings import (
     TwitchSettings,
     UmamiSettings,
     UptimeSettings,
-    WandbSettings,
     YoutubeSettings,
 )
 from retro_speedlab_lakehouse.spark.session import spark_session
@@ -87,7 +87,7 @@ def source_settings() -> Sources:
             dropoff_since=DROPOFF_SINCE,
         ),
         langfuse=LangfuseSettings(url="https://langfuse.test", public_key="public", secret_key="secret"),
-        wandb=WandbSettings(api_key="key", project="datenwissenschaften/retro-speedlab"),
+        aim=AimSettings(url="https://aim.test"),
         bugsink=BugsinkSettings(url="https://bugsink.test/api", token="token"),
         bluesky=BlueskySettings(handle="retrospeedlab.bsky.social"),
         streamelements=StreamElementsSettings(

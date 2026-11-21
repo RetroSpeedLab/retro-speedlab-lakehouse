@@ -46,9 +46,8 @@ class LangfuseSettings(SourceSettings):
     secret_key: str
 
 
-class WandbSettings(SourceSettings):
-    api_key: str
-    project: str
+class AimSettings(SourceSettings):
+    url: str
 
 
 class BugsinkSettings(SourceSettings):
@@ -79,7 +78,7 @@ class Sources(SourceSettings):
     discord: DiscordSettings
     umami: UmamiSettings
     langfuse: LangfuseSettings
-    wandb: WandbSettings
+    aim: AimSettings
     bugsink: BugsinkSettings
     bluesky: BlueskySettings
     streamelements: StreamElementsSettings
@@ -89,6 +88,7 @@ class Sources(SourceSettings):
 def load_sources(
     github: GithubSettings,
     uptime: UptimeSettings,
+    aim: AimSettings,
     bluesky: BlueskySettings,
     ignored_chatters: frozenset[str],
     games_website: str,
@@ -118,7 +118,7 @@ def load_sources(
             public_key=secret("LANGFUSE_PUBLIC_KEY"),
             secret_key=secret("LANGFUSE_SECRET_KEY"),
         ),
-        wandb=WandbSettings(api_key=secret("WANDB_API_KEY"), project=secret("WANDB_PROJECT")),
+        aim=aim,
         bugsink=BugsinkSettings(url=secret("BUGSINK_API_BASE"), token=secret("BUGSINK_API_TOKEN")),
         bluesky=bluesky,
         streamelements=StreamElementsSettings(

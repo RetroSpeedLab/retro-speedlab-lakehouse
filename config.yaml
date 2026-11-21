@@ -111,6 +111,8 @@ sources:
   uptime:
     url: https://uptime.datenwissenschaften.com
     page: retrospeedlab
+  aim:
+    url: http://retro-speedlab-aim:43800
   bluesky:
     handle: retrospeedlab.bsky.social
   umami:

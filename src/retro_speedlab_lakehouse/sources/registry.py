@@ -1,3 +1,4 @@
+from retro_speedlab_lakehouse.sources.aim import aim_numbers
 from retro_speedlab_lakehouse.sources.bluesky import bluesky_numbers, bluesky_posts
 from retro_speedlab_lakehouse.sources.bugsink import bugsink_numbers
 from retro_speedlab_lakehouse.sources.discord import discord_numbers
@@ -12,7 +13,6 @@ from retro_speedlab_lakehouse.sources.streamelements import streamelements_numbe
 from retro_speedlab_lakehouse.sources.twitch import twitch_numbers
 from retro_speedlab_lakehouse.sources.umami import umami_numbers
 from retro_speedlab_lakehouse.sources.uptime import uptime_numbers
-from retro_speedlab_lakehouse.sources.wandb import wandb_numbers
 from retro_speedlab_lakehouse.sources.youtube import youtube_days, youtube_numbers
 
 NUMBERS = "numbers"
@@ -37,7 +37,7 @@ def each_run_sources(sources: Sources) -> list[Source]:
         SnapshotSource("itch", PLAYS, lambda now: umami_plays(sources.umami, sources.umami.itch_website, now)),
         SnapshotSource("itch", DAILY, lambda now: itch_days(sources.umami, now)),
         SnapshotSource("langfuse", LAB_COSTS, lambda now: langfuse_lab_costs(sources.langfuse, now)),
-        SnapshotSource("wandb", NUMBERS, lambda now: wandb_numbers(sources.wandb)),
+        SnapshotSource("aim", NUMBERS, lambda now: aim_numbers(sources.aim)),
         SnapshotSource("bugsink", NUMBERS, lambda now: bugsink_numbers(sources.bugsink)),
         SnapshotSource("bluesky", NUMBERS, lambda now: bluesky_numbers(sources.bluesky)),
         SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(sources.bluesky)),

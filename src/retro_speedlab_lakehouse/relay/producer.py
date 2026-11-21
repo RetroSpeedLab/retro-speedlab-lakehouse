@@ -56,7 +56,12 @@ def relay(settings: Settings, stopped: threading.Event) -> None:
                 logger.info("The relay reaches the backend again")
             failing = False
             if events:
-                publish(producer, events, settings.kafka.backend_topics)
+                try:
+                    publish(producer, events, settings.kafka.backend_topics)
+                except KafkaException as error:
+                    logger.warning(f"The relay cannot reach Kafka and retries the events after {cursor}: {error}")
+                    stopped.wait(settings.relay.poll_seconds)
+                    continue
                 cursor = events[-1].id
                 write_cursor(settings.relay.cursor, cursor)
             if len(events) < settings.relay.batch:

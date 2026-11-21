@@ -31,6 +31,7 @@ dokku storage:mount "${APP}" "${DATA}:/lake"
 dokku storage:mount "${APP}" "${RUNNER_WORKING}:/runner:ro"
 dokku docker-options:add "${APP}" build "--network host"
 dokku docker-options:add "${APP}" deploy "--cpu-shares 2048 --init"
+dokku ps:set "${APP}" restart-policy unless-stopped
 dokku network:set "${APP}" attach-post-deploy "${NETWORK}" "${TRACES_NETWORK}"
 dokku resource:limit --process-type stream --memory 2560m --cpu 4 "${APP}"
 dokku resource:limit --process-type relay --memory 256m --cpu 0.25 "${APP}"

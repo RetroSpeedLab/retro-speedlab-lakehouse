@@ -36,6 +36,7 @@ dokku config:set --no-restart --encoded "${APP}" KAFKA_HEAP_OPTS="$(printf '%s' 
 dokku proxy:disable "${APP}"
 dokku resource:limit --memory 768m --cpu 1 "${APP}"
 dokku docker-options:add "${APP}" deploy "--cpu-shares 512"
+dokku ps:set "${APP}" restart-policy unless-stopped
 dokku network:create "${NETWORK}"
 dokku network:set "${APP}" attach-post-deploy "${NETWORK}"
 dokku git:from-image "${APP}" "${IMAGE}"

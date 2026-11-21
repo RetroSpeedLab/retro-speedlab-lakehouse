@@ -7,7 +7,7 @@ readonly SSO_DOMAIN=sso.retrospeedlab.com
 readonly OWNER_DISCORD_ID=712191617095696493
 readonly GATE=/etc/nginx/gate
 readonly SECRETS=/etc/nginx/gate/secrets
-readonly INSECURE=/etc/nginx/conf.d/owner-gate.conf
+readonly OWNER_GATE=/etc/nginx/conf.d/owner-gate.conf
 readonly BUGSINK_GATE=/var/lib/dokku/data/storage/bugs-gate
 
 source "$(dirname "${BASH_SOURCE[0]}")/apps.sh"
@@ -50,9 +50,9 @@ sign_in_host() {
 }
 
 shared_files() {
-    install_file "${GATE_FILES}/insecure.conf" "${INSECURE}" root 644
+    install_file "${GATE_FILES}/owner-gate.conf" "${OWNER_GATE}" root 644
     local file
-    for file in gate.conf proxy.conf signed-in.conf umami-login.html; do
+    for file in gate.conf proxy.conf signed-in.conf framed.conf umami-login.html; do
         install_file "${GATE_FILES}/${file}" "${GATE}/${file}" root 644
     done
 }

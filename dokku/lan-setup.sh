@@ -9,8 +9,7 @@ readonly CERTS=/etc/retro-speedlab/lan-certs
 readonly SERVICE=retro-speedlab-lan-certs
 readonly PULL=/usr/local/sbin/${SERVICE}
 readonly NGINX_FILES=/etc/nginx/retro-speedlab-lan
-readonly NGINX_INCLUDES=(server.conf proxy.conf gate.conf signed-in.conf growthbook-login.html tools/index.html)
-readonly GROWTHBOOK=retro-speedlab-growthbook
+readonly NGINX_INCLUDES=(server.conf proxy.conf gate.conf signed-in.conf framed.conf tools/index.html)
 readonly BACKEND=retro-speedlab-backend
 readonly NGINX_SITE=/etc/nginx/conf.d/retro-speedlab-lan.conf
 readonly MAIN_DEFAULT=/etc/nginx/conf.d/00-default-site.conf
@@ -140,21 +139,12 @@ owner_sign_in() {
     echo "    SSO_HOSTS: $(ssh "${MAIN_DOKKU}" config:get "${BACKEND}" SSO_HOSTS)"
 }
 
-growthbook_bridge() {
-    local email password
-    email="$(plain_secret "${HOME_LAB}" "${GROWTHBOOK}" GROWTHBOOK_ADMIN_EMAIL)"
-    password="$(plain_secret "${HOME_LAB}" "${GROWTHBOOK}" GROWTHBOOK_ADMIN_PASSWORD)"
-    printf "proxy_set_body '{\"email\":\"%s\",\"password\":\"%s\"}';\n" "${email}" "${password}" \
-        | install_on "${HOME_LAB}" "${NGINX_FILES}/secrets/growthbook.conf" 600
-}
-
 lan_proxy() {
     step "Home Lab: nginx serves the tools on ${LAN_ADDRESS} only, behind the owner sign-in"
     local file
     for file in "${NGINX_INCLUDES[@]}"; do
         install_on "${HOME_LAB}" "${NGINX_FILES}/${file}" 644 < "${LAN_FILES}/${file}"
     done
-    growthbook_bridge
     sed "s/{{LAN_ADDRESS}}/${LAN_ADDRESS}/" "${LAN_FILES}/tools.conf" | install_on "${HOME_LAB}" "${NGINX_SITE}" 644
     reload_nginx "${HOME_LAB}" "${NGINX_SITE}"
     ssh "${HOME_LAB}" "sudo ufw allow in on ${LAN_INTERFACE} to ${LAN_ADDRESS} port 80,443 proto tcp \

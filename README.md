@@ -243,14 +243,13 @@ memory.
 
 ## Owner tools on the LAN
 
-The tools page, GrowthBook and Aim run on the Home Lab and are reachable from the home LAN only, under their own names with
+The tools page, Grafana and Aim run on the Home Lab and are reachable from the home LAN only, under their own names with
 TLS and behind the owner sign-in.
 
 | Name | Tool | Behind the sign-in | Break-glass login |
 |------|------|--------------------|-------------------|
-| `tools` | The tools page: a link to every owner dashboard (`lan/tools/index.html`), served by nginx itself | has no login of its own | |
-| `growthbook` | GrowthBook | the gate signs in as the admin | the admin, password in `GROWTHBOOK_ADMIN_PASSWORD` |
-| `growthbook-api` | GrowthBook's API | the UI's calls; `/api/` stays open for SDK and REST keys | |
+| `tools` | The tools page: every owner dashboard in a sidebar, the selected one in a frame (`lan/tools/index.html`), served by nginx itself | has no login of its own | |
+| `grafana` | Grafana, the lab's traces and experiments, on `127.0.0.1:18094` | Grafana's own setup | |
 | `aim` | Aim, the training runs | has no login of its own | |
 
 - Every tool publishes its port on localhost only. nginx on the Home Lab serves the names on the LAN address only
@@ -263,14 +262,13 @@ TLS and behind the owner sign-in.
 - nginx asks the owner sign-in's `/check` on Main before each request (`lan/gate.conf`, `lan/signed-in.conf`) and keeps
   a yes for 60 seconds per session, so a page's many requests cost one round trip. A stranger goes to the sign-in page
   and back.
-- On GrowthBook's first page without its `growthbook_gate` cookie, nginx serves `lan/growthbook-login.html`, which
-  posts to `/auth/gate` on the API. nginx turns that into GrowthBook's login with the admin's credentials from a
-  root-only include, so GrowthBook's own cookies are set without a second login. The cookie lasts one day.
-- Images are pinned by version and digest in `dokku/growthbook-setup.sh`.
+- The tools page keeps the selected tool in the URL hash and frames only the own tools. nginx replaces their
+  `X-Frame-Options` with `frame-ancestors https://tools.retrospeedlab.com` (`lan/framed.conf`; on Main
+  `gate/framed.conf`, which keeps a tool's other CSP directives), so no other page can frame them. GitHub, Twitch,
+  YouTube Studio, Google Cloud, Discord, itch.io, Bluesky and the public site refuse framing and Vaultwarden is not
+  framed on purpose (clickjacking); they open in a new tab.
 - Every password and key is generated on the server once and kept only in the apps' dokku config, readable with
   `config:get`.
-- GrowthBook's setup creates its only admin, and nginx refuses `/auth/register` and `/auth/firsttime` on the API, so
-  nobody else can sign up. A second account needs that block lifted while an invite is accepted.
 
 ## Owner sign-in
 
@@ -278,7 +276,9 @@ Every owner tool signs in through one Discord sign-in at [sso.retrospeedlab.com]
 served by the backend. nginx on Main asks the backend's `/check` before each request to a tool (`auth_request`); a
 stranger goes to the sign-in page, through Discord and back to the tool. Only the owner's Discord account gets a
 session: a signed, HttpOnly cookie for the whole domain, valid 30 days and renewed on use. A tool on another domain
-takes the session over with a one-minute ticket at `/_gate/adopt`.
+takes the session over with a one-minute ticket at `/_gate/adopt`; there the cookie is `SameSite=None`, like
+Bugsink's own cookies, so the tool also works inside the tools page's frame. In exchange nginx refuses every gated
+cross-site request except a GET navigation (`$gate_cross_site` in `gate/owner-gate.conf`).
 
 | Tool | Sign-in behind the gate | Public without the gate |
 |------|-------------------------|-------------------------|

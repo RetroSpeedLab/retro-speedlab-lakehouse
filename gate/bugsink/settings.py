@@ -6,3 +6,5 @@ SIGNED_IN = MIDDLEWARE.index(AUTHENTICATION) + 1
 
 MIDDLEWARE = [*MIDDLEWARE[:SIGNED_IN], "gate.middleware.GateUserMiddleware", *MIDDLEWARE[SIGNED_IN:]]
 AUTHENTICATION_BACKENDS = ["gate.middleware.GateUserBackend", "django.contrib.auth.backends.ModelBackend"]
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"

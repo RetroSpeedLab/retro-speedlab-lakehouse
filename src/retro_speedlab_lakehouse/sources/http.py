@@ -55,7 +55,7 @@ def warn(state: RetryCallState) -> None:
     reraise=True,
 )
 def sent(
-    session: httpx.Client, method: str, path: str, params: dict[str, Any], body: dict[str, Any] | None
+    session: httpx.Client, method: str, path: str, params: dict[str, Any], body: dict[str, Any] | list[Any] | None
 ) -> httpx.Response:
     response = session.request(method, path, params=params, json=body)
     response.raise_for_status()

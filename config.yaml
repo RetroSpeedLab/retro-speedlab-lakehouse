@@ -113,6 +113,7 @@ sources:
     page: retrospeedlab
   aim:
     url: http://retro-speedlab-aim:43800
+    open_hours: 24
   tempo:
     url: http://retro-speedlab-tempo:3200
   bluesky:

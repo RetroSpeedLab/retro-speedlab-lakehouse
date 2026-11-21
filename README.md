@@ -99,6 +99,12 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
 | `gold.platform_tables`, `gold.platform_jobs` | `platform`, every job | | Size and versions per table, measured nightly, and every job run |
+| `bronze.aim_runs`, `bronze.aim_metrics` | `tracking-hourly` | `run`; `run`, `metric`, `context`, `step` | Every Aim run with its params, and every metric point of it |
+| `silver.search_turn_minutes`, `silver.search_kind_minutes` | `tracking-hourly` | `run`, `step`; `run`, `kind`, `step` | Each minute of a search turn: frames saved, best time, records, crossings, attempts per second and stuck states, and per worker kind its frames saved per worker-second and share |
+| `silver.ppo_rounds` | `tracking-hourly` | `run`, `round` | Every PPO round: reward, exits, episodes, exit rate, entropy, explained variance and loss |
+| `gold.search_turns` | `tracking-hourly` | `game`, `turn` | Each search turn: arm, minutes, frames saved in total and per hour, attempts per second, best time, records, crossings and stuck states |
+| `gold.search_worker_kinds` | `tracking-hourly` | `game`, `turn`, `kind` | Each turn's workers per kind, their frames saved per worker-second (weighted by share) and their share of the worker-seconds |
+| `gold.training_rounds` | `tracking-hourly` | `game`, `round` | The rounds of each game's newest PPO run, with the reward's mean over the last 10 rounds |
 | `gold.sources_status` | `sources-hourly`, `sources-nightly` | `source`, `stream` | Each source's newest load and its records |
 | `gold.quality_reports`, `gold.quality_failures` | every write | | The data-quality report of every silver, gold and live write, and the failed ones again |
 
@@ -122,6 +128,15 @@ Tempo (the steps, tokens and cost of every lab run's traces), Aim (the PPO train
 posts with their likes, reposts, replies and quotes, from the public AppView) and the YouTube Analytics API (the
 channel's last 28 days in total and per day). Each source loads on its own; one
 that fails keeps the others and fails the job afterwards.
+
+## Experiment tracking
+
+`tracking-hourly` reads the Home Lab's Aim through its REST API on the lakehouse network: every run created since an
+hour before the newest one it has, and again every run of the last `sources.aim.open_hours` that had not ended. A run's
+params and metric points are merged by run, metric, context and step, so a load that repeats is harmless. Aim's batch
+endpoint samples a metric to 200 steps across the run: a search turn tracks one step per minute and keeps every step,
+a PPO run keeps a sample that fills in with each load. Runs whose `kind` is neither `search_turn` nor `ppo_round` stay
+in bronze only.
 
 ## Lab experiments
 
@@ -229,7 +244,7 @@ the tools page.
 
 | DAG | Schedule (UTC) | Jobs |
 |-----|----------------|------|
-| `lakehouse_hourly` | minute 10 of every hour outside 02:00 to 06:00 | `api-hourly`, `silver`, `sources-hourly`, `engagement-hourly`, then `gold` |
+| `lakehouse_hourly` | minute 10 of every hour outside 02:00 to 06:00 | `api-hourly`, `silver`, then `gold`, `sources-hourly`, `engagement-hourly` and `tracking-hourly` |
 | `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `experiments-export`, `platform`, then `sources-nightly`, `videos-nightly` and `maintenance` |
 | `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold` |
 

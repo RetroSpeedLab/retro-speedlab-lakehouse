@@ -26,10 +26,12 @@ from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.catalog import SOURCE_TABLES
 from retro_speedlab_lakehouse.sources.job import ingest_sources
 from retro_speedlab_lakehouse.sources.registry import hourly_sources, nightly_sources
+from retro_speedlab_lakehouse.tracking.catalog import TRACKING_TABLES
+from retro_speedlab_lakehouse.tracking.job import load_tracking
 from retro_speedlab_lakehouse.videos.mirror import mirror_videos
 
 Job = Callable[[SparkSession, Settings, Gate], int]
-ALL_TABLES: tuple[Table, ...] = CORE_TABLES + MINING_TABLES + SOURCE_TABLES + ENGAGEMENT_TABLES
+ALL_TABLES: tuple[Table, ...] = CORE_TABLES + MINING_TABLES + SOURCE_TABLES + ENGAGEMENT_TABLES + TRACKING_TABLES
 SUCCESS = "success"
 FAILED = "failed"
 ERROR_LENGTH = 500
@@ -45,6 +47,10 @@ def sources_hourly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
 
 def sources_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     return ingest_sources(spark, settings.lake, gate, nightly_sources(settings.sources), now())
+
+
+def tracking_hourly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return load_tracking(spark, settings.lake, gate, settings.sources.aim, now())
 
 
 def silver(spark: SparkSession, settings: Settings, gate: Gate) -> int:
@@ -97,6 +103,7 @@ JOBS: dict[str, Job] = {
     "api-nightly": ingest_api_nightly,
     "sources-hourly": sources_hourly,
     "sources-nightly": sources_nightly,
+    "tracking-hourly": tracking_hourly,
     "silver": silver,
     "gold": gold,
     "experiments": lab_experiments,

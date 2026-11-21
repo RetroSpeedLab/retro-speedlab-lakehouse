@@ -69,6 +69,14 @@ from retro_speedlab_lakehouse.sources.catalog import (
 )
 from retro_speedlab_lakehouse.sources.plays import MODES, WINDOWS
 from retro_speedlab_lakehouse.sources.youtube import METRICS
+from retro_speedlab_lakehouse.tracking.catalog import (
+    KIND_MINUTES,
+    PPO_ROUNDS,
+    SEARCH_TURNS,
+    SEARCH_WORKER_KINDS,
+    TRAINING_ROUNDS,
+    TURN_MINUTES,
+)
 
 OUTCOMES = frozenset({"rejected", "notes", "deployed"})
 KNOWLEDGE_KINDS = frozenset({"mechanics", "enemies", "powerups", "levels", "ram"})
@@ -82,6 +90,7 @@ PLAY_WINDOWS = frozenset(WINDOWS)
 ENGAGEMENT_VERDICTS = VERDICTS | {"sample ratio mismatch"}
 ARMS = frozenset({"fixed", "adaptive", "holdout"})
 FAMILIES = frozenset({"beta", "gamma"})
+TURN_ARMS = frozenset({"bandit", "holdout", "static"})
 
 
 def present(*columns: str) -> list[Check]:
@@ -96,6 +105,10 @@ def keyed(table: Table) -> list[Check]:
 
 def at_least_zero(*columns: str) -> list[Check]:
     return [InRange(column, min_value=0) for column in columns]
+
+
+def turn_checks(table: Table) -> list[Check]:
+    return [*keyed(table), *present("game", "turn", "started_at"), AllowedValues("arm", TURN_ARMS)]
 
 
 def host_checks(table: Table) -> list[Check]:
@@ -276,6 +289,34 @@ CHECKS: dict[Table, list[Check]] = {
         *keyed(PROMOTION_DECISIONS),
         *present("channel", "kind", "variant", "text", "approved", "decided_at"),
         *at_least_zero("length", "numbers"),
+    ],
+    TURN_MINUTES: [
+        *turn_checks(TURN_MINUTES),
+        *at_least_zero("frames_saved", "new_records", "crossings", "attempts_per_second", "stuck_states"),
+    ],
+    KIND_MINUTES: [
+        *turn_checks(KIND_MINUTES),
+        InRange("worker_share", min_value=0, max_value=1),
+        *at_least_zero("frames_saved_per_worker_second", "workers"),
+    ],
+    PPO_ROUNDS: [*keyed(PPO_ROUNDS), *present("game", "started_at"), *at_least_zero("exits", "episodes", "exit_rate")],
+    SEARCH_TURNS: [
+        *turn_checks(SEARCH_TURNS),
+        InRange("minutes", min_value=1),
+        *at_least_zero("frames_saved", "frames_saved_per_hour", "attempts_per_second", "new_records", "crossings"),
+        *present("running", "computed_at"),
+    ],
+    SEARCH_WORKER_KINDS: [
+        *turn_checks(SEARCH_WORKER_KINDS),
+        InRange("worker_share", min_value=0, max_value=1),
+        InRange("minutes", min_value=1),
+        *at_least_zero("frames_saved_per_worker_second", "workers"),
+        *present("computed_at"),
+    ],
+    TRAINING_ROUNDS: [
+        *keyed(TRAINING_ROUNDS),
+        *present("run", "started_at", "computed_at"),
+        *at_least_zero("exits", "episodes", "exit_rate"),
     ],
     PROMOTION_PREFERENCES: [
         *keyed(PROMOTION_PREFERENCES),

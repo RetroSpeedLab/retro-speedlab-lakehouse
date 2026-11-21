@@ -14,7 +14,7 @@ RETRIES = 1
 RETRY_DELAY = timedelta(minutes=5)
 HOURLY_SCHEDULE = f"10 0-{NIGHT_START.hour - 1},{NIGHT_END.hour}-23 * * *"
 HOURLY_JOBS = ("api-hourly", "silver", "gold")
-HOURLY_ASIDE = ("sources-hourly", "engagement-hourly")
+HOURLY_ASIDE = ("sources-hourly", "engagement-hourly", "tracking-hourly")
 NIGHTLY_JOBS = (
     "api-nightly",
     "silver",

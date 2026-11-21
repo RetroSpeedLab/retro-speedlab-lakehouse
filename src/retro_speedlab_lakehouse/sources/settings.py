@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, PositiveInt
 
 from retro_speedlab_lakehouse.environment import secret
 
@@ -46,6 +46,7 @@ class TempoSettings(SourceSettings):
 
 class AimSettings(SourceSettings):
     url: str
+    open_hours: PositiveInt
 
 
 class BugsinkSettings(SourceSettings):

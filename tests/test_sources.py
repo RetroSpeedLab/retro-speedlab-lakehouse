@@ -91,10 +91,10 @@ def per_game(request: httpx.Request) -> httpx.Response:
 
 
 @respx.mock
-def test_aim_counts_the_training_runs_of_every_experiment(settings: Settings) -> None:
+def test_aim_counts_the_runs_of_every_experiment(settings: Settings) -> None:
     respx.get("https://aim.test/api/experiments/").respond(json=[{"run_count": 3}, {"run_count": 2}])
 
-    assert aim_numbers(settings.sources.aim) == [Number("policy_runs", "PPO training runs", 5, "", "all time")]
+    assert aim_numbers(settings.sources.aim) == [Number("tracked_runs", "PPO runs and search turns", 5, "", "all time")]
 
 
 @respx.mock

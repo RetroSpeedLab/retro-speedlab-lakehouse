@@ -25,6 +25,12 @@ LIVE_QUERY = "live"
 ENTITIES_QUERY = "entities"
 SEARCH_QUERY = "search"
 BRONZE_APP = "retro-speedlab-lakehouse-bronze"
+SCHEDULER_POOL = "spark.scheduler.pool"
+
+
+def pooled(pool: str, events: DataFrame) -> DataFrame:
+    events.sparkSession.sparkContext.setLocalProperty(SCHEDULER_POOL, pool)
+    return events
 
 
 def kafka_rows(spark: SparkSession, settings: Settings, topics: list[str]) -> DataFrame:
@@ -110,7 +116,7 @@ def start(spark: SparkSession, settings: Settings) -> list[StreamingQuery]:
         .writeStream.queryName(LIVE_QUERY)
         .option("checkpointLocation", str(settings.lake.checkpoints / LIVE_QUERY))
         .trigger(processingTime=f"{settings.stream.live_trigger_seconds} seconds")
-        .foreachBatch(lambda events, _: live_batch(settings, status, events))
+        .foreachBatch(lambda events, _: live_batch(settings, status, pooled(LIVE_QUERY, events)))
         .start()
     )
     entities = (
@@ -118,7 +124,9 @@ def start(spark: SparkSession, settings: Settings) -> list[StreamingQuery]:
         .writeStream.queryName(ENTITIES_QUERY)
         .option("checkpointLocation", str(settings.lake.checkpoints / ENTITIES_QUERY))
         .trigger(processingTime=f"{settings.stream.silver_trigger_seconds} seconds")
-        .foreachBatch(lambda events, batch_id: entities_batch(settings, entities_gate, events, batch_id))
+        .foreachBatch(
+            lambda events, batch_id: entities_batch(settings, entities_gate, pooled(ENTITIES_QUERY, events), batch_id)
+        )
         .start()
     )
     search_gate = Gate(SEARCH_QUERY)
@@ -127,7 +135,9 @@ def start(spark: SparkSession, settings: Settings) -> list[StreamingQuery]:
         .writeStream.queryName(SEARCH_QUERY)
         .option("checkpointLocation", str(settings.lake.checkpoints / SEARCH_QUERY))
         .trigger(processingTime=f"{settings.stream.search_trigger_seconds} seconds")
-        .foreachBatch(lambda events, batch_id: search_batch(settings, search_gate, events, batch_id))
+        .foreachBatch(
+            lambda events, batch_id: search_batch(settings, search_gate, pooled(SEARCH_QUERY, events), batch_id)
+        )
         .start()
     )
     return [live, entities, search]

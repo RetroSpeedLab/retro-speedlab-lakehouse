@@ -45,6 +45,7 @@ def session_builder(name: str, spark: SparkSettings, lake: LakeSettings) -> Spar
         .config("spark.sql.extensions", DELTA_EXTENSION)
         .config("spark.sql.catalog.spark_catalog", DELTA_CATALOG)
         .config("spark.sql.session.timeZone", "UTC")
+        .config("spark.scheduler.mode", "FAIR")
         .config("spark.ui.enabled", "false")
         .config("spark.driver.host", LOOPBACK)
         .config("spark.driver.bindAddress", LOOPBACK)

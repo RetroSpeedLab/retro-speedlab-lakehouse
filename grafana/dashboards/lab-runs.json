@@ -1,0 +1,304 @@
+{
+  "uid": "lab-runs",
+  "title": "Lab runs",
+  "tags": [
+    "retro-speedlab"
+  ],
+  "editable": false,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "refresh": "",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Runs",
+      "description": "Each lab run's scores; open a trace from its session.id rounds",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ name = \"lab scores\" } | select(span.lab.game, span.lab.stamp, span.score.deployed, span.score.accepted, span.score.cost_usd, span.score.minutes, span.score.turns, span.score.tool_calls, span.score.subagents, span.score.tool_errors, span.score.tokens, span.score.commits)",
+          "limit": 200,
+          "tableType": "spans",
+          "spss": 1
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "Rounds",
+      "description": "One trace per claude -p round, with its cost, turns, tool calls and tokens",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ name =~ \"lab round.*\" } | select(span.session.id, span.lab.game, span.lab.round, span.lab.outcome, span.lab.cost_usd, span.lab.turns, span.lab.tool_calls, span.lab.tool_errors, span.lab.tokens, span.gen_ai.response.model)",
+          "limit": 200,
+          "tableType": "spans",
+          "spss": 1
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "Failed steps",
+      "description": "Tool calls that returned an error",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"retro-speedlab-lab\" && status = error } | select(span.lab.kind, span.lab.output)",
+          "limit": 200,
+          "tableType": "spans",
+          "spss": 1
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "Progress after each run",
+      "description": "",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ name = \"lab progress\" } | select(span.session.id, span.score.progressed, span.score.run_seconds_change, span.score.hours_to_progress)",
+          "limit": 200,
+          "tableType": "spans",
+          "spss": 1
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -113,6 +113,8 @@ sources:
     page: retrospeedlab
   aim:
     url: http://retro-speedlab-aim:43800
+  tempo:
+    url: http://retro-speedlab-tempo:3200
   bluesky:
     handle: retrospeedlab.bsky.social
   umami:
@@ -120,13 +122,8 @@ sources:
     itch_website: 9f79bbcd-8016-43c5-958a-589d149354b5
     dropoff_since: 2026-11-16T10:00:00Z
 
-growthbook:
-  api: http://retro-speedlab-growthbook.web:3100
-  datasource: lake
-  assignment_query: units
-  identifier: unit_id
-  database:
-    host: retro-speedlab-growthbook-postgres
-    port: 5432
-    name: growthbook
-    user: lakehouse
+experiments_database:
+  host: retro-speedlab-experiments-postgres
+  port: 5432
+  name: experiments
+  user: lakehouse

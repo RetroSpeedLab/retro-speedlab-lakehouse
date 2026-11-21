@@ -207,12 +207,11 @@ def test_a_rate_limit_longer_than_a_run_can_wait_fails_at_once(waits: list[float
 
 
 @respx.mock
-def test_langfuse_is_asked_twice_an_hour_and_ten_times_a_night(settings: Settings) -> None:
-    data = {"data": [{"count_count": 1, "sum_totalTokens": 1, "sum_totalCost": 0.1, "sessionId": "lab-run 1"}]}
-    route = respx.get("https://langfuse.test/api/public/v2/metrics").respond(json=data)
-    for sources, calls in ((hourly_sources, 2), (nightly_sources, 12)):
+def test_tempo_is_searched_twice_an_hour_and_three_times_a_night(settings: Settings) -> None:
+    route = respx.get("https://tempo.test/api/search").respond(json={"traces": []})
+    for sources, calls in ((hourly_sources, 2), (nightly_sources, 5)):
         for source in sources(settings.sources):
-            if source.name == "langfuse":
+            if source.name == "tempo":
                 source.fetch(None, NOW)
         assert route.call_count == calls
 

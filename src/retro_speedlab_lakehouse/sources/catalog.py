@@ -11,7 +11,7 @@ ITCH_DAILY = table(Layer.GOLD, "itch_daily", ("date", "game"))
 SILVER_DROPOFF = table(Layer.SILVER, "game_dropoff", ("game",))
 HUMAN_DROPOFF = table(Layer.GOLD, "human_dropoff", ("game", "level_index"))
 SILVER_LAB_COSTS = table(Layer.SILVER, "lab_costs", ("stamp",))
-LANGFUSE_DAILY = table(Layer.SILVER, "langfuse_daily", ("date",))
+TRACE_DAILY = table(Layer.SILVER, "trace_daily", ("date",))
 SILVER_BLUESKY_POSTS = table(Layer.SILVER, "bluesky_posts", ("uri", "measured_at"))
 BLUESKY_POSTS = table(Layer.GOLD, "bluesky_posts", ("uri",))
 YOUTUBE_DAILY = table(Layer.SILVER, "youtube_daily", ("date",))
@@ -27,7 +27,7 @@ SOURCE_TABLES: tuple[Table, ...] = (
     SILVER_DROPOFF,
     HUMAN_DROPOFF,
     SILVER_LAB_COSTS,
-    LANGFUSE_DAILY,
+    TRACE_DAILY,
     SILVER_BLUESKY_POSTS,
     BLUESKY_POSTS,
     YOUTUBE_DAILY,

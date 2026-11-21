@@ -63,14 +63,14 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.games`, `silver.lab_run_progress` | `silver` | | The RetroSpeedLab24 collection and the progress after each lab run |
 | `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Level splits, improvement history and game knowledge |
 | `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |
-| `silver.langfuse_daily` | `sources-hourly`, `sources-nightly` | `date` | Langfuse's traced steps, tokens and model cost per UTC day |
+| `silver.trace_daily` | `sources-hourly`, `sources-nightly` | `date` | The lab runs' traced steps, tokens and model cost per UTC day, from Tempo |
 | `silver.game_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of human game starts and campaign wins per game |
 | `silver.itch_plays` | `sources-hourly`, `sources-nightly` | `mode`, `window` | Umami's newest count of game starts and campaign wins per game in the RetroSpeedLab24 pack on itch.io |
 | `silver.itch_daily` | `sources-hourly`, `sources-nightly` | `date` | The itch.io pack's page views and visitors per UTC day, with views, starts, levels cleared and wins per game |
 | `silver.youtube_daily` | `sources-hourly`, `sources-nightly` | `date` | The YouTube channel's views, minutes watched, average view, subscribers gained and lost, likes, comments and shares per day of the last 28, re-read each load because YouTube reports two to three days late |
 | `silver.game_dropoff` | `sources-hourly`, `sources-nightly` | `game` | Umami's campaign runs that ended without a win, per level, and the wins since tracking began |
 | `silver.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri`, `measured_at` | Every load's likes, reposts, replies and quotes of each of the Bluesky account's own posts, so the counts keep their history |
-| `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | Langfuse's traced steps, tokens and model cost of every lab run's session |
+| `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | The traced steps, tokens and model cost of every lab run, from its `lab scores` span in Tempo |
 | `silver.verifier_replays`, `silver.verifier_splits` | `verify-replays` | `side`, `entry` | Human highscore runs and the AI's newest records replayed through the served game's verifier |
 | `gold.game_summary` | `gold` | `game` | Record, levels cleared, seconds saved, costliest level, lab runs, change since yesterday |
 | `gold.level_costs` | `gold` | `game`, `level` | Frames and share of the run per level |
@@ -78,7 +78,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as a before/after experiment |
-| `gold.lab_roi` | `experiments` | `game`, `stamp` | Every lab run's Langfuse cost, the frames its change saved with an interval, frames per dollar, running totals and the early harm flag |
+| `gold.lab_roi` | `experiments` | `game`, `stamp` | Every lab run's traced cost, the frames its change saved with an interval, frames per dollar, running totals and the early harm flag |
 | `gold.promotion_roi` | `gold` | `channel`, `variant` | Claude cost, views, likes and follows of the published drafts, with views and likes per dollar and their intervals |
 | `silver.promotion_decisions` | `gold` | `draft` | Every approved or rejected promotion draft: network, kind, game, variant, text, when, and its length, numbers, opening and tone |
 | `gold.promotion_preferences` | `gold` | `channel`, `feature`, `value` | The maintainer's approval rate per network and kind, variant and text feature, with counts and a 90% interval, and the Bluesky interactions per post at 24 h |
@@ -118,7 +118,7 @@ The sources jobs load only aggregated, public, non-personal numbers, never a mes
 Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (including the game site's starts,
 campaign wins and the level where a campaign run ends without a win per game, the itch.io pack's views, visitors, starts,
 levels cleared and wins per game and day, and hourly the engagement events),
-Langfuse (including the cost of every lab run's session), Aim (the PPO training runs), Bugsink, GitHub and Bluesky (the account's own public
+Tempo (the steps, tokens and cost of every lab run's traces), Aim (the PPO training runs), Bugsink, GitHub and Bluesky (the account's own public
 posts with their likes, reposts, replies and quotes, from the public AppView) and the YouTube Analytics API (the
 channel's last 28 days in total and per day). Each source loads on its own; one
 that fails keeps the others and fails the job afterwards.
@@ -146,7 +146,7 @@ fell. A crossing flags the change in `gold.lab_roi` with the hours it took, so t
 
 ## ROI
 
-- **Lab:** each lab run's Langfuse cost against its effect, frames saved per hour times the searched hours after
+- **Lab:** each lab run's traced cost against its effect, frames saved per hour times the searched hours after
   the change, with the 95 % interval from the experiment. A run that changed nothing saved zero frames; a change
   without enough hours and a run without a traced cost do not count. Totals add half-widths in quadrature.
 - **Promotion:** the backend publishes the tokens and Claude cost of every draft's copy to `promotion.usage`; a
@@ -197,36 +197,40 @@ tests per 30-minute block on viewers, chat messages per minute and follows per h
 SRM check, Holm and Benjamini-Hochberg. A variant wins only with a clear Holm verdict on its first metric and no sample
 ratio mismatch. The `chat` process also publishes Helix's viewers and followers per minute to `twitch.minutes`.
 
-## GrowthBook
+## Grafana
 
-The owner's GrowthBook shows the lake's experiments with its own statistics, frequentist like the lake. GrowthBook
-cannot read Delta, so the nightly `growthbook-export` job writes every experiment's units and metric events to a small
-Postgres beside it, and creates the experiments GrowthBook does not have yet through its REST API and refreshes their
-results. A unit is one row of `units` (`unit_id`, `experiment_id`, `variation_id`, `assigned_at`), its metric values
-rows of `metric_events` (`unit_id`, `metric`, `value`, `measured_at`); each export replaces both in one transaction.
+The owner's Grafana on the Home Lab shows the lab's traces and the lake's experiment results. Its data sources and
+dashboards are provisioned from `grafana/` and cannot be changed in the UI; `dokku/grafana-setup.sh` copies them and
+restarts Grafana.
 
-| Experiment | Unit | Variations | Metrics |
-|------------|------|------------|---------|
-| Site tests (`cta_copy`, `hero_text`, `win_dialog`) | One variant view; Umami counts views per hour, so the hour's views are numbered | the two variants, even | the goals: `click`, `signin`, `saved` |
-| `holdout_home_games`, `holdout_home_sections`, `holdout_games_cards` | One ranked view, numbered per hour like the site tests | `holdout` 12 %, `adaptive` | `click` |
-| `holdout_stream_scenes`, `holdout_stream_clips` | One hour of an arm | `holdout` 12 %, `adaptive` | `chat_per_minute` |
-| Stream tests (`title_style`, `commentary_style`, `overlay_emphasis`) | One 30-minute block with Twitch numbers | the two variants, even | `viewers`, `chat_per_minute`, `follows_per_hour` |
-| `search_bandit` | One finished search turn of a game | `holdout` 20 %, `bandit` | `frames_saved_per_hour` |
-| `promotion_variants_<network>` | One decided promotion draft | variants `0` and `1` | `approved`, `interactions_24h` (zero for a draft not posted) |
+| Dashboard | Data source | Shows |
+|-----------|-------------|-------|
+| Experiments | Experiments Postgres | Every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, and every lab change |
+| Search bandit | Experiments Postgres | The bandit against the holdout split, frames saved per hour per day and arm, and every finished turn |
+| Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, and the approval rate of each draft feature |
+| Lab runs | Tempo | Each lab run's scores, each `claude -p` round, the failed steps and the progress after each run |
 
-The windows are the lake's: 28 days for the engagement experiments, every turn for the search. The promotion variants
-rotate and then follow the bandit, so their split is not fixed and GrowthBook's sample ratio check does not apply.
-`growthbook/config.yml` declares the data source and the metrics; GrowthBook reads it on start, so they are rebuilt
-with it. The job writes as the database's owner, GrowthBook reads with a role that may only select
-(`growthbook/reader.sql`), and the Postgres has no published port: it is on the lakehouse's network, where GrowthBook's
-API is attached for the job.
+Grafana cannot read Delta, so the nightly `experiments-export` job copies `gold.engagement_experiments`,
+`gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences` and every finished
+search turn (`search_bandit_turns`) into a small Postgres, each table replaced in one transaction. The job writes as
+the database's owner, Grafana reads with a role that may only select (`grafana/reader.sql`).
+
+Core exports each lab run with OpenTelemetry over OTLP/HTTP to Tempo, one trace per round and a `lab scores` span
+with the run's scores (`session.id` is `lab-run STAMP`). Tempo keeps the traces for a year on the data disk and has no
+published port: the runner, Grafana and the lakehouse reach it on the `retro-speedlab-traces` network. The Postgres is
+on the lakehouse's network, also without a published port.
+
+Grafana listens on `127.0.0.1:18094` only, so only the LAN's nginx behind the owner sign-in reaches it. Anonymous
+visitors are Viewers, so the owner does not sign in twice; Viewers may use Explore but change nothing, and the admin
+login (`GF_SECURITY_ADMIN_PASSWORD`) is for break-glass only. Grafana allows embedding and nginx limits the framing to
+the tools page.
 
 ## Jobs
 
 | DAG | Schedule (UTC) | Jobs |
 |-----|----------------|------|
 | `lakehouse_hourly` | minute 10 of every hour outside 02:00 to 06:00 | `api-hourly`, `silver`, `sources-hourly`, `engagement-hourly`, then `gold` |
-| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `growthbook-export`, `platform`, then `sources-nightly`, `videos-nightly` and `maintenance` |
+| `lakehouse_nightly` | 02:30 | `api-nightly`, `silver`, `gold`, `experiments`, `search-allocation`, `search-bandit`, `engagement-nightly`, `experiments-export`, `platform`, then `sources-nightly`, `videos-nightly` and `maintenance` |
 | `lakehouse_mining` | 03:30 | `mine-records`, `verify-replays`, `mining-gold` |
 
 The nightly DAG starts after the first lab run of the day and may run until 06:00. Nightly-only jobs skip when started
@@ -249,7 +253,7 @@ TLS and behind the owner sign-in.
 | Name | Tool | Behind the sign-in | Break-glass login |
 |------|------|--------------------|-------------------|
 | `tools` | The tools page: every owner dashboard in a sidebar, the selected one in a frame (`lan/tools/index.html`), served by nginx itself | has no login of its own | |
-| `grafana` | Grafana, the lab's traces and experiments, on `127.0.0.1:18094` | Grafana's own setup | |
+| `grafana` | Grafana, the lab's traces and experiments, on `127.0.0.1:18094` | anonymous Viewer | `admin`, password in `GF_SECURITY_ADMIN_PASSWORD` |
 | `aim` | Aim, the training runs | has no login of its own | |
 
 - Every tool publishes its port on localhost only. nginx on the Home Lab serves the names on the LAN address only
@@ -311,9 +315,9 @@ stream triggers and sources. Secrets come from the environment:
 | `UPLOAD_API_KEY` | The backend's events endpoint |
 | `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
-| `GROWTHBOOK_DATABASE_PASSWORD`, `GROWTHBOOK_API_KEY` | GrowthBook's Postgres and REST API, set by `dokku/growthbook-setup.sh` |
+| `EXPERIMENTS_DATABASE_PASSWORD` | The experiments Postgres Grafana reads, set by `dokku/grafana-setup.sh` |
 
-`dokku/sources.sh` copies the sources' credentials from the backend's and the runner's config without printing them.
+`dokku/sources.sh` copies the sources' credentials from the backend's config without printing them.
 
 ## Deploy
 
@@ -328,7 +332,7 @@ ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
 bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
 bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
-bash dokku/growthbook-setup.sh # GrowthBook, its MongoDB, its Postgres, the admin and the keys; rerun after a pin bump
+bash dokku/grafana-setup.sh   # Tempo, the experiments Postgres and Grafana with its dashboards; rerun after a change
 bash dokku/lan-setup.sh       # the LAN proxy, sign-in, certificate, Main's default site and Pi-hole names; safe to rerun
 bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main; no APP only syncs its hosts
 bash dokku/sources.sh         # whenever a source's credentials change

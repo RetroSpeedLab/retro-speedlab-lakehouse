@@ -1,0 +1,158 @@
+{
+  "uid": "promotion",
+  "title": "Promotion variants",
+  "tags": [
+    "retro-speedlab"
+  ],
+  "editable": false,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "refresh": "",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Variants per channel",
+      "description": "Each channel's promotion variants with their reach per dollar and its interval",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT channel, variant, drafts, cost_usd, views, likes, follows, views_per_dollar, views_lower, views_upper, likes_per_dollar, likes_lower, likes_upper, computed_at FROM promotion_roi ORDER BY channel, variant"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "What the owner approves",
+      "description": "The approval rate of each draft feature with its interval",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 14
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT channel, feature, value, decisions, approved, rejected, approval_rate, lower, upper, posts, engagement, engagement_per_post FROM promotion_preferences ORDER BY channel, feature, approval_rate DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

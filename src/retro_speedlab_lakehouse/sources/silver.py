@@ -18,7 +18,6 @@ from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
 from retro_speedlab_lakehouse.sources.bronze import latest
 from retro_speedlab_lakehouse.sources.catalog import (
-    LANGFUSE_DAILY,
     SILVER_BLUESKY_POSTS,
     SILVER_DROPOFF,
     SILVER_ITCH_DAILY,
@@ -26,6 +25,7 @@ from retro_speedlab_lakehouse.sources.catalog import (
     SILVER_LAB_COSTS,
     SILVER_NUMBERS,
     SILVER_PLAYS,
+    TRACE_DAILY,
     YOUTUBE_DAILY,
 )
 from retro_speedlab_lakehouse.sources.registry import DAILY, DROPOFF, LAB_COSTS, NUMBERS, PLAYS, POSTS
@@ -139,7 +139,7 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
         (SILVER_ITCH_PLAYS, plays_of(records, "itch")),
         (SILVER_DROPOFF, newest(records, DROPOFF, DROPOFF_COUNTS).drop("source")),
         (SILVER_LAB_COSTS, newest(records, LAB_COSTS, LAB_COST).drop("source")),
-        (LANGFUSE_DAILY, parsed(latest(spark, lake, "langfuse", DAILY), DAILY_COST)),
+        (TRACE_DAILY, parsed(latest(spark, lake, "tempo", DAILY), DAILY_COST)),
         (SILVER_ITCH_DAILY, parsed(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
         (SILVER_BLUESKY_POSTS, parsed(stream_of(records, "bluesky", POSTS), BLUESKY_POST)),
         (YOUTUBE_DAILY, parsed(latest(spark, lake, "youtube", DAILY), YOUTUBE_DAY)),

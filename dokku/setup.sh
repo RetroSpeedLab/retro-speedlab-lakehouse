@@ -8,6 +8,7 @@ readonly BACKEND_HOST=dokku
 readonly BACKEND_APP=retro-speedlab-backend
 readonly DATA=/mnt/fastdata/lakehouse/data
 readonly NETWORK=retro-speedlab-lakehouse
+readonly TRACES_NETWORK=retro-speedlab-traces
 readonly RUNNER_WORKING=/mnt/fastdata/dokku/retro-speedlab-runner/working
 
 source "$(dirname "${BASH_SOURCE[0]}")/settings.sh"
@@ -30,7 +31,7 @@ dokku storage:mount "${APP}" "${DATA}:/lake"
 dokku storage:mount "${APP}" "${RUNNER_WORKING}:/runner:ro"
 dokku docker-options:add "${APP}" build "--network host"
 dokku docker-options:add "${APP}" deploy "--cpu-shares 2048 --init"
-dokku network:set "${APP}" attach-post-deploy "${NETWORK}"
+dokku network:set "${APP}" attach-post-deploy "${NETWORK}" "${TRACES_NETWORK}"
 dokku resource:limit --process-type stream --memory 2560m --cpu 4 "${APP}"
 dokku resource:limit --process-type relay --memory 256m --cpu 0.25 "${APP}"
 dokku resource:limit --process-type chat --memory 256m --cpu 0.1 "${APP}"

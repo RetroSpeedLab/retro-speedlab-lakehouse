@@ -1,0 +1,6 @@
+SELECT 'CREATE ROLE grafana' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grafana')\gexec
+ALTER ROLE grafana WITH LOGIN PASSWORD :'password';
+GRANT CONNECT ON DATABASE experiments TO grafana;
+GRANT USAGE ON SCHEMA public TO grafana;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana;
+ALTER DEFAULT PRIVILEGES FOR ROLE lakehouse IN SCHEMA public GRANT SELECT ON TABLES TO grafana;

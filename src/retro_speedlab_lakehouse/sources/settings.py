@@ -40,10 +40,8 @@ class UmamiSettings(SourceSettings):
     dropoff_since: datetime
 
 
-class LangfuseSettings(SourceSettings):
+class TempoSettings(SourceSettings):
     url: str
-    public_key: str
-    secret_key: str
 
 
 class AimSettings(SourceSettings):
@@ -77,7 +75,7 @@ class Sources(SourceSettings):
     twitch: TwitchSettings
     discord: DiscordSettings
     umami: UmamiSettings
-    langfuse: LangfuseSettings
+    tempo: TempoSettings
     aim: AimSettings
     bugsink: BugsinkSettings
     bluesky: BlueskySettings
@@ -89,6 +87,7 @@ def load_sources(
     github: GithubSettings,
     uptime: UptimeSettings,
     aim: AimSettings,
+    tempo: TempoSettings,
     bluesky: BlueskySettings,
     ignored_chatters: frozenset[str],
     games_website: str,
@@ -113,11 +112,7 @@ def load_sources(
             itch_website=itch_website,
             dropoff_since=dropoff_since,
         ),
-        langfuse=LangfuseSettings(
-            url=secret("LANGFUSE_BASE_URL"),
-            public_key=secret("LANGFUSE_PUBLIC_KEY"),
-            secret_key=secret("LANGFUSE_SECRET_KEY"),
-        ),
+        tempo=tempo,
         aim=aim,
         bugsink=BugsinkSettings(url=secret("BUGSINK_API_BASE"), token=secret("BUGSINK_API_TOKEN")),
         bluesky=bluesky,

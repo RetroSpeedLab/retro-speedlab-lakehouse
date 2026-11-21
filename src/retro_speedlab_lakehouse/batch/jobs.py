@@ -14,7 +14,6 @@ from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
 from retro_speedlab_lakehouse.engagement.jobs import build_community, build_engagement, build_engagement_experiments
 from retro_speedlab_lakehouse.experiments.job import build_experiments
-from retro_speedlab_lakehouse.growthbook.job import export_growthbook
 from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, Table
 from retro_speedlab_lakehouse.mining.build import build_mining_gold
 from retro_speedlab_lakehouse.mining.records import mine_records
@@ -22,6 +21,7 @@ from retro_speedlab_lakehouse.mining.verify import verify_replays
 from retro_speedlab_lakehouse.promotion.preferences import build_promotion_preferences
 from retro_speedlab_lakehouse.promotion.roi import build_promotion_roi
 from retro_speedlab_lakehouse.quality.gate import Gate
+from retro_speedlab_lakehouse.results.job import export_experiments
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.catalog import SOURCE_TABLES
 from retro_speedlab_lakehouse.sources.job import ingest_sources
@@ -80,8 +80,8 @@ def engagement_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> i
     return build_engagement_experiments(spark, settings, gate, now()) + build_community(spark, settings, gate)
 
 
-def growthbook_export(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return export_growthbook(spark, settings, gate, now())
+def experiments_export(spark: SparkSession, settings: Settings, gate: Gate) -> int:
+    return export_experiments(spark, settings, now())
 
 
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
@@ -105,7 +105,7 @@ JOBS: dict[str, Job] = {
     "videos-nightly": mirror_videos,
     "engagement-hourly": engagement_hourly,
     "engagement-nightly": engagement_nightly,
-    "growthbook-export": growthbook_export,
+    "experiments-export": experiments_export,
     "platform": platform,
     "maintenance": maintenance,
     "mine-records": mine_records,

@@ -17,9 +17,9 @@ from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.catalog import HUMAN_DROPOFF
 from retro_speedlab_lakehouse.sources.dropoff import umami_dropoff
 from retro_speedlab_lakehouse.sources.job import ingest_sources
-from retro_speedlab_lakehouse.sources.langfuse import langfuse_lab_costs
 from retro_speedlab_lakehouse.sources.record import SnapshotSource
 from retro_speedlab_lakehouse.sources.registry import DROPOFF
+from retro_speedlab_lakehouse.sources.tempo import tempo_lab_costs
 from retro_speedlab_lakehouse.stream import rows
 
 from .conftest import event, kafka_rows
@@ -60,14 +60,20 @@ def test_human_dropoff_counts_who_reached_and_ended_each_level(spark: SparkSessi
 
 
 @respx.mock
-def test_langfuse_lab_costs_keep_only_lab_run_sessions(settings: Settings) -> None:
-    data = [
-        {"sessionId": "lab-run 2026-11-15T1935", "count_count": 120, "sum_totalTokens": 400_000, "sum_totalCost": 2.07},
-        {"sessionId": "promotion", "count_count": 3, "sum_totalTokens": 900, "sum_totalCost": 0.01},
+def test_each_lab_runs_scores_span_in_tempo_is_its_cost(settings: Settings) -> None:
+    attributes = [
+        {"key": "lab.stamp", "value": {"stringValue": "2026-11-15T1935"}},
+        {"key": "score.steps", "value": {"doubleValue": 120}},
+        {"key": "score.tokens", "value": {"doubleValue": 400_000}},
+        {"key": "score.cost_usd", "value": {"doubleValue": 2.07}},
     ]
-    respx.get("https://langfuse.test/api/public/v2/metrics").respond(json={"data": data})
-    costs = langfuse_lab_costs(settings.sources.langfuse, NOW)
-    assert [(cost.stamp, cost.tokens, cost.cost_usd) for cost in costs] == [("2026-11-15T1935", 400_000, 2.07)]
+    span = {"startTimeUnixNano": "1763235300000000000", "attributes": attributes}
+    route = respx.get("https://tempo.test/api/search").respond(json={"traces": [{"spanSets": [{"spans": [span]}]}]})
+    costs = tempo_lab_costs(settings.sources.tempo, NOW)
+    assert [(cost.stamp, cost.observations, cost.tokens, cost.cost_usd) for cost in costs] == [
+        ("2026-11-15T1935", 120, 400_000, 2.07)
+    ]
+    assert 'name = "lab scores"' in route.calls.last.request.url.params["q"]
 
 
 def arm(saved: list[int]) -> Arm:

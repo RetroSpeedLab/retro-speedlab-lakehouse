@@ -1,0 +1,158 @@
+{
+  "uid": "experiments",
+  "title": "Experiments",
+  "tags": [
+    "retro-speedlab"
+  ],
+  "editable": false,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "refresh": "",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Engagement experiments",
+      "description": "Each site, stream and holdout test with its arms, effect, confidence interval, p-value and the Holm-corrected verdict",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT experiment, kind, metric, \"primary\", control, treatment, control_n, treatment_n, control_estimate, treatment_estimate, effect, ci_lower, ci_upper, confidence, p_value, holm_p, srm_ok, verdict, winner, computed_at FROM engagement_experiments ORDER BY experiment, \"primary\" DESC, metric"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "Lab changes",
+      "description": "Every deployed lab change against the search before it",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT game, stamp, changed_at, metric, better, control_n, treatment_n, control_estimate, treatment_estimate, effect, ci_lower, ci_upper, p_value, holm_p, verdict FROM lab_experiments ORDER BY changed_at DESC, metric"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

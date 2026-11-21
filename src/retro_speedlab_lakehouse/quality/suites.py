@@ -56,7 +56,6 @@ from retro_speedlab_lakehouse.sources.catalog import (
     HUMAN_DROPOFF,
     ITCH_DAILY,
     ITCH_PLAYS,
-    LANGFUSE_DAILY,
     SILVER_BLUESKY_POSTS,
     SILVER_DROPOFF,
     SILVER_ITCH_DAILY,
@@ -65,6 +64,7 @@ from retro_speedlab_lakehouse.sources.catalog import (
     SILVER_NUMBERS,
     SILVER_PLAYS,
     SOURCE_NUMBERS,
+    TRACE_DAILY,
     YOUTUBE_DAILY,
 )
 from retro_speedlab_lakehouse.sources.plays import MODES, WINDOWS
@@ -241,7 +241,7 @@ CHECKS: dict[Table, list[Check]] = {
         *present("post", "text", "created_at", "measured_at", "computed_at"),
         *at_least_zero("likes", "reposts", "replies", "quotes", "engagement", "engagement_24h"),
     ],
-    LANGFUSE_DAILY: [*keyed(LANGFUSE_DAILY), *at_least_zero("observations", "tokens", "cost_usd")],
+    TRACE_DAILY: [*keyed(TRACE_DAILY), *at_least_zero("observations", "tokens", "cost_usd")],
     **{
         table: [
             *keyed(table),

@@ -1,0 +1,322 @@
+{
+  "uid": "search-bandit",
+  "title": "Search bandit",
+  "tags": [
+    "retro-speedlab"
+  ],
+  "editable": false,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "refresh": "",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Bandit against holdout",
+      "description": "Frames saved per hour of the bandit's worker split against the static holdout split",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT metric, control_n AS holdout_turns, treatment_n AS bandit_turns, control_estimate AS holdout, treatment_estimate AS bandit, effect, ci_lower, ci_upper, p_value, verdict, computed_at FROM search_bandit"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Frames saved per hour, daily mean per arm",
+      "description": "The mean of every finished turn of the day, by the arm that split its workers",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', ends_at) AS time, arm AS metric, avg(frames_saved_per_hour) AS value FROM search_bandit_turns WHERE $__timeFilter(ends_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "pointSize": 8,
+            "showPoints": "always",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "holdout"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8F8F8F"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bandit"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3274D9"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Finished turns per day",
+      "description": "How many turns each arm finished; the holdout keeps its share of turns",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', ends_at) AS time, arm AS metric, count(*) AS value FROM search_bandit_turns WHERE $__timeFilter(ends_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "pointSize": 8,
+            "showPoints": "always",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "holdout"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8F8F8F"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bandit"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3274D9"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "Turns",
+      "description": "",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT ends_at, game, turn, arm, saved, round(seconds) AS seconds, frames_saved_per_hour FROM search_bandit_turns WHERE $__timeFilter(ends_at) ORDER BY ends_at DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "better": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

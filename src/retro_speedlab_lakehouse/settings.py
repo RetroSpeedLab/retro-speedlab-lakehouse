@@ -11,6 +11,7 @@ from retro_speedlab_lakehouse.sources.settings import (
     BlueskySettings,
     GithubSettings,
     Sources,
+    TempoSettings,
     UptimeSettings,
     load_sources,
 )
@@ -107,21 +108,12 @@ class ChatSettings(Frozen):
     ignored: frozenset[str]
 
 
-class GrowthbookDatabase(Frozen):
+class PostgresSettings(Frozen):
     host: str
     port: PositiveInt
     name: str
     user: str
     password: str
-
-
-class GrowthbookSettings(Frozen):
-    api: str
-    api_key: str
-    datasource: str
-    assignment_query: str
-    identifier: str
-    database: GrowthbookDatabase
 
 
 class Settings(Frozen):
@@ -135,7 +127,7 @@ class Settings(Frozen):
     bandit: BanditSettings
     engagement: EngagementSettings
     chat: ChatSettings
-    growthbook: GrowthbookSettings
+    experiments_database: PostgresSettings
     sources: Sources
 
 
@@ -159,18 +151,6 @@ def load_backend_settings(config: Path) -> BackendSettings:
     return backend_settings(load_document(config))
 
 
-def growthbook_settings(document: Any) -> GrowthbookSettings:
-    growthbook = document.growthbook
-    return GrowthbookSettings(
-        api=growthbook.api,
-        api_key=secret("GROWTHBOOK_API_KEY"),
-        datasource=growthbook.datasource,
-        assignment_query=growthbook.assignment_query,
-        identifier=growthbook.identifier,
-        database=GrowthbookDatabase(**growthbook.database.to_dict(), password=secret("GROWTHBOOK_DATABASE_PASSWORD")),
-    )
-
-
 def load_settings(config: Path) -> Settings:
     document = load_document(config)
     return Settings(
@@ -184,11 +164,14 @@ def load_settings(config: Path) -> Settings:
         bandit=BanditSettings(**document.bandit.to_dict()),
         engagement=EngagementSettings(**document.engagement.to_dict()),
         chat=ChatSettings(channel=secret("TWITCH_CHANNEL").lower(), ignored=frozenset(document.chat.ignored)),
-        growthbook=growthbook_settings(document),
+        experiments_database=PostgresSettings(
+            **document.experiments_database.to_dict(), password=secret("EXPERIMENTS_DATABASE_PASSWORD")
+        ),
         sources=load_sources(
             GithubSettings(**document.sources.github.to_dict(), token=secret("GITHUB_TOKEN")),
             UptimeSettings(**document.sources.uptime.to_dict()),
             AimSettings(**document.sources.aim.to_dict()),
+            TempoSettings(**document.sources.tempo.to_dict()),
             BlueskySettings(**document.sources.bluesky.to_dict()),
             frozenset(document.chat.ignored),
             document.sources.umami.games_website,

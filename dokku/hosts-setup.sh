@@ -14,6 +14,7 @@ setup() {
     ssh "${host}" storage:ensure-directory "${APP}"
     ssh "${host}" storage:mount "${APP}" "${STORAGE}/${APP}:/disks/root:ro"
     ssh "${host}" docker-options:add "${APP}" deploy "--init"
+    ssh "${host}" ps:set "${APP}" restart-policy unless-stopped
     ssh "${host}" resource:limit --memory 96m --cpu 0.1 "${APP}"
     ssh "${host}" proxy:disable "${APP}"
     ssh "${host}" checks:disable "${APP}"

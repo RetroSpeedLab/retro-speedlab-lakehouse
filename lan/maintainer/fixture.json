@@ -13,7 +13,7 @@
         {
           "id": "heading",
           "component": "Text",
-          "text": "**Maintainer queue** · 4 held",
+          "text": "Maintainer queue · 4 held",
           "variant": "body"
         },
         {
@@ -38,7 +38,7 @@
         {
           "id": "row_7f1c2a90_3b1e_4c55_9d2e_1a2b3c4d5e6f_title",
           "component": "Text",
-          "text": "`BACKEND-12` · `error` · **KeyError: 'game' in /live/state**",
+          "text": "BACKEND-12 · error · KeyError: 'game' in /live/state",
           "variant": "body"
         },
         {
@@ -56,7 +56,7 @@
         {
           "id": "row_1442211539617988710_title",
           "component": "Text",
-          "text": "**Make the HUD clock in Shorts bigger**",
+          "text": "Make the HUD clock in Shorts bigger",
           "variant": "body"
         },
         {
@@ -77,7 +77,7 @@
         {
           "id": "row_c0ffee00_1234_4abc_8def_0123456789ab_title",
           "component": "Text",
-          "text": "`RUNNER-4` · `warning` · **TimeoutError: the movie check took longer than 600 s**",
+          "text": "RUNNER-4 · warning · TimeoutError: the movie check took longer than 600 s",
           "variant": "body"
         },
         {
@@ -98,7 +98,7 @@
         {
           "id": "row_5a5a5a5a_0000_4111_8222_333344445555_title",
           "component": "Text",
-          "text": "`LAKEHOUSE-9` · `error` · **AnalysisException: column trace_id not found**",
+          "text": "LAKEHOUSE-9 · error · AnalysisException: column trace_id not found",
           "variant": "body"
         },
         {
@@ -140,7 +140,7 @@
         {
           "id": "headline",
           "component": "Text",
-          "text": "`BACKEND-12` · `error` · **KeyError: 'game' in /live/state**",
+          "text": "BACKEND-12 · error · KeyError: 'game' in /live/state",
           "variant": "body"
         },
         {
@@ -184,7 +184,7 @@
         {
           "id": "pull_0",
           "component": "Text",
-          "text": "[fix(live): the state waits for the rotation's first game](https://github.com/RetroSpeedLab/retro-speedlab-backend/pull/31) · CI running",
+          "text": "[fix(live): the state waits for the rotation's first game](https://github.com/RetroSpeedLab/retro-speedlab-backend/pull/31) · running",
           "variant": "body"
         },
         {
@@ -274,7 +274,7 @@
         {
           "id": "headline",
           "component": "Text",
-          "text": "**Make the HUD clock in Shorts bigger**",
+          "text": "Make the HUD clock in Shorts bigger",
           "variant": "body"
         },
         {
@@ -366,7 +366,7 @@
         {
           "id": "headline",
           "component": "Text",
-          "text": "`RUNNER-4` · `warning` · **TimeoutError: the movie check took longer than 600 s**",
+          "text": "RUNNER-4 · warning · TimeoutError: the movie check took longer than 600 s",
           "variant": "body"
         },
         {
@@ -477,7 +477,7 @@
         {
           "id": "headline",
           "component": "Text",
-          "text": "`LAKEHOUSE-9` · `error` · **AnalysisException: column trace_id not found**",
+          "text": "LAKEHOUSE-9 · error · AnalysisException: column trace_id not found",
           "variant": "body"
         },
         {
@@ -509,7 +509,7 @@
         {
           "id": "pull_0",
           "component": "Text",
-          "text": "[fix(traces): the job reads trace_id from its new column](https://github.com/RetroSpeedLab/retro-speedlab-lakehouse/pull/18) · CI passed",
+          "text": "[fix(traces): the job reads trace_id from its new column](https://github.com/RetroSpeedLab/retro-speedlab-lakehouse/pull/18) · passed",
           "variant": "body"
         },
         {

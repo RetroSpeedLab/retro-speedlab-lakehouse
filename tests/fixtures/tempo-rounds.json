@@ -1,0 +1,437 @@
+{
+  "metrics": {
+    "inspectedBytes": "270277",
+    "totalBlocks": 9,
+    "completedJobs": 12,
+    "totalJobs": 12,
+    "totalBlockBytes": "362713"
+  },
+  "traces": [
+    {
+      "traceID": "00000000000000000000000000000002",
+      "rootServiceName": "retro-speedlab-lab",
+      "rootTraceName": "lab round 2",
+      "startTimeUnixNano": "1795313120891000064",
+      "spanSet": {
+        "spans": [
+          {
+            "spanID": "0000000000000002",
+            "name": "lab round 2",
+            "startTimeUnixNano": "1795313120891000064",
+            "attributes": [
+              {
+                "key": "lab.game",
+                "value": {
+                  "stringValue": "comet_courier"
+                }
+              },
+              {
+                "key": "lab.stamp",
+                "value": {
+                  "stringValue": "2026-11-22T0135"
+                }
+              },
+              {
+                "key": "lab.round",
+                "value": {
+                  "intValue": "2"
+                }
+              },
+              {
+                "key": "lab.tool_errors",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.usage.input",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.usage.output",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.subagents",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.tool_calls",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.usage.cache_read_input_tokens",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.cost_usd",
+                "value": {
+                  "doubleValue": 0
+                }
+              },
+              {
+                "key": "lab.turns",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.tokens",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.usage.cache_creation_input_tokens",
+                "value": {
+                  "intValue": "0"
+                }
+              },
+              {
+                "key": "lab.outcome",
+                "value": {
+                  "stringValue": "deployed"
+                }
+              }
+            ]
+          }
+        ],
+        "matched": 1
+      },
+      "spanSets": [
+        {
+          "spans": [
+            {
+              "spanID": "0000000000000002",
+              "name": "lab round 2",
+              "startTimeUnixNano": "1795313120891000064",
+              "attributes": [
+                {
+                  "key": "lab.game",
+                  "value": {
+                    "stringValue": "comet_courier"
+                  }
+                },
+                {
+                  "key": "lab.stamp",
+                  "value": {
+                    "stringValue": "2026-11-22T0135"
+                  }
+                },
+                {
+                  "key": "lab.round",
+                  "value": {
+                    "intValue": "2"
+                  }
+                },
+                {
+                  "key": "lab.tool_errors",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.usage.input",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.usage.output",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.subagents",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.tool_calls",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.usage.cache_read_input_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.cost_usd",
+                  "value": {
+                    "doubleValue": 0
+                  }
+                },
+                {
+                  "key": "lab.turns",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.usage.cache_creation_input_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "lab.outcome",
+                  "value": {
+                    "stringValue": "deployed"
+                  }
+                }
+              ]
+            }
+          ],
+          "matched": 1
+        }
+      ],
+      "serviceStats": {
+        "retro-speedlab-lab": {
+          "spanCount": 1
+        }
+      }
+    },
+    {
+      "traceID": "00000000000000000000000000000001",
+      "rootServiceName": "retro-speedlab-lab",
+      "rootTraceName": "lab round 1",
+      "startTimeUnixNano": "1795311330931000064",
+      "durationMs": 1789960,
+      "spanSet": {
+        "spans": [
+          {
+            "spanID": "0000000000000001",
+            "name": "lab round 1",
+            "startTimeUnixNano": "1795311330931000064",
+            "durationNanos": "1789960000000",
+            "attributes": [
+              {
+                "key": "lab.stamp",
+                "value": {
+                  "stringValue": "2026-11-22T0135"
+                }
+              },
+              {
+                "key": "lab.round",
+                "value": {
+                  "intValue": "1"
+                }
+              },
+              {
+                "key": "lab.tool_errors",
+                "value": {
+                  "intValue": "3"
+                }
+              },
+              {
+                "key": "lab.cost_usd",
+                "value": {
+                  "doubleValue": 2.912793400000001
+                }
+              },
+              {
+                "key": "lab.game",
+                "value": {
+                  "stringValue": "comet_courier"
+                }
+              },
+              {
+                "key": "lab.outcome",
+                "value": {
+                  "stringValue": "deployed"
+                }
+              },
+              {
+                "key": "lab.turns",
+                "value": {
+                  "intValue": "80"
+                }
+              },
+              {
+                "key": "lab.subagents",
+                "value": {
+                  "intValue": "4"
+                }
+              },
+              {
+                "key": "lab.tool_calls",
+                "value": {
+                  "intValue": "88"
+                }
+              },
+              {
+                "key": "lab.tokens",
+                "value": {
+                  "intValue": "3214175"
+                }
+              },
+              {
+                "key": "lab.usage.input",
+                "value": {
+                  "intValue": "172"
+                }
+              },
+              {
+                "key": "lab.usage.output",
+                "value": {
+                  "intValue": "1075"
+                }
+              },
+              {
+                "key": "lab.usage.cache_read_input_tokens",
+                "value": {
+                  "intValue": "2931222"
+                }
+              },
+              {
+                "key": "lab.usage.cache_creation_input_tokens",
+                "value": {
+                  "intValue": "281706"
+                }
+              },
+              {
+                "key": "gen_ai.response.model",
+                "value": {
+                  "stringValue": "claude-opus-5-5"
+                }
+              }
+            ]
+          }
+        ],
+        "matched": 1
+      },
+      "spanSets": [
+        {
+          "spans": [
+            {
+              "spanID": "0000000000000001",
+              "name": "lab round 1",
+              "startTimeUnixNano": "1795311330931000064",
+              "durationNanos": "1789960000000",
+              "attributes": [
+                {
+                  "key": "lab.stamp",
+                  "value": {
+                    "stringValue": "2026-11-22T0135"
+                  }
+                },
+                {
+                  "key": "lab.round",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "lab.tool_errors",
+                  "value": {
+                    "intValue": "3"
+                  }
+                },
+                {
+                  "key": "lab.cost_usd",
+                  "value": {
+                    "doubleValue": 2.912793400000001
+                  }
+                },
+                {
+                  "key": "lab.game",
+                  "value": {
+                    "stringValue": "comet_courier"
+                  }
+                },
+                {
+                  "key": "lab.outcome",
+                  "value": {
+                    "stringValue": "deployed"
+                  }
+                },
+                {
+                  "key": "lab.turns",
+                  "value": {
+                    "intValue": "80"
+                  }
+                },
+                {
+                  "key": "lab.subagents",
+                  "value": {
+                    "intValue": "4"
+                  }
+                },
+                {
+                  "key": "lab.tool_calls",
+                  "value": {
+                    "intValue": "88"
+                  }
+                },
+                {
+                  "key": "lab.tokens",
+                  "value": {
+                    "intValue": "3214175"
+                  }
+                },
+                {
+                  "key": "lab.usage.input",
+                  "value": {
+                    "intValue": "172"
+                  }
+                },
+                {
+                  "key": "lab.usage.output",
+                  "value": {
+                    "intValue": "1075"
+                  }
+                },
+                {
+                  "key": "lab.usage.cache_read_input_tokens",
+                  "value": {
+                    "intValue": "2931222"
+                  }
+                },
+                {
+                  "key": "lab.usage.cache_creation_input_tokens",
+                  "value": {
+                    "intValue": "281706"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "claude-opus-5-5"
+                  }
+                }
+              ]
+            }
+          ],
+          "matched": 1
+        }
+      ],
+      "serviceStats": {
+        "retro-speedlab-lab": {
+          "spanCount": 173,
+          "errorCount": 3
+        }
+      }
+    }
+  ]
+}

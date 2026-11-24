@@ -18,7 +18,8 @@ USAGE = {
 }
 MODEL = "gen_ai.response.model"
 SELECTED = ["lab.game", "lab.stamp", "lab.round", "lab.outcome", "lab.cost_usd", *(f"lab.{name}" for name in COUNTS)]
-SELECTION = ", ".join(f"span.{key}" for key in [*SELECTED, *USAGE.values(), MODEL])
+REQUIRED = [*SELECTED, *USAGE.values()]
+SELECTION = ", ".join(f"span.{key}" for key in [*REQUIRED, MODEL])
 QUERY = f'{{ name =~ "lab round.*" }} | select({SELECTION})'
 OVERLAP = timedelta(hours=6)
 SECONDS_PER_MINUTE = 60
@@ -49,10 +50,18 @@ class LabRound:
         return SourceRecord(f"{self.stamp}:{self.round}", {**asdict(self), "started_at": self.started_at.isoformat()})
 
 
+def duration_nanos(span: dict[str, Any]) -> int:
+    # Tempo's search drops durationNanos from a span that lasted zero nanoseconds, like a round without steps
+    return int(span["durationNanos"]) if "durationNanos" in span else 0
+
+
 def lab_round(span: dict[str, Any]) -> LabRound:
     found = {attribute["key"]: attribute_value(attribute) for attribute in span["attributes"]}
+    missing = [key for key in REQUIRED if key not in found]
+    if missing:
+        raise ValueError(f"Tempo lab round span {span['spanID']} lacks {', '.join(missing)}")
     started_at = datetime.fromtimestamp(int(span["startTimeUnixNano"]) / NANOSECONDS, UTC)
-    minutes = int(span["durationNanos"]) / NANOSECONDS / SECONDS_PER_MINUTE
+    minutes = duration_nanos(span) / NANOSECONDS / SECONDS_PER_MINUTE
     return LabRound(
         found["lab.game"],
         found["lab.stamp"],

@@ -11,6 +11,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
+from retro_speedlab_lakehouse.batch.lab_runs import without_deleted_lab_runs
 from retro_speedlab_lakehouse.lake.catalog import SOURCES
 from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.write import replace_counted
@@ -142,9 +143,12 @@ def build_source_silver(spark: SparkSession, lake: LakeSettings, gate: Gate) -> 
         (SILVER_PLAYS, plays_of(records, "umami")),
         (SILVER_ITCH_PLAYS, plays_of(records, "itch")),
         (SILVER_DROPOFF, newest(records, DROPOFF, DROPOFF_COUNTS).drop("source")),
-        (SILVER_LAB_COSTS, newest(records, LAB_COSTS, LAB_COST).drop("source")),
+        (SILVER_LAB_COSTS, without_deleted_lab_runs(spark, lake, newest(records, LAB_COSTS, LAB_COST).drop("source"))),
         (TRACE_DAILY, parsed(latest(spark, lake, TEMPO, DAILY), DAILY_COST)),
-        (SILVER_LAB_ROUNDS, parsed(latest(spark, lake, TEMPO, ROUNDS), LAB_ROUND)),
+        (
+            SILVER_LAB_ROUNDS,
+            without_deleted_lab_runs(spark, lake, parsed(latest(spark, lake, TEMPO, ROUNDS), LAB_ROUND)),
+        ),
         (SILVER_ITCH_DAILY, parsed(latest(spark, lake, "itch", DAILY), ITCH_DAY)),
         (SILVER_BLUESKY_POSTS, parsed(stream_of(records, "bluesky", POSTS), BLUESKY_POST)),
         (YOUTUBE_DAILY, parsed(latest(spark, lake, "youtube", DAILY), YOUTUBE_DAY)),

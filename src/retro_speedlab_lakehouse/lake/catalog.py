@@ -87,6 +87,7 @@ SPLITS = table(Layer.SILVER, "splits", ("game", "level"))
 HISTORY = Table(Layer.SILVER, "history", ("game", "at", "seconds"), (), ("game", "at"))
 KNOWLEDGE = table(Layer.SILVER, "knowledge", ("game", "kind", "name"))
 LAB_RUNS = table(Layer.SILVER, "lab_runs", ("game", "stamp"))
+DELETED_LAB_RUNS = table(Layer.SILVER, "deleted_lab_runs", ("game", "stamp"))
 LAB_PROGRESS = table(Layer.SILVER, "lab_run_progress", ("game", "stamp"))
 REPORTS = table(Layer.SILVER, "reports", ("game", "name"))
 HIGHSCORES = table(Layer.SILVER, "highscores", ("id",))
@@ -146,6 +147,7 @@ CORE_TABLES = (
     HISTORY,
     KNOWLEDGE,
     LAB_RUNS,
+    DELETED_LAB_RUNS,
     LAB_PROGRESS,
     REPORTS,
     HIGHSCORES,

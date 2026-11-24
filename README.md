@@ -61,6 +61,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.gpu_metrics` | stream | `host`, `gpu`, `measured_at` | Every minute of each GPU: utilisation, memory, temperature and power |
 | `silver.game_runs`, `silver.run_versions` | stream | `game`, `event_id` | The newest run per game and every reported run |
 | `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and highscore entries |
+| `silver.deleted_lab_runs` | `api-hourly`, `api-nightly` | `game`, `stamp` | Lab runs the backend answers 404 for although the lake has them; they leave `silver.lab_runs` and every lab cost and round from Tempo, so a lab run deleted at the backend never comes back |
 | `silver.games`, `silver.lab_run_progress` | `silver` | | The RetroSpeedLab24 collection and the progress after each lab run |
 | `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Level splits, improvement history and game knowledge |
 | `silver.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The numbers of each source's newest load |

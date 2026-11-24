@@ -93,7 +93,8 @@ def test_turn_minutes_and_ppo_rounds_reach_gold_and_grafana(
     older = STARTED - timedelta(hours=1)
     rounds = [ppo_round("old", number, older) for number in range(1, 4)]
     rounds += [ppo_round("new", number, STARTED) for number in range(1, 13)]
-    stored(spark, settings, [*minutes, minutes[5], *rounds])
+    aim_era = event("policy.rounds", {"game": GAME, "run": "aimhash", "round": 1, "reward": 1.0}, STARTED)
+    stored(spark, settings, [*minutes, minutes[5], *rounds, aim_era])
 
     load_tracking(spark, settings, Gate("tracking"), datetime.now(UTC))
 

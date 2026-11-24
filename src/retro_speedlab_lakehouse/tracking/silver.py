@@ -67,7 +67,8 @@ PPO_ROUND = StructType(
 def payloads(events: DataFrame, topic: str, schema: StructType, key: str, now: datetime) -> DataFrame:
     recent = events.where((F.col("topic") == topic) & (F.col("date") >= F.lit((now - WINDOW).date())))
     parsed = recent.select(F.from_json("payload", schema).alias("payload"), "event_at").select("payload.*", "event_at")
-    return parsed.dropDuplicates(["run", key])
+    tracked_in_aim = F.col("started_at").isNull()
+    return parsed.where(~tracked_in_aim).dropDuplicates(["run", key])
 
 
 def ended(rows: DataFrame, done: Column, now: datetime) -> DataFrame:

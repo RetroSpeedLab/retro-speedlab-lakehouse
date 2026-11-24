@@ -5,5 +5,5 @@ export default [
   { ignores: ['node_modules'] },
   js.configs.recommended,
   { files: ['src/**/*.js'], languageOptions: { globals: globals.browser } },
-  { files: ['preview.js'], languageOptions: { globals: globals.node } },
+  { files: ['preview.js', 'build.js'], languageOptions: { globals: globals.node } },
 ]

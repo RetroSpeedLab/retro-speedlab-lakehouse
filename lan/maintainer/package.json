@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/main.js --bundle --format=esm --minify --legal-comments=eof --outfile=../tools/maintainer/a2ui.js",
+    "build": "node build.js",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "lint": "eslint .",
@@ -23,5 +23,8 @@
     "eslint": "10.15.0",
     "globals": "17.14.0",
     "prettier": "3.10.1"
+  },
+  "overrides": {
+    "zod": "4.6.6"
   }
 }

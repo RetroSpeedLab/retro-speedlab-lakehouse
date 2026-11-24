@@ -67,3 +67,11 @@ def test_a_round_span_without_a_required_attribute_names_it() -> None:
     span["attributes"] = [found for found in span["attributes"] if found["key"] != "lab.cost_usd"]
     with pytest.raises(ValueError, match="lab.cost_usd"):
         lab_round(span)
+
+
+@respx.mock
+def test_a_window_without_lab_rounds_loads_nothing_since_tempo_leaves_out_empty_traces(settings: Settings) -> None:
+    empty = {"metrics": fixture("tempo-rounds.json")["metrics"]}
+    respx.get("https://tempo.test/api/search").respond(json=empty)
+    page = TempoRounds(settings.sources.tempo).fetch(AFTER_REAL_RUN.isoformat(), AFTER_REAL_RUN)
+    assert (page.records, page.watermark) == ([], AFTER_REAL_RUN.isoformat())

@@ -64,11 +64,15 @@ def scored_run(span: dict[str, Any]) -> ScoredRun:
     return ScoredRun(started_at, cost)
 
 
-def scored_runs(settings: TempoSettings, start: datetime, end: datetime) -> list[ScoredRun]:
-    params = {"q": SCORES, "start": int(start.timestamp()), "end": int(end.timestamp()), "limit": ROW_LIMIT, "spss": 1}
+def searched_spans(settings: TempoSettings, query: str, start: datetime, end: datetime) -> list[dict[str, Any]]:
+    params = {"q": query, "start": int(start.timestamp()), "end": int(end.timestamp()), "limit": ROW_LIMIT, "spss": 1}
     with client(settings.url, {}) as session:
-        traces = get_json(session, SEARCH, params)["traces"]
-    return [scored_run(span) for found in traces for spans in found["spanSets"] for span in spans["spans"]]
+        traces = get_json(session, SEARCH, params).get("traces", [])
+    return [span for found in traces for spans in found["spanSets"] for span in spans["spans"]]
+
+
+def scored_runs(settings: TempoSettings, start: datetime, end: datetime) -> list[ScoredRun]:
+    return [scored_run(span) for span in searched_spans(settings, SCORES, start, end)]
 
 
 def summed(runs: list[ScoredRun]) -> tuple[int, int, float]:

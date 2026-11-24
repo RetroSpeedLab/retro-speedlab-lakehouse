@@ -2,10 +2,9 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from retro_speedlab_lakehouse.sources.http import client, get_json
 from retro_speedlab_lakehouse.sources.record import SourcePage, SourceRecord
 from retro_speedlab_lakehouse.sources.settings import TempoSettings
-from retro_speedlab_lakehouse.sources.tempo import LAB_EPOCH, NANOSECONDS, ROW_LIMIT, SEARCH, attribute_value
+from retro_speedlab_lakehouse.sources.tempo import LAB_EPOCH, NANOSECONDS, attribute_value, searched_spans
 
 TEMPO = "tempo"
 ROUNDS = "rounds"
@@ -77,10 +76,7 @@ def lab_round(span: dict[str, Any]) -> LabRound:
 
 
 def lab_rounds(settings: TempoSettings, start: datetime, end: datetime) -> list[LabRound]:
-    params = {"q": QUERY, "start": int(start.timestamp()), "end": int(end.timestamp()), "limit": ROW_LIMIT, "spss": 1}
-    with client(settings.url, {}) as session:
-        traces = get_json(session, SEARCH, params)["traces"]
-    return [lab_round(span) for found in traces for spans in found["spanSets"] for span in spans["spans"]]
+    return [lab_round(span) for span in searched_spans(settings, QUERY, start, end)]
 
 
 @dataclass(frozen=True, slots=True)

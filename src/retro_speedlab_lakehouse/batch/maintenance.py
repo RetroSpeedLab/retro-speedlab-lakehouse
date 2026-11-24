@@ -1,3 +1,4 @@
+import threading
 from datetime import UTC, datetime, timedelta
 
 from delta.tables import DeltaTable
@@ -50,25 +51,36 @@ def files(spark: SparkSession, table: Table, lake: LakeSettings) -> int:
     return int(detail["numFiles"])
 
 
-def most_files_first(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings) -> list[Table]:
+def fewest_files_first(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings) -> list[Table]:
     kept = [table for table in tables if exists(spark, table, lake)]
-    return sorted(kept, key=lambda table: files(spark, table, lake), reverse=True)
+    return sorted(kept, key=lambda table: files(spark, table, lake))
+
+
+def maintain_table(spark: SparkSession, table: Table, lake: LakeSettings, now: datetime) -> None:
+    expire(spark, table, lake, now)
+    compact(spark, table, lake)
+    vacuum(spark, table, lake)
+    logger.info(f"Maintained {table.full_name}")
 
 
 def maintain(
     spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, now: datetime, budget: timedelta = BUDGET
 ) -> int:
     deadline = datetime.now(UTC) + budget
+    stop = threading.Timer(budget.total_seconds(), spark.sparkContext.cancelAllJobs)
+    stop.start()
     maintained = 0
-    for table in most_files_first(spark, tables, lake):
-        if datetime.now(UTC) >= deadline:
-            logger.warning(
-                f"Maintenance took {budget}; {table.full_name} and the tables after it wait for a later night"
-            )
-            break
-        expire(spark, table, lake, now)
-        compact(spark, table, lake)
-        vacuum(spark, table, lake)
-        logger.info(f"Maintained {table.full_name}")
-        maintained += 1
+    try:
+        for table in fewest_files_first(spark, tables, lake):
+            if datetime.now(UTC) >= deadline:
+                break
+            maintain_table(spark, table, lake, now)
+            maintained += 1
+    except Exception:
+        if datetime.now(UTC) < deadline:
+            raise
+    finally:
+        stop.cancel()
+    if datetime.now(UTC) >= deadline:
+        logger.warning(f"Maintenance took {budget}; it maintained {maintained} tables, the rest wait for a later night")
     return maintained

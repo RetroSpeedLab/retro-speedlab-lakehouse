@@ -113,7 +113,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.quality_reports`, `gold.quality_failures` | every write | | The data-quality report of every silver, gold and live write, and the failed ones again |
 
 Writes use Delta MERGE (newest event wins); the live pulse tables are overwritten. The nightly `maintenance` job runs
-OPTIMIZE, VACUUM and the retention of each layer, starting with the tables that have the most files, and leaves the
+OPTIMIZE, VACUUM and the retention of each layer, starting with the tables that have the fewest files, and leaves the
 tables it has no time for after 30 minutes to a later night. The event schemas are in [EVENTS.md](EVENTS.md).
 
 ## Quality gate

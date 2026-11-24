@@ -22,13 +22,14 @@ class BlueskyPost:
     reposts: int
     replies: int
     quotes: int
+    followers: int
 
     @property
     def record(self) -> SourceRecord:
         return SourceRecord(self.uri, asdict(self))
 
 
-def post_of(item: dict[str, Any]) -> BlueskyPost:
+def post_of(item: dict[str, Any], followers: int) -> BlueskyPost:
     post = item["post"]
     return BlueskyPost(
         post["uri"],
@@ -38,6 +39,7 @@ def post_of(item: dict[str, Any]) -> BlueskyPost:
         post["repostCount"],
         post["replyCount"],
         post["quoteCount"],
+        followers,
     )
 
 
@@ -45,9 +47,10 @@ def bluesky_posts(settings: BlueskySettings) -> list[BlueskyPost]:
     params: dict[str, Any] = {"actor": settings.handle, "limit": PAGE_SIZE}
     posts: list[BlueskyPost] = []
     with client(API, {}) as session:
+        followers = get_json(session, PROFILE, {"actor": settings.handle})["followersCount"]
         while True:
             page = get_json(session, FEED, params)
-            posts += [post_of(item) for item in page["feed"] if "reason" not in item]
+            posts += [post_of(item, followers) for item in page["feed"] if "reason" not in item]
             if "cursor" not in page or not page["feed"]:
                 return posts
             params = {**params, "cursor": page["cursor"]}

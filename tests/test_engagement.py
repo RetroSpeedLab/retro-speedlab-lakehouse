@@ -30,6 +30,7 @@ EVENT = StructType(
     ]
 )
 RECORD = StructType([StructField("body", StringType(), False)])
+POSTS = "post string, engagement_24h long, followers_24h long"
 
 
 def games(clicks: dict[str, int]) -> list[Totals]:
@@ -100,6 +101,10 @@ def twitch(minute: str, viewers: int, followers: int) -> tuple[str, str, datetim
     return ("twitch.minutes", "retrospeedlab", NOW, payload)
 
 
+def no_posts(spark: SparkSession) -> DataFrame:
+    return spark.createDataFrame([], POSTS)
+
+
 def channel(shown: DataFrame, searched: DataFrame) -> DataFrame:
     return channel_outcomes(exposure_rows(shown), twitch_minutes(searched), chat_minutes(searched))
 
@@ -112,7 +117,9 @@ def test_exposures_are_joined_with_the_chat_minutes_they_overlap(spark: SparkSes
     records = spark.createDataFrame([], RECORD)
     found = {
         (row["surface"], row["item"]): (row["exposures"], row["outcomes"])
-        for row in engagement_events(records, shown, heard, channel(shown, shown.drop("event_id")), NOW, 28).collect()
+        for row in engagement_events(
+            records, shown, heard, channel(shown, shown.drop("event_id")), no_posts(spark), NOW, 28
+        ).collect()
     }
     assert found[("stream_scenes", "run")] == pytest.approx((1.5, 8.0))
     assert found[("stream_games", "drumfort")] == pytest.approx((1.5, 8.0))
@@ -148,7 +155,13 @@ def test_promotion_posts_join_their_newest_numbers(spark: SparkSession) -> None:
     )
     searched = posted.drop("event_id")
     found = engagement_events(
-        spark.createDataFrame([], RECORD), posted, chat_minutes(searched), channel(posted, searched), NOW, 28
+        spark.createDataFrame([], RECORD),
+        posted,
+        chat_minutes(searched),
+        channel(posted, searched),
+        no_posts(spark),
+        NOW,
+        28,
     )
     assert [(row["item"], row["exposures"], row["outcomes"]) for row in found.collect()] == [("record", 1.0, 9.0)]
 
@@ -198,7 +211,13 @@ def test_old_exposures_fall_out_of_the_window(spark: SparkSession) -> None:
     )
     searched = shown.drop("event_id")
     found = engagement_events(
-        spark.createDataFrame([], RECORD), shown, chat_minutes(searched), channel(shown, searched), NOW, 28
+        spark.createDataFrame([], RECORD),
+        shown,
+        chat_minutes(searched),
+        channel(shown, searched),
+        no_posts(spark),
+        NOW,
+        28,
     )
     assert found.count() == 0
 
@@ -241,8 +260,52 @@ def test_a_twitch_channel_turn_gets_its_viewers_followers_and_chat(spark: SparkS
     found = {
         (row["surface"], row["item"]): (row["exposures"], row["outcomes"])
         for row in engagement_events(
-            spark.createDataFrame([], RECORD), shown, chat_minutes(searched), channel(shown, searched), NOW, 28
+            spark.createDataFrame([], RECORD),
+            shown,
+            chat_minutes(searched),
+            channel(shown, searched),
+            no_posts(spark),
+            NOW,
+            28,
         ).collect()
     }
     assert found[("twitch_channel", "science_proof")] == pytest.approx((0.05, 3.0))
     assert set(found) == {("twitch_channel", "science_proof"), ("stream_scenes", "run"), ("stream_games", "drumfort")}
+
+
+def bluesky_draft(key: str, url: str, dimensions: dict[str, str] | None) -> dict[str, Any]:
+    copy: dict[str, Any] = (
+        {"text": "22.48 s."} if dimensions is None else {"text": "22.48 s.", "dimensions": dimensions}
+    )
+    published = "2026-11-16T09:10:00+00:00"
+    return {"channel": "bluesky", "status": "published", "url": url, "copy": copy, "published": published, "id": key}
+
+
+def test_bluesky_dimensions_earn_their_posts_engagement_at_a_day_per_audience(spark: SparkSession) -> None:
+    first = {"hook": "question", "media": "video"}
+    second = {"hook": "number", "media": "video"}
+    posted = events(
+        spark,
+        [
+            ("promotion.drafts", "1", NOW, bluesky_draft("1", "https://bsky.app/profile/lab/post/3ma", first)),
+            ("promotion.drafts", "2", NOW, bluesky_draft("2", "https://bsky.app/profile/lab/post/3mb", second)),
+            ("promotion.drafts", "3", NOW, bluesky_draft("3", "https://bsky.app/profile/lab/post/3mc", None)),
+            ("promotion.drafts", "4", NOW, bluesky_draft("4", "https://bsky.app/profile/lab/post/3md", first)),
+        ],
+    )
+    posts = spark.createDataFrame([("3ma", 6, 50), ("3mb", 9, 100), ("3mc", 40, 100), ("3md", None, 100)], POSTS)
+    searched = posted.drop("event_id")
+    found = {
+        (row["surface"], row["item"]): (row["exposures"], row["outcomes"])
+        for row in engagement_events(
+            spark.createDataFrame([], RECORD), posted, chat_minutes(searched), channel(posted, searched), posts, NOW, 28
+        ).collect()
+        if row["surface"].startswith("bluesky_")
+    }
+    assert found == pytest.approx(
+        {
+            ("bluesky_hook", "question"): (0.5, 6.0),
+            ("bluesky_hook", "number"): (1.0, 9.0),
+            ("bluesky_media", "video"): (1.5, 15.0),
+        }
+    )

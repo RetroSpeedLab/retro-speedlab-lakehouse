@@ -20,14 +20,16 @@ from retro_speedlab_lakehouse.engagement.ranking import RANKING, ranking_rows, s
 from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_rows, twitch_minutes
 from retro_speedlab_lakehouse.engagement.umami import CELLS, UMAMI, UmamiCells
 from retro_speedlab_lakehouse.lake.catalog import EVENTS, GAMES, SEARCH_EVENTS
-from retro_speedlab_lakehouse.lake.tables import read
+from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.lake.write import replace, replace_counted
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.bronze import ingest, latest
+from retro_speedlab_lakehouse.sources.catalog import BLUESKY_POSTS
 
 WWW = "www"
 GAMES_SITE = "games"
+NO_POSTS = "post string, engagement_24h long, followers_24h long"
 RESULT = StructType(
     [
         StructField("experiment", StringType(), False),
@@ -68,7 +70,9 @@ def build_engagement(spark: SparkSession, settings: Settings, gate: Gate, now: d
     outcomes = channel_outcomes(exposure_rows(backend), twitch_minutes(searched), chat)
     replace(TWITCH_CHANNEL_OUTCOMES, settings.lake, outcomes, gate)
     channel = read(spark, TWITCH_CHANNEL_OUTCOMES, settings.lake)
-    events = engagement_events(records, backend, chat, channel, now, engagement.window_days)
+    found = exists(spark, BLUESKY_POSTS, settings.lake)
+    posts = read(spark, BLUESKY_POSTS, settings.lake) if found else spark.createDataFrame([], NO_POSTS)
+    events = engagement_events(records, backend, chat, channel, posts, now, engagement.window_days)
     replace(ENGAGEMENT_EVENTS, settings.lake, events, gate)
     catalog = [row["slug"] for row in read(spark, GAMES, settings.lake).select("slug").collect()]
     totals = surface_totals(read(spark, ENGAGEMENT_EVENTS, settings.lake), catalog, engagement)

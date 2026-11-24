@@ -85,8 +85,8 @@
     },
     {
       "type": "table",
-      "title": "What the owner approves",
-      "description": "The approval rate of each draft feature with its interval",
+      "title": "Bluesky engagement per dimension",
+      "description": "Each post dimension's likes, reposts, replies and quotes a day after posting, per post at today's follower count, with its interval and its share of the next posts",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "experiments"
@@ -94,6 +94,44 @@
       "gridPos": {
         "x": 0,
         "y": 9,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT replace(surface, 'bluesky_', '') AS dimension, item AS value, exposures AS posts, outcomes AS engagement, mean AS engagement_per_post, lower, upper, share, computed_at FROM content_ranking WHERE surface LIKE 'bluesky\\_%' ORDER BY surface, mean DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "table",
+      "title": "What the owner approves on YouTube",
+      "description": "The approval rate of each YouTube Short feature with its interval",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
         "w": 24,
         "h": 14
       },
@@ -107,7 +145,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT channel, feature, value, decisions, approved, rejected, approval_rate, lower, upper, posts, engagement, engagement_per_post FROM promotion_preferences ORDER BY channel, feature, approval_rate DESC"
+          "rawSql": "SELECT feature, value, decisions, approved, rejected, approval_rate, lower, upper FROM promotion_preferences WHERE channel = 'youtube' ORDER BY feature, approval_rate DESC"
         }
       ],
       "options": {

@@ -6,7 +6,7 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.bandit.comparison import SECONDS_PER_HOUR
 from retro_speedlab_lakehouse.bandit.holdout import finished_turns, turn_savings
-from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_EXPERIMENTS
+from retro_speedlab_lakehouse.engagement.catalog import CONTENT_RANKING, ENGAGEMENT_EXPERIMENTS
 from retro_speedlab_lakehouse.lake.catalog import (
     LAB_EXPERIMENTS,
     PROMOTION_PREFERENCES,
@@ -25,6 +25,7 @@ RESULTS: tuple[Table, ...] = (
     SEARCH_BANDIT,
     PROMOTION_ROI,
     PROMOTION_PREFERENCES,
+    CONTENT_RANKING,
 )
 SEARCH_BANDIT_TURNS = "search_bandit_turns"
 

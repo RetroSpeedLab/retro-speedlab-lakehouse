@@ -98,6 +98,7 @@ BLUESKY_POST = StructType(
         StructField("reposts", LongType(), False),
         StructField("replies", LongType(), False),
         StructField("quotes", LongType(), False),
+        StructField("followers", LongType(), True),
     ]
 )
 YOUTUBE_DAY = StructType(

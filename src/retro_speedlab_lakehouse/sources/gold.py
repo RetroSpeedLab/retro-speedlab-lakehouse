@@ -125,7 +125,10 @@ def build_dropoff_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now:
 def engagement_at_a_day(history: DataFrame) -> DataFrame:
     age = F.col("measured_at").cast("long") - F.col("created_at").cast("long")
     at_a_day = history.where(age.between(DAY_SECONDS, DAY_SECONDS + DAY_TOLERANCE_SECONDS))
-    return at_a_day.groupBy("uri").agg(F.min_by("engagement", "measured_at").alias("engagement_24h"))
+    return at_a_day.groupBy("uri").agg(
+        F.min_by("engagement", "measured_at").alias("engagement_24h"),
+        F.min_by("followers", "measured_at").alias("followers_24h"),
+    )
 
 
 def bluesky_posts(history: DataFrame, now: datetime) -> DataFrame:
@@ -142,6 +145,7 @@ def bluesky_posts(history: DataFrame, now: datetime) -> DataFrame:
             *INTERACTIONS,
             "engagement",
             "engagement_24h",
+            "followers_24h",
             "measured_at",
             F.lit(now).alias("computed_at"),
         )

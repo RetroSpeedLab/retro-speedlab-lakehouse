@@ -18,6 +18,9 @@ PROMOTION_DRAFTS = "promotion.drafts"
 PROMOTION_METRICS = "promotion.metrics"
 PROMOTION_VARIANTS = "promotion_variants"
 FIXED = "fixed"
+BLUESKY = "bluesky"
+PUBLISHED = "published"
+DIMENSIONS = "map<string,string>"
 SEPARATOR = r"\|"
 CELLS = StructType(
     [
@@ -107,6 +110,34 @@ def decision_events(decisions: DataFrame) -> DataFrame:
     )
 
 
+def bluesky_posts(events: DataFrame) -> DataFrame:
+    drafts = newest(events.where(F.col("topic") == PROMOTION_DRAFTS), ["key"])
+    published = drafts.where((field("channel") == BLUESKY) & (field("status") == PUBLISHED))
+    return published.select(
+        F.element_at(F.split(field("url"), "/"), -1).alias("post"),
+        F.from_json(field("copy.dimensions"), DIMENSIONS).alias("dimensions"),
+        F.to_timestamp(field("published")).alias("published"),
+    ).where(F.col("dimensions").isNotNull())
+
+
+def dimension_events(events: DataFrame, posts: DataFrame) -> DataFrame:
+    measured = posts.where(F.col("engagement_24h").isNotNull() & (F.col("followers_24h") > 0))
+    audience = measured.agg(F.max("followers_24h").alias("audience"))
+    engaged = bluesky_posts(events).join(measured, "post").crossJoin(audience)
+    return (
+        engaged.select(
+            F.explode("dimensions").alias("dimension", "item"),
+            (F.col("followers_24h") / F.col("audience")).alias("exposures"),
+            F.col("engagement_24h").cast("double").alias("outcomes"),
+            F.date_trunc("hour", "published").alias("hour"),
+        )
+        .withColumns({"surface": F.concat(F.lit(f"{BLUESKY}_"), "dimension"), "arm": F.lit(FIXED)})
+        .groupBy("surface", "item", "arm", "hour")
+        .agg(F.sum("exposures").alias("exposures"), F.sum("outcomes").alias("outcomes"))
+        .select(*COLUMNS)
+    )
+
+
 def channel_events(outcomes: DataFrame) -> DataFrame:
     return (
         outcomes.withColumns({"surface": F.lit(TWITCH_CHANNEL), "hour": F.date_trunc("hour", "started_at")})
@@ -117,7 +148,13 @@ def channel_events(outcomes: DataFrame) -> DataFrame:
 
 
 def engagement_events(
-    records: DataFrame, events: DataFrame, chat: DataFrame, channel: DataFrame, now: datetime, days: int
+    records: DataFrame,
+    events: DataFrame,
+    chat: DataFrame,
+    channel: DataFrame,
+    posts: DataFrame,
+    now: datetime,
+    days: int,
 ) -> DataFrame:
     since = now - timedelta(days=days)
     recent = events.where(F.col("event_at") >= F.lit(since))
@@ -128,5 +165,6 @@ def engagement_events(
         .unionByName(promotion_events(recent))
         .unionByName(decision_events(promotion_decisions(recent)))
         .unionByName(channel_events(channel))
+        .unionByName(dimension_events(recent, posts))
     )
     return found.where((F.col("hour") >= F.lit(since)) & (F.col("exposures") > 0))

@@ -60,6 +60,7 @@ PATHS = [
     {"x": "/html/124/comet_courier/index.html#again", "y": 1},
 ]
 FEED = "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed"
+PROFILE = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile"
 CREATED = datetime(2026, 11, 14, 12, 0, tzinfo=UTC)
 
 
@@ -218,6 +219,7 @@ def test_tempo_is_searched_three_times_an_hour_and_four_times_a_night(settings: 
 
 @respx.mock
 def test_bluesky_keeps_the_accounts_own_posts_of_every_page(spark: SparkSession, settings: Settings) -> None:
+    respx.get(PROFILE).respond(json={"followersCount": 12})
     route = respx.get(FEED).mock(side_effect=feed)
     posts = SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(settings.sources.bluesky))
     ingest_sources(spark, settings.lake, Gate("sources"), [posts], NOW)
@@ -230,7 +232,7 @@ def test_bluesky_keeps_the_accounts_own_posts_of_every_page(spark: SparkSession,
 
 @respx.mock
 def test_bluesky_counts_the_followers_and_the_likes_of_the_accounts_own_posts(settings: Settings) -> None:
-    respx.get("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile").respond(json={"followersCount": 12})
+    respx.get(PROFILE).respond(json={"followersCount": 12})
     respx.get(FEED).mock(side_effect=feed)
     numbers = {number.metric: number.value for number in bluesky_numbers(settings.sources.bluesky)}
     assert numbers == {"followers": 12, "likes": 4}
@@ -240,16 +242,16 @@ def test_bluesky_engagement_at_a_day_is_the_first_count_after_24_hours(spark: Sp
     measured = [(2, 23), (5, 25), (9, 27), (30, 200)]
     history = spark.createDataFrame(
         [
-            ("at://lab/post/a", "A", CREATED, likes, 0, 0, 0, CREATED + timedelta(hours=hours))
+            ("at://lab/post/a", "A", CREATED, likes, 0, 0, 0, 40 + hours, CREATED + timedelta(hours=hours))
             for likes, hours in measured
         ]
-        + [("at://lab/post/b", "B", CREATED, 6, 0, 0, 0, CREATED + timedelta(hours=40))],
+        + [("at://lab/post/b", "B", CREATED, 6, 0, 0, 0, 80, CREATED + timedelta(hours=40))],
         "uri string, text string, created_at timestamp, likes long, reposts long, replies long, quotes long, "
-        "measured_at timestamp",
+        "followers long, measured_at timestamp",
     )
     rows = {row["post"]: row for row in posts_gold(history, NOW).collect()}
-    assert (rows["a"]["likes"], rows["a"]["engagement_24h"]) == (30, 5)
-    assert (rows["b"]["likes"], rows["b"]["engagement_24h"]) == (6, None)
+    assert (rows["a"]["likes"], rows["a"]["engagement_24h"], rows["a"]["followers_24h"]) == (30, 5, 65)
+    assert (rows["b"]["likes"], rows["b"]["engagement_24h"], rows["b"]["followers_24h"]) == (6, None, None)
 
 
 @respx.mock

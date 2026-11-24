@@ -69,7 +69,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.itch_daily` | `sources-hourly`, `sources-nightly` | `date` | The itch.io pack's page views and visitors per UTC day, with views, starts, levels cleared and wins per game |
 | `silver.youtube_daily` | `sources-hourly`, `sources-nightly` | `date` | The YouTube channel's views, minutes watched, average view, subscribers gained and lost, likes, comments and shares per day of the last 28, re-read each load because YouTube reports two to three days late |
 | `silver.game_dropoff` | `sources-hourly`, `sources-nightly` | `game` | Umami's campaign runs that ended without a win, per level, and the wins since tracking began |
-| `silver.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri`, `measured_at` | Every load's likes, reposts, replies and quotes of each of the Bluesky account's own posts, so the counts keep their history |
+| `silver.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri`, `measured_at` | Every load's likes, reposts, replies and quotes of each of the Bluesky account's own posts and the account's followers, so the counts keep their history |
 | `silver.lab_costs` | `sources-hourly`, `sources-nightly` | `stamp` | The traced steps, tokens and model cost of every lab run, from its `lab scores` span in Tempo |
 | `silver.lab_rounds` | `sources-hourly`, `sources-nightly` | `stamp`, `round` | Every `claude -p` round of a lab run from its trace in Tempo: duration, model, cost, turns, tool calls and errors, subagents, input, output and cache tokens; read since the last run |
 | `gold.lab_run_rounds` | `sources-hourly`, `sources-nightly` | `stamp`, `round` | The rounds, for the website |
@@ -97,7 +97,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
 | `gold.itch_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Starts and campaign wins of every game in the itch.io pack, served on the highscore boards |
 | `gold.itch_daily` | `sources-hourly`, `sources-nightly` | `game`, `date` | Views, starts, levels cleared and campaign wins of every game in the itch.io pack per UTC day |
-| `gold.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri` | Each of the account's Bluesky posts: text, when, its newest likes, reposts, replies and quotes, and its interactions at 24 h |
+| `gold.bluesky_posts` | `sources-hourly`, `sources-nightly` | `uri` | Each of the account's Bluesky posts: text, when, its newest likes, reposts, replies and quotes, and its interactions and the followers at 24 h |
 | `gold.human_dropoff` | `sources-hourly`, `sources-nightly` | `game`, `level_index` | Per level the campaign runs that reached it, the share that ended there, and the humans' median time against the AI's split |
 | `gold.level_segments`, `gold.mining_summary`, `gold.level_history` | `mining-gold` | `game` | Frames per level and piece of the newest record, and every change of a level's frames |
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
@@ -203,13 +203,17 @@ measured in `gold.twitch_channel_outcomes` against the viewers, followers and ch
 is new followers per hour, Gamma over the turn's hours, because a follow is the growth that lasts: it brings the
 viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in the table.
 
-The promotion drafts also learn what the maintainer approves. Every approved or rejected draft is an item
-`network:variant` of `promotion_variants`, Beta over decisions with approvals as the outcome, so the backend favours
-the variant that gets approved while the floor and the holdout keep trying the other. `gold.promotion_preferences`
-shows the approval rate per kind, variant, opening, tone, length and count of numbers with its counts and interval.
-Beside each rate stand the Bluesky interactions per post at 24 h
-of the drafts that went out, linked by the post in the draft's URL, so a kind or tone that gets approved but draws
-nobody shows up there.
+Bluesky posts publish without review and learn from their engagement. Each post's draft records five dimensions in
+`copy.dimensions` (hook, length, media, tags, cta), and every value is an item of `bluesky_<dimension>`, Gamma over the
+post's likes, reposts, replies and quotes 24 h after posting from `gold.bluesky_posts`. Its exposure is the post's
+followers at that point over the largest such follower count, so a post to a smaller audience counts as less than one
+post and the rate reads as interactions per post at today's audience. The backend draws each dimension by its share,
+keeps the floor and the holdout trying the others, and retires a value whose interval lies clearly below the best.
+
+YouTube Shorts still learn what the maintainer approves. Every approved or rejected draft is an item
+`network:variant` of `promotion_variants`, Beta over decisions with approvals as the outcome.
+`gold.promotion_preferences` shows the approval rate per kind, variant, opening, tone, length and count of numbers with
+its counts and interval.
 
 `engagement-nightly` compares adaptive with holdout per surface, the site A/B tests per goal rate and the stream A/B
 tests per 30-minute block on viewers, chat messages per minute and follows per hour, with experimentation-toolkit, an
@@ -226,11 +230,11 @@ restarts Grafana.
 |-----------|-------------|-------|
 | Experiments | Experiments Postgres | Every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, and every lab change |
 | Search bandit | Experiments Postgres | The bandit against the holdout split, frames saved per hour per day and arm, and every finished turn |
-| Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, and the approval rate of each draft feature |
+| Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension and the approval rate of each Short feature |
 | Lab runs | Tempo | Each lab run's scores, each `claude -p` round, the failed steps and the progress after each run |
 
 Grafana cannot read Delta, so the nightly `experiments-export` job copies `gold.engagement_experiments`,
-`gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences` and every finished
+`gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences`, `gold.content_ranking` and every finished
 search turn (`search_bandit_turns`) into a small Postgres, each table replaced in one transaction. The job writes as
 the database's owner, Grafana reads with a role that may only select (`grafana/reader.sql`).
 

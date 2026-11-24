@@ -80,6 +80,11 @@ engagement:
     stream_games: {family: gamma, holdout: false, catalog: true}
     promotion: {family: gamma, holdout: false, catalog: false}
     promotion_variants: {family: beta, holdout: false, catalog: false}
+    bluesky_hook: {family: gamma, holdout: false, catalog: false}
+    bluesky_length: {family: gamma, holdout: false, catalog: false}
+    bluesky_media: {family: gamma, holdout: false, catalog: false}
+    bluesky_tags: {family: gamma, holdout: false, catalog: false}
+    bluesky_cta: {family: gamma, holdout: false, catalog: false}
     twitch_channel: {family: gamma, holdout: false, catalog: false}
   experiments:
     cta_copy: {scope: visit, variants: [watch_live, beat_the_ai], goals: [click]}

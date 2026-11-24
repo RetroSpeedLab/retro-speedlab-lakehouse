@@ -290,33 +290,51 @@ document.getElementById("menu").append(...GROUPS.flatMap(([group, tools]) => [
     element("ul", {}, tools.map(([id]) => menuItem(TOOLS.get(id)))),
 ]));
 
-function frameOf(tool) {
+function frameOf(tool, deep) {
     const existing = document.getElementById(`frame-${tool.id}`);
     if (existing) {
+        if (deep !== null && existing.src !== deep) {
+            existing.src = deep;
+        }
         return existing;
     }
-    const frame = element("iframe", { id: `frame-${tool.id}`, src: tool.url, title: tool.name, allow: "clipboard-write; fullscreen" }, []);
+    const frame = element("iframe", { id: `frame-${tool.id}`, src: deep ?? tool.url, title: tool.name, allow: "clipboard-write; fullscreen" }, []);
     frames.append(frame);
     return frame;
 }
 
+function deepLink(tool, path) {
+    if (!path.startsWith("/") || path.startsWith("//")) {
+        return null;
+    }
+    const url = new URL(path, tool.url);
+    return url.origin === new URL(tool.url).origin ? url.href : null;
+}
+
 function show() {
-    const id = location.hash.slice(1);
+    const [id, ...rest] = location.hash.slice(1).split("=");
+    const path = rest.join("=");
     if (!TOOLS.has(id)) {
         location.replace(`#${FIRST}`);
         return;
     }
     const tool = TOOLS.get(id);
+    const deep = path ? deepLink(tool, path) : null;
+    if (path && (deep === null || !tool.framed)) {
+        location.replace(`#${id}`);
+        return;
+    }
+    const url = deep ?? tool.url;
     document.title = `${tool.name} · RetroSpeedLab tools`;
     document.getElementById("name").textContent = tool.name;
-    document.getElementById("about").textContent = `${tool.about} · ${tool.url}`;
-    document.getElementById("open").href = tool.url;
+    document.getElementById("about").textContent = `${tool.about} · ${url}`;
+    document.getElementById("open").href = url;
     document.getElementById("outside-name").textContent = tool.name;
     document.getElementById("outside-reason").textContent = `${tool.name} does not allow being shown inside another page.`;
     document.getElementById("outside-open").href = tool.url;
     document.querySelectorAll("li[aria-current]").forEach((item) => item.removeAttribute("aria-current"));
     document.getElementById(`menu-${id}`).setAttribute("aria-current", "page");
-    const shown = tool.framed ? frameOf(tool) : outside;
+    const shown = tool.framed ? frameOf(tool, deep) : outside;
     frames.querySelectorAll("iframe").forEach((frame) => { frame.hidden = frame !== shown; });
     outside.hidden = outside !== shown;
 }

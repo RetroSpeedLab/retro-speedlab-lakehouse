@@ -292,7 +292,9 @@ TLS and behind the owner sign-in.
 - nginx asks the owner sign-in's `/check` on Main before each request (`lan/gate.conf`, `lan/signed-in.conf`) and keeps
   a yes for 60 seconds per session, so a page's many requests cost one round trip. A stranger goes to the sign-in page
   and back.
-- The tools page keeps the selected tool in the URL hash and frames only the own tools. nginx replaces their
+- The tools page keeps the selected tool in the URL hash and frames only the own tools. A deep link such as
+  `#bugsink=/issues/issue/<id>/event/last/` opens that path of the tool in its frame; only paths on the tool's own
+  origin are accepted. nginx replaces their
   `X-Frame-Options` with `frame-ancestors https://tools.retrospeedlab.com` (`lan/framed.conf`; on Main
   `gate/framed.conf`, which keeps a tool's other CSP directives), so no other page can frame them. GitHub, Twitch,
   YouTube Studio, Google Cloud, Discord, itch.io, Bluesky and the public site refuse framing and Vaultwarden is not

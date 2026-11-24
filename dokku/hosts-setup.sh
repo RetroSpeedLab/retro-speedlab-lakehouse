@@ -9,7 +9,7 @@ readonly STORAGE=/var/lib/dokku/data/storage
 readonly HOME_LAB_DATA=/mnt/fastdata/retro-speedlab-hosts
 
 setup() {
-    local host="$1" name="$2" key
+    local host="$1" name="$2" gpu="$3" key
     ssh "${host}" apps:create "${APP}"
     ssh "${host}" storage:ensure-directory "${APP}"
     ssh "${host}" storage:mount "${APP}" "${STORAGE}/${APP}:/disks/root:ro"
@@ -21,11 +21,13 @@ setup() {
     key="$(ssh "${BACKEND_HOST}" config:get "${BACKEND_APP}" UPLOAD_API_KEY)"
     [[ -n "${key}" ]] || { echo "${BACKEND_APP} has no UPLOAD_API_KEY" >&2; exit 1; }
     ssh "${host}" config:set --no-restart "${APP}" HOST_NAME="${name}" BACKEND_URL="${BACKEND_URL}" \
-        UPLOAD_API_KEY="${key}" >/dev/null
+        UPLOAD_API_KEY="${key}" GPU="${gpu}" >/dev/null
 }
 
-setup dokku main
-setup dokku-black-omen home-lab
+setup dokku main none
+setup dokku-black-omen home-lab nvidia
+ssh dokku-black-omen docker-options:add "${APP}" deploy "--gpus all"
+ssh dokku-black-omen config:set --no-restart "${APP}" NVIDIA_DRIVER_CAPABILITIES=utility >/dev/null
 ssh black-omen "sudo mkdir -p ${HOME_LAB_DATA}"
 ssh dokku-black-omen storage:mount "${APP}" "${HOME_LAB_DATA}:/disks/data:ro"
 echo "Deploy the collectors after the lakehouse knows hosts.metrics: bash dokku/hosts-deploy.sh"

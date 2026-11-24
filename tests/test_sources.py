@@ -11,7 +11,6 @@ from retro_speedlab_lakehouse.lake.catalog import GAMES, SOURCES_STATUS
 from retro_speedlab_lakehouse.lake.tables import append_rows, read
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
-from retro_speedlab_lakehouse.sources.aim import aim_numbers
 from retro_speedlab_lakehouse.sources.bluesky import bluesky_numbers, bluesky_posts
 from retro_speedlab_lakehouse.sources.catalog import (
     BLUESKY_POSTS,
@@ -89,13 +88,6 @@ def failing(now: datetime) -> list[Number]:
 def per_game(request: httpx.Request) -> httpx.Response:
     event = request.url.params["event"]
     return httpx.Response(200, json=PER_GAME[event] if event in PER_GAME else [])
-
-
-@respx.mock
-def test_aim_counts_the_runs_of_every_experiment(settings: Settings) -> None:
-    respx.get("https://aim.test/api/experiments/").respond(json=[{"run_count": 3}, {"run_count": 2}])
-
-    assert aim_numbers(settings.sources.aim) == [Number("tracked_runs", "PPO runs and search turns", 5, "", "all time")]
 
 
 @respx.mock

@@ -24,7 +24,6 @@ from retro_speedlab_lakehouse.settings import (
     StreamSettings,
 )
 from retro_speedlab_lakehouse.sources.settings import (
-    AimSettings,
     BlueskySettings,
     BugsinkSettings,
     DiscordSettings,
@@ -85,7 +84,6 @@ def source_settings() -> Sources:
             itch_website="itch",
             dropoff_since=DROPOFF_SINCE,
         ),
-        aim=AimSettings(url="https://aim.test", open_hours=24),
         tempo=TempoSettings(url="https://tempo.test"),
         bugsink=BugsinkSettings(url="https://bugsink.test/api", token="token"),
         bluesky=BlueskySettings(handle="retrospeedlab.bsky.social"),

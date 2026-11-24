@@ -91,6 +91,7 @@ LAB_PROGRESS = table(Layer.SILVER, "lab_run_progress", ("game", "stamp"))
 REPORTS = table(Layer.SILVER, "reports", ("game", "name"))
 HIGHSCORES = table(Layer.SILVER, "highscores", ("id",))
 HOST_METRICS = table(Layer.SILVER, "host_metrics", ("host", "measured_at"))
+GPU_METRICS = table(Layer.SILVER, "gpu_metrics", ("host", "gpu", "measured_at"))
 
 GAME_SUMMARY = table(Layer.GOLD, "game_summary", ("game",))
 LEVEL_COSTS = table(Layer.GOLD, "level_costs", ("game", "level"))
@@ -149,6 +150,7 @@ CORE_TABLES = (
     REPORTS,
     HIGHSCORES,
     HOST_METRICS,
+    GPU_METRICS,
     GAME_SUMMARY,
     LEVEL_COSTS,
     IMPROVEMENT,

@@ -1,4 +1,3 @@
-from retro_speedlab_lakehouse.sources.aim import aim_numbers
 from retro_speedlab_lakehouse.sources.bluesky import bluesky_numbers, bluesky_posts
 from retro_speedlab_lakehouse.sources.bugsink import bugsink_numbers
 from retro_speedlab_lakehouse.sources.discord import discord_numbers
@@ -39,7 +38,6 @@ def each_run_sources(sources: Sources) -> list[Source]:
         SnapshotSource("itch", DAILY, lambda now: itch_days(sources.umami, now)),
         SnapshotSource("tempo", LAB_COSTS, lambda now: tempo_lab_costs(sources.tempo, now)),
         TempoRounds(sources.tempo),
-        SnapshotSource("aim", NUMBERS, lambda now: aim_numbers(sources.aim)),
         SnapshotSource("bugsink", NUMBERS, lambda now: bugsink_numbers(sources.bugsink)),
         SnapshotSource("bluesky", NUMBERS, lambda now: bluesky_numbers(sources.bluesky)),
         SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(sources.bluesky)),

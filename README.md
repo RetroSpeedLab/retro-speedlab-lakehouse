@@ -57,7 +57,8 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `live.policy_pulse` | stream | `game` | The newest PPO round and the last hour's rounds and mean reward |
 | `live.lab_status` | stream | `slot` | The newest lab-run event of the last hour |
 | `live.chat_pulse` | stream | `channel` | The newest minute of chat and the last hour's messages |
-| `live.host_metrics`, `silver.host_metrics` | stream | `host`, `measured_at` | Each server's newest disk, memory and load, and every minute of them |
+| `live.host_metrics`, `silver.host_metrics` | stream | `host`, `measured_at` | Each server's newest disk, memory, load and CPU, and every minute of them |
+| `silver.gpu_metrics` | stream | `host`, `gpu`, `measured_at` | Every minute of each GPU: utilisation, memory, temperature and power |
 | `silver.game_runs`, `silver.run_versions` | stream | `game`, `event_id` | The newest run per game and every reported run |
 | `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and highscore entries |
 | `silver.games`, `silver.lab_run_progress` | `silver` | | The RetroSpeedLab24 collection and the progress after each lab run |
@@ -103,9 +104,8 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
 | `gold.platform_tables`, `gold.platform_jobs` | `platform`, every job | | Size and versions per table, measured nightly, and every job run |
-| `bronze.aim_runs`, `bronze.aim_metrics` | `tracking-hourly` | `run`; `run`, `metric`, `context`, `step` | Every Aim run with its params, and every metric point of it |
 | `silver.search_turn_minutes`, `silver.search_kind_minutes` | `tracking-hourly` | `run`, `step`; `run`, `kind`, `step` | Each minute of a search turn: frames saved, best time, records, crossings, attempts per second and stuck states, and per worker kind its frames saved per worker-second and share |
-| `silver.ppo_rounds` | `tracking-hourly` | `run`, `round` | Every PPO round: reward, exits, episodes, exit rate, entropy, explained variance and loss |
+| `silver.ppo_rounds` | `tracking-hourly` | `run`, `round` | Every PPO round: reward, exits, episodes, exit rate, entropy, explained variance, loss and the run's hyperparameters |
 | `gold.search_turns` | `tracking-hourly` | `game`, `turn` | Each search turn: arm, minutes, frames saved in total and per hour, attempts per second, best time, records, crossings and stuck states |
 | `gold.search_worker_kinds` | `tracking-hourly` | `game`, `turn`, `kind` | Each turn's workers per kind, their frames saved per worker-second (weighted by share) and their share of the worker-seconds |
 | `gold.training_rounds` | `tracking-hourly` | `game`, `round` | The rounds of each game's newest PPO run, with the reward's mean over the last 10 rounds |
@@ -128,19 +128,19 @@ The sources jobs load only aggregated, public, non-personal numbers, never a mes
 Uptime Kuma, Twitch, Discord (nightly also messages and joins per day), Umami (including the game site's starts,
 campaign wins and the level where a campaign run ends without a win per game, the itch.io pack's views, visitors, starts,
 levels cleared and wins per game and day, and hourly the engagement events),
-Tempo (the steps, tokens and cost of every lab run's traces), Aim (the PPO training runs), Bugsink, GitHub and Bluesky (the account's own public
+Tempo (the steps, tokens and cost of every lab run's traces), Bugsink, GitHub and Bluesky (the account's own public
 posts with their likes, reposts, replies and quotes, from the public AppView) and the YouTube Analytics API (the
 channel's last 28 days in total and per day). Each source loads on its own; one
 that fails keeps the others and fails the job afterwards.
 
 ## Experiment tracking
 
-`tracking-hourly` reads the Home Lab's Aim through its REST API on the lakehouse network: every run created since an
-hour before the newest one it has, and again every run of the last `sources.aim.open_hours` that had not ended. A run's
-params and metric points are merged by run, metric, context and step, so a load that repeats is harmless. Aim's batch
-endpoint samples a metric to 200 steps across the run: a search turn tracks one step per minute and keeps every step,
-a PPO run keeps a sample that fills in with each load. Runs whose `kind` is neither `search_turn` nor `ppo_round` stay
-in bronze only.
+Core publishes every minute of a search turn as `runs.turn_minutes` and every PPO round as `policy.rounds`; both land
+in `bronze.search_events` with the other search topics. `tracking-hourly` reads the last two days of them and merges
+them by run and minute or round, so a load that repeats is harmless. A turn ends with its `final` minute, and a turn or
+PPO run whose newest event is older than an hour has ended too. The job then rebuilds the gold tables and replaces
+them, every PPO round and the last 30 days of turn, worker kind, host and GPU minutes in the experiments Postgres, so
+Grafana is at most an hour behind.
 
 ## Lab experiments
 
@@ -222,7 +222,8 @@ ratio mismatch. The `chat` process also publishes Helix's viewers and followers 
 
 ## Grafana
 
-The owner's Grafana on the Home Lab shows the lab's traces and the lake's experiment results. Its data sources and
+The owner's Grafana on the Home Lab shows the lab's traces, the lake's experiment results, the search turns, the PPO
+training and the servers. Its data sources and
 dashboards are provisioned from `grafana/` and cannot be changed in the UI; `dokku/grafana-setup.sh` copies them and
 restarts Grafana.
 
@@ -232,6 +233,9 @@ restarts Grafana.
 | Search bandit | Experiments Postgres | The bandit against the holdout split, frames saved per hour per day and arm, and every finished turn |
 | Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension and the approval rate of each Short feature |
 | Lab runs | Tempo | Each lab run's scores, each `claude -p` round, the failed steps and the progress after each run |
+| Search turns | Experiments Postgres | Per game, release and version: frames saved per hour of each turn by arm, attempts per second, best time, records and stuck states per minute, and each worker kind's efficiency and share |
+| Training | Experiments Postgres | Per game, release, version and run: reward, exit rate, entropy, explained variance, loss and episodes per round, and every run's hyperparameters |
+| Machines | Experiments Postgres | CPU, load, memory and the fullest disk of each server, and the Home Lab GPU's utilisation, memory, temperature and power |
 
 Grafana cannot read Delta, so the nightly `experiments-export` job copies `gold.engagement_experiments`,
 `gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences`, `gold.content_ranking` and every finished
@@ -270,14 +274,13 @@ memory.
 
 ## Owner tools on the LAN
 
-The tools page, Grafana and Aim run on the Home Lab and are reachable from the home LAN only, under their own names with
+The tools page and Grafana run on the Home Lab and are reachable from the home LAN only, under their own names with
 TLS and behind the owner sign-in.
 
 | Name | Tool | Behind the sign-in | Break-glass login |
 |------|------|--------------------|-------------------|
 | `tools` | The tools page: every owner dashboard in a sidebar, the selected one in a frame (`lan/tools/index.html`), served by nginx itself | has no login of its own | |
-| `grafana` | Grafana, the lab's traces and experiments, on `127.0.0.1:18094` | anonymous Viewer | `admin`, password in `GF_SECURITY_ADMIN_PASSWORD` |
-| `aim` | Aim, the training runs | has no login of its own | |
+| `grafana` | Grafana, the lab's traces, experiments, search turns, training and servers, on `127.0.0.1:18094` | anonymous Viewer | `admin`, password in `GF_SECURITY_ADMIN_PASSWORD` |
 
 - Every tool publishes its port on localhost only. nginx on the Home Lab serves the names on the LAN address only
   (`lan/tools.conf`), and the firewall opens HTTP and HTTPS on the LAN interface only. The LAN's Pi-hole points the
@@ -322,8 +325,9 @@ cross-site request except a GET navigation (`$gate_cross_site` in `gate/owner-ga
 
 ## Alerts
 
-A small collector on each server (`hosts/`) reports disk, memory and load every minute to the backend, which keeps the
-newest values for its alerts and publishes them to `hosts.metrics` for `live.host_metrics` and `silver.host_metrics`.
+A small collector on each server (`hosts/`) reports disk, memory, load and CPU every minute to the backend, and on the
+Home Lab (`GPU=nvidia`) its GPU from `nvidia-smi`. The backend keeps the newest values for its alerts and publishes
+them to `hosts.metrics` for `live.host_metrics`, `silver.host_metrics` and `silver.gpu_metrics`.
 
 The backend posts the alerts to a private Discord channel; its rules and thresholds are in its `alerts.yaml`. Every
 Airflow task reports its final state to the backend, so a failed task opens an alert and its next success resolves it.

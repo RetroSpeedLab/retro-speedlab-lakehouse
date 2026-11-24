@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, PositiveInt
+from pydantic import BaseModel, ConfigDict
 
 from retro_speedlab_lakehouse.environment import secret
 
@@ -44,11 +44,6 @@ class TempoSettings(SourceSettings):
     url: str
 
 
-class AimSettings(SourceSettings):
-    url: str
-    open_hours: PositiveInt
-
-
 class BugsinkSettings(SourceSettings):
     url: str
     token: str
@@ -77,7 +72,6 @@ class Sources(SourceSettings):
     discord: DiscordSettings
     umami: UmamiSettings
     tempo: TempoSettings
-    aim: AimSettings
     bugsink: BugsinkSettings
     bluesky: BlueskySettings
     streamelements: StreamElementsSettings
@@ -87,7 +81,6 @@ class Sources(SourceSettings):
 def load_sources(
     github: GithubSettings,
     uptime: UptimeSettings,
-    aim: AimSettings,
     tempo: TempoSettings,
     bluesky: BlueskySettings,
     ignored_chatters: frozenset[str],
@@ -114,7 +107,6 @@ def load_sources(
             dropoff_since=dropoff_since,
         ),
         tempo=tempo,
-        aim=aim,
         bugsink=BugsinkSettings(url=secret("BUGSINK_API_BASE"), token=secret("BUGSINK_API_TOKEN")),
         bluesky=bluesky,
         streamelements=StreamElementsSettings(

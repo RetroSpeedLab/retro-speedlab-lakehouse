@@ -15,6 +15,7 @@ from retro_speedlab_lakehouse.tracking.catalog import (
     TRAINING_ROUNDS,
     TURN_MINUTES,
 )
+from retro_speedlab_lakehouse.tracking.silver import HYPERPARAMETERS, MEASURED_AT
 
 MINUTES_PER_HOUR = 60
 TREND_ROUNDS = 10
@@ -64,6 +65,7 @@ def training_rounds(rounds: DataFrame, now: datetime) -> DataFrame:
     trend = Window.partitionBy("game").orderBy("round").rowsBetween(1 - TREND_ROUNDS, Window.currentRow)
     return (
         rounds.join(newest, ["game", "run"])
+        .drop(HYPERPARAMETERS, MEASURED_AT)
         .withColumn("reward_trend", F.avg("reward").over(trend))
         .withColumn("computed_at", F.lit(now))
     )

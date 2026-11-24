@@ -4,6 +4,7 @@ from pyspark.sql.streaming.query import StreamingQuery
 from retro_speedlab_lakehouse.lake.catalog import (
     EVENTS,
     GAME_RUNS,
+    GPU_METRICS,
     HIGHSCORES,
     HOST_METRICS,
     HOST_STATUS,
@@ -97,6 +98,7 @@ SERVED = (
     (HIGHSCORES, rows.highscores),
     (HOST_STATUS, rows.host_status),
     (HOST_METRICS, rows.host_history),
+    (GPU_METRICS, rows.gpu_history),
 )
 
 

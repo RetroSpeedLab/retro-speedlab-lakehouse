@@ -50,6 +50,17 @@ HIGHSCORE = StructType(
         StructField("set_at", TimestampType(), False),
     ]
 )
+GPU = StructType(
+    [
+        StructField("index", IntegerType(), False),
+        StructField("name", StringType(), False),
+        StructField("utilization_percent", DoubleType(), False),
+        StructField("memory_used_bytes", LongType(), False),
+        StructField("memory_total_bytes", LongType(), False),
+        StructField("temperature_celsius", DoubleType(), False),
+        StructField("power_watts", DoubleType(), False),
+    ]
+)
 HOST = StructType(
     [
         StructField("host", StringType(), False),
@@ -63,6 +74,8 @@ HOST = StructType(
         StructField("load_5", DoubleType(), False),
         StructField("load_15", DoubleType(), False),
         StructField("cpus", IntegerType(), False),
+        StructField("cpu_percent", DoubleType(), False),
+        StructField("gpus", ArrayType(GPU), False),
     ]
 )
 KAFKA_ROW = StructType(
@@ -197,8 +210,14 @@ def host_rows(events: DataFrame) -> DataFrame:
 
 
 def host_status(events: DataFrame) -> DataFrame:
-    return newest(host_rows(events), ["host"])
+    return newest(host_rows(events).drop("gpus"), ["host"])
 
 
 def host_history(events: DataFrame) -> DataFrame:
-    return newest(host_rows(events), ["host", "measured_at"])
+    return newest(host_rows(events).drop("gpus"), ["host", "measured_at"])
+
+
+def gpu_history(events: DataFrame) -> DataFrame:
+    gpus = host_rows(events).select("host", "measured_at", F.explode("gpus").alias("gpu"), "event_id", "received_at")
+    flat = gpus.select("host", "measured_at", "gpu.*", "event_id", "received_at").withColumnRenamed("index", "gpu")
+    return newest(flat, ["host", "gpu", "measured_at"])

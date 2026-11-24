@@ -1,69 +1,105 @@
-from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql.types import LongType, MapType, StringType, StructField, StructType
+from datetime import datetime, timedelta
 
-from retro_speedlab_lakehouse.lake.tables import read
+from pyspark.sql import Column, DataFrame, Window
+from pyspark.sql import functions as F
+from pyspark.sql.types import (
+    BooleanType,
+    DoubleType,
+    LongType,
+    MapType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
+
 from retro_speedlab_lakehouse.lake.write import merge
 from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import LakeSettings
-from retro_speedlab_lakehouse.tracking.catalog import AIM_METRICS, AIM_RUNS, KIND_MINUTES, PPO_ROUNDS, TURN_MINUTES
+from retro_speedlab_lakehouse.tracking.catalog import KIND_MINUTES, PPO_ROUNDS, TURN_MINUTES
 
-SEARCH_TURN = "search_turn"
-PPO_ROUND = "ppo_round"
-NO_CONTEXT = "{}"
-POLICY = "policy/"
+TURN_MINUTES_TOPIC = "runs.turn_minutes"
+POLICY_ROUNDS_TOPIC = "policy.rounds"
+WINDOW = timedelta(days=2)
+STALE = timedelta(hours=1)
 TURN_METRICS = ("frames_saved", "best_seconds", "new_records", "crossings", "attempts_per_second", "stuck_states")
 KIND_METRICS = ("frames_saved_per_worker_second", "worker_share")
 PPO_METRICS = ("reward", "exits", "episodes", "exit_rate", "entropy", "explained_variance", "loss")
-PARAMS = StructType(
+HYPERPARAMETERS = "hyperparameters"
+MEASURED_AT = "measured_at"
+RUN_COLUMNS = ("run", "game", "game_version", "release", "started_at", "ended_at", MEASURED_AT)
+TURN_COLUMNS = (*RUN_COLUMNS, "turn", "arm")
+
+
+def doubles(names: tuple[str, ...]) -> list[StructField]:
+    return [StructField(name, DoubleType(), True) for name in names]
+
+
+RUN = [
+    StructField("run", StringType(), True),
+    StructField("game", StringType(), True),
+    StructField("game_version", StringType(), True),
+    StructField("release", StringType(), True),
+    StructField("started_at", TimestampType(), True),
+]
+TURN_MINUTE = StructType(
     [
-        StructField("kind", StringType(), True),
-        StructField("game", StringType(), True),
-        StructField("game_version", StringType(), True),
-        StructField("release", StringType(), True),
+        *RUN,
         StructField("turn", LongType(), True),
         StructField("arm", StringType(), True),
         StructField("workers", MapType(StringType(), LongType()), True),
+        StructField("step", LongType(), True),
+        *doubles(TURN_METRICS),
+        StructField("kinds", MapType(StringType(), StructType(doubles(KIND_METRICS))), True),
+        StructField("final", BooleanType(), True),
     ]
 )
-RUN_COLUMNS = ("run", "game", "game_version", "release", "started_at", "ended_at")
+PPO_ROUND = StructType(
+    [
+        *RUN,
+        StructField("round", LongType(), True),
+        *doubles(PPO_METRICS),
+        StructField(HYPERPARAMETERS, StringType(), True),
+    ]
+)
 
 
-def runs_of(spark: SparkSession, lake: LakeSettings, fetched: list[str], kind: str) -> DataFrame:
-    runs = read(spark, AIM_RUNS, lake).where(F.col("run").isin(fetched))
-    parsed = runs.select("run", "created_at", "ended_at", F.from_json("params", PARAMS).alias("params"))
-    typed = parsed.select("run", "params.*", F.col("created_at").alias("started_at"), "ended_at")
-    return typed.where(F.col("kind") == kind).drop("kind")
+def payloads(events: DataFrame, topic: str, schema: StructType, key: str, now: datetime) -> DataFrame:
+    recent = events.where((F.col("topic") == topic) & (F.col("date") >= F.lit((now - WINDOW).date())))
+    parsed = recent.select(F.from_json("payload", schema).alias("payload"), "event_at").select("payload.*", "event_at")
+    return parsed.dropDuplicates(["run", key])
 
 
-def pivoted(points: DataFrame, keys: list[str], metrics: tuple[str, ...]) -> DataFrame:
-    return points.groupBy(*keys).pivot("metric", list(metrics)).agg(F.first("value"))
+def ended(rows: DataFrame, done: Column, now: datetime) -> DataFrame:
+    run = Window.partitionBy("run")
+    last = F.max("event_at").over(run)
+    over = F.max(done).over(run) | (last < F.lit(now - STALE))
+    return rows.withColumn("ended_at", F.when(over, last)).withColumnRenamed("event_at", MEASURED_AT)
 
 
-def turn_minutes(points: DataFrame, turns: DataFrame) -> DataFrame:
-    own = pivoted(points.where(F.col("context") == NO_CONTEXT), ["run", "step"], TURN_METRICS)
-    return turns.drop("workers").join(own, "run")
+def turn_minutes(minutes: DataFrame) -> DataFrame:
+    return minutes.select(*TURN_COLUMNS, "step", *TURN_METRICS)
 
 
-def kind_minutes(points: DataFrame, turns: DataFrame) -> DataFrame:
-    per_kind = points.where(F.col("context") != NO_CONTEXT).withColumn("kind", F.get_json_object("context", "$.kind"))
-    own = pivoted(per_kind, ["run", "kind", "step"], KIND_METRICS)
-    attributes = turns.select(*RUN_COLUMNS, "turn", "arm", "workers")
-    return attributes.join(own, "run").withColumn("workers", F.element_at("workers", F.col("kind")))
-
-
-def ppo_rounds(points: DataFrame, runs: DataFrame) -> DataFrame:
-    named = points.where(F.col("metric").startswith(POLICY)).withColumn(
-        "metric", F.expr(f"substr(metric, {len(POLICY) + 1})")
+def kind_minutes(minutes: DataFrame) -> DataFrame:
+    kinds = minutes.select(*TURN_COLUMNS, "workers", "step", F.explode("kinds").alias("kind", "metrics"))
+    return kinds.select(
+        *TURN_COLUMNS,
+        "step",
+        "kind",
+        F.element_at("workers", F.col("kind")).alias("workers"),
+        *(F.col(f"metrics.{name}").alias(name) for name in KIND_METRICS),
     )
-    own = pivoted(named, ["run", "step"], PPO_METRICS).withColumnRenamed("step", "round")
-    return runs.select(*RUN_COLUMNS).join(own, "run")
 
 
-def build_tracking_silver(spark: SparkSession, lake: LakeSettings, gate: Gate, fetched: list[str]) -> None:
-    points = read(spark, AIM_METRICS, lake).where(F.col("run").isin(fetched)).persist()
-    turns = runs_of(spark, lake, fetched, SEARCH_TURN)
-    merge(TURN_MINUTES, lake, turn_minutes(points, turns), gate)
-    merge(KIND_MINUTES, lake, kind_minutes(points, turns), gate)
-    merge(PPO_ROUNDS, lake, ppo_rounds(points, runs_of(spark, lake, fetched, PPO_ROUND)), gate)
-    points.unpersist()
+def ppo_rounds(rounds: DataFrame) -> DataFrame:
+    return rounds.select(*RUN_COLUMNS, "round", *PPO_METRICS, HYPERPARAMETERS)
+
+
+def build_tracking_silver(lake: LakeSettings, gate: Gate, events: DataFrame, now: datetime) -> None:
+    minutes = ended(payloads(events, TURN_MINUTES_TOPIC, TURN_MINUTE, "step", now), F.col("final"), now).persist()
+    merge(TURN_MINUTES, lake, turn_minutes(minutes), gate)
+    merge(KIND_MINUTES, lake, kind_minutes(minutes), gate)
+    minutes.unpersist()
+    rounds = ended(payloads(events, POLICY_ROUNDS_TOPIC, PPO_ROUND, "round", now), F.lit(False), now)
+    merge(PPO_ROUNDS, lake, ppo_rounds(rounds), gate)

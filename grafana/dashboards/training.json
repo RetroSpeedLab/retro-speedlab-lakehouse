@@ -1,0 +1,422 @@
+{
+  "uid": "training",
+  "title": "Training",
+  "tags": [
+    "retro-speedlab"
+  ],
+  "editable": false,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "",
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "game",
+        "label": "Game",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "experiments"
+        },
+        "query": "SELECT DISTINCT game FROM search_turns UNION SELECT DISTINCT game FROM ppo_rounds",
+        "definition": "SELECT DISTINCT game FROM search_turns UNION SELECT DISTINCT game FROM ppo_rounds",
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "type": "query",
+        "name": "release",
+        "label": "Release",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "experiments"
+        },
+        "query": "SELECT DISTINCT release FROM ppo_rounds WHERE game = '$game'",
+        "definition": "SELECT DISTINCT release FROM ppo_rounds WHERE game = '$game'",
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {}
+      },
+      {
+        "type": "query",
+        "name": "version",
+        "label": "Version",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "experiments"
+        },
+        "query": "SELECT DISTINCT game_version FROM ppo_rounds WHERE game = '$game'",
+        "definition": "SELECT DISTINCT game_version FROM ppo_rounds WHERE game = '$game'",
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {}
+      },
+      {
+        "type": "query",
+        "name": "run",
+        "label": "Run",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "experiments"
+        },
+        "query": "SELECT run FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) GROUP BY run ORDER BY min(started_at) DESC",
+        "definition": "SELECT run FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) GROUP BY run ORDER BY min(started_at) DESC",
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Reward per episode",
+      "description": "The mean reward of a round's episodes",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT measured_at AS time, left(run, 8) AS metric, reward AS value FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) AND run IN ($run) AND $__timeFilter(measured_at) ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Exit rate",
+      "description": "Exits per episode",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT measured_at AS time, left(run, 8) AS metric, exit_rate AS value FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) AND run IN ($run) AND $__timeFilter(measured_at) ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Entropy",
+      "description": "The policy's entropy after a round",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT measured_at AS time, left(run, 8) AS metric, entropy AS value FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) AND run IN ($run) AND $__timeFilter(measured_at) ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Explained variance",
+      "description": "How much of the return the value head explains",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT measured_at AS time, left(run, 8) AS metric, explained_variance AS value FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) AND run IN ($run) AND $__timeFilter(measured_at) ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Loss",
+      "description": "The PPO loss of a round",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT measured_at AS time, left(run, 8) AS metric, loss AS value FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) AND run IN ($run) AND $__timeFilter(measured_at) ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Episodes",
+      "description": "Episodes per round",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT measured_at AS time, left(run, 8) AS metric, episodes AS value FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) AND run IN ($run) AND $__timeFilter(measured_at) ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "table",
+      "title": "Runs and hyperparameters",
+      "description": "Every PPO run of the game with its hyperparameters",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT run, release, game_version, min(started_at) AS started_at, max(ended_at) AS ended_at, max(round) AS rounds, max(reward) AS best_reward, hyperparameters::json->>'category' AS category, hyperparameters::json->>'policy_emulators' AS policy_emulators, hyperparameters::json->>'rollout_decisions' AS rollout_decisions, hyperparameters::json->>'hidden' AS hidden, hyperparameters::json->>'minibatch' AS minibatch, hyperparameters::json->>'epochs' AS epochs, hyperparameters::json->>'learning_rate' AS learning_rate, hyperparameters::json->>'entropy_weight' AS entropy_weight FROM ppo_rounds WHERE game = '$game' AND release IN ($release) AND game_version IN ($version) GROUP BY run, release, game_version, hyperparameters ORDER BY 4 DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

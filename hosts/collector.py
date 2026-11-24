@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,6 +12,14 @@ from loguru import logger
 DISKS = Path("/disks")
 INTERVAL_SECONDS = 60
 TIMEOUT_SECONDS = 15.0
+NVIDIA = "nvidia"
+NO_GPU = "none"
+MEBIBYTE = 1024 * 1024
+GPU_QUERY = [
+    "nvidia-smi",
+    "--query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw",
+    "--format=csv,noheader,nounits",
+]
 
 
 def environment(name: str) -> str:
@@ -31,7 +40,29 @@ def mounted(disks: Path) -> list[Path]:
     return found
 
 
-def measured(disks: list[Path], now: datetime) -> dict[str, Any]:
+def gpu(line: str) -> dict[str, Any]:
+    index, name, utilization, used, total, temperature, power = (value.strip() for value in line.split(","))
+    return {
+        "index": int(index),
+        "name": name,
+        "utilization_percent": float(utilization),
+        "memory_used_bytes": int(used) * MEBIBYTE,
+        "memory_total_bytes": int(total) * MEBIBYTE,
+        "temperature_celsius": float(temperature),
+        "power_watts": float(power),
+    }
+
+
+def gpus(kind: str) -> list[dict[str, Any]]:
+    if kind == NO_GPU:
+        return []
+    if kind != NVIDIA:
+        raise RuntimeError(f"GPU must be {NVIDIA} or {NO_GPU}, not {kind}")
+    found = subprocess.run(GPU_QUERY, capture_output=True, text=True, check=True, timeout=TIMEOUT_SECONDS)
+    return [gpu(line) for line in found.stdout.splitlines() if line.strip()]
+
+
+def measured(disks: list[Path], gpu_kind: str, now: datetime) -> dict[str, Any]:
     memory = psutil.virtual_memory()
     load_1, load_5, load_15 = psutil.getloadavg()
     cpus = psutil.cpu_count()
@@ -47,6 +78,8 @@ def measured(disks: list[Path], now: datetime) -> dict[str, Any]:
         "load_5": load_5,
         "load_15": load_15,
         "cpus": cpus,
+        "cpu_percent": psutil.cpu_percent(),
+        "gpus": gpus(gpu_kind),
     }
 
 
@@ -58,12 +91,13 @@ def report(client: httpx.Client, host: str, metrics: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    host, disks = environment("HOST_NAME"), mounted(DISKS)
+    host, disks, gpu_kind = environment("HOST_NAME"), mounted(DISKS), environment("GPU")
+    psutil.cpu_percent()
     headers = {"X-API-Key": environment("UPLOAD_API_KEY")}
     logger.info(f"Reporting {host} with the disks {', '.join(path.name for path in disks)}")
     with httpx.Client(base_url=environment("BACKEND_URL"), headers=headers, timeout=TIMEOUT_SECONDS) as client:
         while True:
-            report(client, host, measured(disks, datetime.now(UTC)))
+            report(client, host, measured(disks, gpu_kind, datetime.now(UTC)))
             time.sleep(INTERVAL_SECONDS)
 
 

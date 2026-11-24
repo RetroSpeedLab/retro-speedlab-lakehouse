@@ -50,7 +50,7 @@ def sources_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
 
 
 def tracking_hourly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return load_tracking(spark, settings.lake, gate, settings.sources.aim, now())
+    return load_tracking(spark, settings, gate, now())
 
 
 def silver(spark: SparkSession, settings: Settings, gate: Gate) -> int:

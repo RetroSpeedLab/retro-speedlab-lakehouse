@@ -9,7 +9,8 @@ readonly CERTS=/etc/retro-speedlab/lan-certs
 readonly SERVICE=retro-speedlab-lan-certs
 readonly PULL=/usr/local/sbin/${SERVICE}
 readonly NGINX_FILES=/etc/nginx/retro-speedlab-lan
-readonly NGINX_INCLUDES=(server.conf proxy.conf gate.conf signed-in.conf framed.conf tools/index.html)
+readonly NGINX_INCLUDES=(server.conf proxy.conf gate.conf signed-in.conf framed.conf tools/index.html tools/maintainer/index.html
+    tools/maintainer/a2ui.js)
 readonly BACKEND=retro-speedlab-backend
 readonly NGINX_SITE=/etc/nginx/conf.d/retro-speedlab-lan.conf
 readonly MAIN_DEFAULT=/etc/nginx/conf.d/00-default-site.conf

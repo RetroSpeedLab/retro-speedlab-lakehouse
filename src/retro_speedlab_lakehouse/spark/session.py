@@ -1,3 +1,5 @@
+import os
+
 from pyspark.sql import SparkSession
 
 from retro_speedlab_lakehouse.settings import LakeSettings, SparkSettings
@@ -12,6 +14,7 @@ LOOPBACK = "127.0.0.1"
 IDLE_HEAP_RETURN = "-XX:G1PeriodicGCInterval=60000"
 SNAPSHOT_STALENESS = "60s"
 PARQUET_BATCH_ROWS = "512"
+ENVIRONMENT_CREDENTIALS = "software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider"
 
 
 def lake_options(lake: LakeSettings) -> dict[str, str]:
@@ -20,8 +23,7 @@ def lake_options(lake: LakeSettings) -> dict[str, str]:
         "spark.hadoop.fs.s3a.endpoint": lake.endpoint,
         "spark.hadoop.fs.s3a.endpoint.region": "garage",
         "spark.hadoop.fs.s3a.path.style.access": "true",
-        "spark.hadoop.fs.s3a.access.key": lake.access_key,
-        "spark.hadoop.fs.s3a.secret.key": lake.secret_key,
+        "spark.hadoop.fs.s3a.aws.credentials.provider": ENVIRONMENT_CREDENTIALS,
         "spark.hadoop.fs.s3a.multipart.size": MULTIPART_BYTES,
         "spark.hadoop.fs.s3a.connection.part.upload.timeout": UPLOAD_TIMEOUT,
         "spark.hadoop.fs.s3a.connection.timeout": SOCKET_TIMEOUT,
@@ -29,6 +31,10 @@ def lake_options(lake: LakeSettings) -> dict[str, str]:
         "spark.hadoop.fs.s3a.change.detection.mode": "none",
         "spark.delta.logStore.s3a.impl": "io.delta.storage.S3SingleDriverLogStore",
     }
+
+
+def lake_environment(lake: LakeSettings) -> dict[str, str]:
+    return {"AWS_ACCESS_KEY_ID": lake.access_key, "AWS_SECRET_ACCESS_KEY": lake.secret_key}
 
 
 def session_builder(name: str, spark: SparkSettings, lake: LakeSettings) -> SparkSession.Builder:
@@ -63,4 +69,5 @@ def session_builder(name: str, spark: SparkSettings, lake: LakeSettings) -> Spar
 
 
 def spark_session(name: str, spark: SparkSettings, lake: LakeSettings) -> SparkSession:
+    os.environ.update(lake_environment(lake))
     return session_builder(name, spark, lake).getOrCreate()

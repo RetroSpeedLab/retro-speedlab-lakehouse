@@ -344,7 +344,7 @@ stream triggers and sources. Secrets come from the environment:
 | Variable | Purpose |
 |----------|---------|
 | `UPLOAD_API_KEY` | The backend's events endpoint |
-| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake |
+| `LAKE_ACCESS_KEY_ID`, `LAKE_SECRET_ACCESS_KEY` | The lake; Spark reads them from its environment, so no command line shows them |
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
 | `EXPERIMENTS_DATABASE_PASSWORD` | The experiments Postgres Grafana reads, set by `dokku/grafana-setup.sh` |
 

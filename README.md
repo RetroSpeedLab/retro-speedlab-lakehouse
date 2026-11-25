@@ -61,6 +61,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.gpu_metrics` | stream | `host`, `gpu`, `measured_at` | Every minute of each GPU: utilisation, memory, temperature and power |
 | `silver.game_runs`, `silver.run_versions` | stream | `game`, `event_id` | The newest run per game and every reported run |
 | `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and highscore entries |
+| `silver.donations` | stream | `message_id` | Every Ko-fi payment: kind, amount and currency, with the name and message of public supporters only |
 | `silver.deleted_lab_runs` | `api-hourly`, `api-nightly` | `game`, `stamp` | Lab runs the backend answers 404 for although the lake has them; they leave `silver.lab_runs` and every lab cost and round from Tempo, so a lab run deleted at the backend never comes back |
 | `silver.games`, `silver.lab_run_progress` | `silver` | | The RetroSpeedLab24 collection and the progress after each lab run |
 | `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Level splits, improvement history and game knowledge |
@@ -83,6 +84,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.improvement_curve` | `gold` | `game`, `hour` | The proven run's length per hour |
 | `gold.records_daily` | `gold` | `game`, `date` | The record at the end of each day |
 | `gold.lab_outcomes` | `gold` | `game`, `outcome` | Lab runs, minutes, cost and commits per outcome |
+| `gold.supporter_counts` | `gold` | `kind`, `currency` | Ko-fi payments, public payments, amount and the first and last payment |
 | `gold.lab_experiments` | `experiments` | `game`, `stamp`, `metric` | Every deployed lab change as a before/after experiment |
 | `gold.lab_roi` | `experiments` | `game`, `stamp` | Every lab run's traced cost, the frames its change saved with an interval, frames per dollar, running totals and the early harm flag |
 | `gold.promotion_roi` | `gold` | `channel`, `variant` | Claude cost, views, likes and follows of the published drafts, with views and likes per dollar and their intervals |
@@ -246,14 +248,14 @@ restarts Grafana.
 |-----------|-------------|-------|
 | Experiments | Experiments Postgres | The experiment plan, every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, each Twitch category and title pair's followers per hour and share, and every lab change |
 | Search bandit | Experiments Postgres | The bandit against the holdout split, frames saved per hour per day and arm, and every finished turn |
-| Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension and the approval rate of each Short feature |
+| Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension, the approval rate of each Short feature and the Ko-fi supporters |
 | Lab runs | Tempo | Each lab run's scores, each `claude -p` round, the failed steps and the progress after each run |
 | Search turns | Experiments Postgres | Per game, release and version: frames saved per hour of each turn by arm, attempts per second, best time, records and stuck states per minute, and each worker kind's efficiency and share |
 | Training | Experiments Postgres | Per game, release, version and run: reward, exit rate, entropy, explained variance, loss and episodes per round, and every run's hyperparameters |
 | Machines | Experiments Postgres | CPU, load, memory and the fullest disk of each server, and the Home Lab GPU's utilisation, memory, temperature and power |
 
 Grafana cannot read Delta, so the nightly `experiments-export` job copies `gold.engagement_experiments`,
-`gold.experiment_plan`, `gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences`, `gold.content_ranking` and every finished
+`gold.experiment_plan`, `gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences`, `gold.content_ranking`, `gold.supporter_counts` and every finished
 search turn (`search_bandit_turns`) into a small Postgres, each table replaced in one transaction. The job writes as
 the database's owner, Grafana reads with a role that may only select (`grafana/reader.sql`).
 

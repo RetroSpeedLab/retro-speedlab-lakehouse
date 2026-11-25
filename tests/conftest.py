@@ -124,7 +124,14 @@ def settings(tmp_path: Path) -> Settings:
         backend=BackendSettings(url="https://api.test", api_key="key"),
         kafka=KafkaSettings(
             bootstrap="kafka:9092",
-            backend_topics=["runs.live", "runs.snapshots", "lab.runs", "lab.reports", "highscores.entries"],
+            backend_topics=[
+                "runs.live",
+                "runs.snapshots",
+                "lab.runs",
+                "lab.reports",
+                "highscores.entries",
+                "donations.events",
+            ],
             search_topics=[
                 "runs.attempts",
                 "runs.steps",

@@ -191,6 +191,44 @@
           }
         ]
       }
+    },
+    {
+      "type": "table",
+      "title": "Ko-fi supporters",
+      "description": "Ko-fi payments per kind and currency: how many, how many public, the amount and the first and last one",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT kind, currency, payments, public_payments, amount, first_at, last_at FROM supporter_counts ORDER BY payments DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2
+        },
+        "overrides": []
+      }
     }
   ]
 }

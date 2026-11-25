@@ -13,6 +13,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     PROMOTION_ROI,
     SEARCH_BANDIT,
     SEARCH_EVENTS,
+    SUPPORTER_COUNTS,
     Table,
 )
 from retro_speedlab_lakehouse.lake.tables import read
@@ -27,6 +28,7 @@ RESULTS: tuple[Table, ...] = (
     PROMOTION_ROI,
     PROMOTION_PREFERENCES,
     CONTENT_RANKING,
+    SUPPORTER_COUNTS,
 )
 SEARCH_BANDIT_TURNS = "search_bandit_turns"
 

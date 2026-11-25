@@ -3,6 +3,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import (
     ArrayType,
     BinaryType,
+    BooleanType,
     DoubleType,
     IntegerType,
     LongType,
@@ -50,6 +51,20 @@ HIGHSCORE = StructType(
         StructField("set_at", TimestampType(), False),
     ]
 )
+DONATION = StructType(
+    [
+        StructField("message_id", StringType(), False),
+        StructField("at", TimestampType(), False),
+        StructField("kind", StringType(), False),
+        StructField("public", BooleanType(), False),
+        StructField("name", StringType(), True),
+        StructField("message", StringType(), True),
+        StructField("amount", DoubleType(), False),
+        StructField("currency", StringType(), False),
+        StructField("subscription_payment", BooleanType(), False),
+        StructField("first_payment", BooleanType(), False),
+    ]
+)
 GPU = StructType(
     [
         StructField("index", IntegerType(), False),
@@ -92,6 +107,7 @@ REPORTS_TOPIC = "lab.reports"
 LAB_RUNS_TOPIC = "lab.runs"
 HIGHSCORES_TOPIC = "highscores.entries"
 HOSTS_TOPIC = "hosts.metrics"
+DONATIONS_TOPIC = "donations.events"
 LIVE_SLOT = "live"
 STAMP_FORMAT = "yyyy-MM-dd'T'HHmm"
 NON_FINITE = r":\s*-?(NaN|Infinity)\b"
@@ -201,6 +217,11 @@ def lab_runs(events: DataFrame) -> DataFrame:
 def highscores(events: DataFrame) -> DataFrame:
     rows = newest(events.where(F.col("topic") == HIGHSCORES_TOPIC), ["key"])
     return rows.select(F.from_json("payload", HIGHSCORE).alias("entry"), "event_id").select("entry.*", "event_id")
+
+
+def donations(events: DataFrame) -> DataFrame:
+    rows = newest(events.where(F.col("topic") == DONATIONS_TOPIC), ["key"])
+    return rows.select(F.from_json("payload", DONATION).alias("donation"), "event_id").select("donation.*", "event_id")
 
 
 def host_rows(events: DataFrame) -> DataFrame:

@@ -2,6 +2,7 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.streaming.query import StreamingQuery
 
 from retro_speedlab_lakehouse.lake.catalog import (
+    DONATIONS,
     EVENTS,
     GAME_RUNS,
     GPU_METRICS,
@@ -96,6 +97,7 @@ SERVED = (
     (REPORTS, rows.reports),
     (LAB_RUNS, rows.lab_runs),
     (HIGHSCORES, rows.highscores),
+    (DONATIONS, rows.donations),
     (HOST_STATUS, rows.host_status),
     (HOST_METRICS, rows.host_history),
     (GPU_METRICS, rows.gpu_history),

@@ -5,6 +5,7 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.batch.major import current_major
 from retro_speedlab_lakehouse.lake.catalog import (
+    DONATIONS,
     GAME_RUNS,
     GAME_SUMMARY,
     GAMES,
@@ -16,6 +17,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     RECORDS_DAILY,
     RUN_VERSIONS,
     SPLITS,
+    SUPPORTER_COUNTS,
     Table,
 )
 from retro_speedlab_lakehouse.lake.tables import exists, read
@@ -68,6 +70,16 @@ def lab_outcomes(lab_runs: DataFrame) -> DataFrame:
         F.sum("minutes").alias("minutes"),
         F.sum("cost_usd").alias("cost_usd"),
         F.sum("commits").alias("commits"),
+    )
+
+
+def supporter_counts(donations: DataFrame) -> DataFrame:
+    return donations.groupBy("kind", "currency").agg(
+        F.count("*").alias("payments"),
+        F.sum(F.col("public").cast("long")).alias("public_payments"),
+        F.sum("amount").alias("amount"),
+        F.min("at").alias("first_at"),
+        F.max("at").alias("last_at"),
     )
 
 
@@ -143,6 +155,7 @@ def build_gold(spark: SparkSession, lake: LakeSettings, gate: Gate, now: datetim
         (IMPROVEMENT, improvement_curve(history)),
         (RECORDS_DAILY, records_daily(current(RUN_VERSIONS))),
         (LAB_OUTCOMES, lab_outcomes(lab_runs)),
+        (SUPPORTER_COUNTS, supporter_counts(read(spark, DONATIONS, lake)).withColumn("computed_at", F.lit(now))),
         (GAME_SUMMARY, with_yesterday(summary, yesterday).withColumn("computed_at", F.lit(now))),
     ]
     return sum(replace_counted(table, lake, rows, gate) for table, rows in tables)

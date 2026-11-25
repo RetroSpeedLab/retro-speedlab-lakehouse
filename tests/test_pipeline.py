@@ -18,6 +18,7 @@ from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.lake.catalog import (
     API,
     CORE_TABLES,
+    DONATIONS,
     EVENTS,
     GAME_RUNS,
     GAME_SUMMARY,
@@ -34,6 +35,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     REPORTS,
     RUN_VERSIONS,
     STREAM_STATUS,
+    SUPPORTER_COUNTS,
     Table,
 )
 from retro_speedlab_lakehouse.lake.tables import read
@@ -149,6 +151,35 @@ def test_silver_and_gold_answer_the_questions(spark: SparkSession, settings: Set
     assert [row["level"] for row in costliest] == ["Stage 4"]
     records = read(spark, RECORDS_DAILY, settings.lake).collect()
     assert [(row["record_seconds"], row["saved_seconds"]) for row in records] == [(144.0, 0.0)]
+
+
+def test_gold_counts_supporters_and_silver_names_only_public_ones(spark: SparkSession, settings: Settings) -> None:
+    tip = {
+        "message_id": "m-1",
+        "at": "2026-11-15T12:00:00+00:00",
+        "kind": "Tip",
+        "public": True,
+        "name": "Jo",
+        "message": "Great work!",
+        "amount": 3.0,
+        "currency": "EUR",
+        "subscription_payment": False,
+        "first_payment": False,
+    }
+    private = {**tip, "message_id": "m-2", "public": False, "name": None, "message": None}
+    donations = [event(7, "donations.events", "m-1", tip, START), event(8, "donations.events", "m-2", private, START)]
+    stream_events(spark, settings, [*events(), *donations])
+    api_snapshots(spark, settings)
+    build_silver(spark, settings.lake, Gate("silver"))
+    build_gold(spark, settings.lake, Gate("gold"), START + timedelta(hours=1))
+    assert [row["name"] for row in read(spark, DONATIONS, settings.lake).orderBy("message_id").collect()] == [
+        "Jo",
+        None,
+    ]
+    counts = read(spark, SUPPORTER_COUNTS, settings.lake).collect()
+    assert [(row["kind"], row["payments"], row["public_payments"], row["amount"]) for row in counts] == [
+        ("Tip", 2, 1, 6.0)
+    ]
 
 
 def test_gold_shows_only_the_current_major(spark: SparkSession, settings: Settings) -> None:

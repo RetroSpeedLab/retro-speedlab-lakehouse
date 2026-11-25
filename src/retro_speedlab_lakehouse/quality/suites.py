@@ -10,6 +10,7 @@ from retro_speedlab_lakehouse.engagement.catalog import (
 from retro_speedlab_lakehouse.lake.catalog import (
     BOARD_HISTORY,
     CHAT_PULSE,
+    DONATIONS,
     GAME_RUNS,
     GAME_SUMMARY,
     GAMES,
@@ -46,6 +47,7 @@ from retro_speedlab_lakehouse.lake.catalog import (
     SEARCH_PULSE,
     SPLIT_COMPARISON,
     SPLITS,
+    SUPPORTER_COUNTS,
     VERIFICATION_STATS,
     VERIFIER_REPLAYS,
     VERIFIER_SPLITS,
@@ -128,6 +130,8 @@ CHECKS: dict[Table, list[Check]] = {
     REPORTS: [*keyed(REPORTS), *present("headline", "event_id")],
     LAB_RUNS: [*keyed(LAB_RUNS), AllowedValues("outcome", OUTCOMES), *at_least_zero("minutes", "cost_usd")],
     HIGHSCORES: [*keyed(HIGHSCORES), *present("game", "version"), InRange("frames", min_value=1)],
+    DONATIONS: [*keyed(DONATIONS), *present("at", "kind", "currency"), *at_least_zero("amount")],
+    SUPPORTER_COUNTS: [*keyed(SUPPORTER_COUNTS), InRange("payments", min_value=1), *at_least_zero("amount")],
     HOST_STATUS: host_checks(HOST_STATUS),
     HOST_METRICS: host_checks(HOST_METRICS),
     GPU_METRICS: [

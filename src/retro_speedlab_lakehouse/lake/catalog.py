@@ -91,6 +91,7 @@ DELETED_LAB_RUNS = table(Layer.SILVER, "deleted_lab_runs", ("game", "stamp"))
 LAB_PROGRESS = table(Layer.SILVER, "lab_run_progress", ("game", "stamp"))
 REPORTS = table(Layer.SILVER, "reports", ("game", "name"))
 HIGHSCORES = table(Layer.SILVER, "highscores", ("id",))
+DONATIONS = table(Layer.SILVER, "donations", ("message_id",))
 HOST_METRICS = table(Layer.SILVER, "host_metrics", ("host", "measured_at"))
 GPU_METRICS = table(Layer.SILVER, "gpu_metrics", ("host", "gpu", "measured_at"))
 
@@ -99,6 +100,7 @@ LEVEL_COSTS = table(Layer.GOLD, "level_costs", ("game", "level"))
 IMPROVEMENT = table(Layer.GOLD, "improvement_curve", ("game", "hour"))
 RECORDS_DAILY = table(Layer.GOLD, "records_daily", ("game", "date"))
 LAB_OUTCOMES = table(Layer.GOLD, "lab_outcomes", ("game", "outcome"))
+SUPPORTER_COUNTS = table(Layer.GOLD, "supporter_counts", ("kind", "currency"))
 LAB_EXPERIMENTS = table(Layer.GOLD, "lab_experiments", ("game", "stamp", "metric"))
 SEARCH_ALLOCATION = table(Layer.GOLD, "search_allocation", ("game", "role"))
 SEARCH_BANDIT = table(Layer.GOLD, "search_bandit", ("metric",))
@@ -151,6 +153,7 @@ CORE_TABLES = (
     LAB_PROGRESS,
     REPORTS,
     HIGHSCORES,
+    DONATIONS,
     HOST_METRICS,
     GPU_METRICS,
     GAME_SUMMARY,
@@ -158,6 +161,7 @@ CORE_TABLES = (
     IMPROVEMENT,
     RECORDS_DAILY,
     LAB_OUTCOMES,
+    SUPPORTER_COUNTS,
     LAB_EXPERIMENTS,
     SEARCH_ALLOCATION,
     SEARCH_BANDIT,

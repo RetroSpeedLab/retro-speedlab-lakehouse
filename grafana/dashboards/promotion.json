@@ -194,7 +194,7 @@
     },
     {
       "type": "table",
-      "title": "Ko-fi supporters",
+      "title": "Supporters (Ko-fi, Twitch Bits and subs)",
       "description": "Ko-fi payments per kind and currency: how many, how many public, the amount and the first and last one",
       "datasource": {
         "type": "grafana-postgresql-datasource",

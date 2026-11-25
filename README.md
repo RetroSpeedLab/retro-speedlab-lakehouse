@@ -61,7 +61,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.gpu_metrics` | stream | `host`, `gpu`, `measured_at` | Every minute of each GPU: utilisation, memory, temperature and power |
 | `silver.game_runs`, `silver.run_versions` | stream | `game`, `event_id` | The newest run per game and every reported run |
 | `silver.reports`, `silver.lab_runs`, `silver.highscores` | stream | | Lab reports, lab runs and highscore entries |
-| `silver.donations` | stream | `message_id` | Every Ko-fi payment: kind, amount and currency, with the name and message of public supporters only |
+| `silver.donations` | stream | `message_id` | Every Ko-fi payment and Twitch cheer or sub: kind, amount and currency (`BITS` or `SUBS` for Twitch), with the name and message of public supporters only |
 | `silver.deleted_lab_runs` | `api-hourly`, `api-nightly` | `game`, `stamp` | Lab runs the backend answers 404 for although the lake has them; they leave `silver.lab_runs` and every lab cost and round from Tempo, so a lab run deleted at the backend never comes back |
 | `silver.games`, `silver.lab_run_progress` | `silver` | | The RetroSpeedLab24 collection and the progress after each lab run |
 | `silver.splits`, `silver.history`, `silver.knowledge` | `silver` | | Level splits, improvement history and game knowledge |
@@ -268,7 +268,7 @@ restarts Grafana.
 |-----------|-------------|-------|
 | Experiments | Experiments Postgres | The experiment plan, every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, each Twitch category and title pair's followers per hour and share, and every lab change |
 | Search bandit | Experiments Postgres | The bandit against the holdout split, frames saved per hour per day and arm, and every finished turn |
-| Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension, the approval rate of each Short feature and the Ko-fi supporters |
+| Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension, the approval rate of each Short feature and the supporters (Ko-fi, Twitch Bits and subs) |
 | Lab runs | Tempo | Each lab run's scores, each `claude -p` round, the failed steps and the progress after each run |
 | Search turns | Experiments Postgres | Per game, release and version: frames saved per hour of each turn by arm, attempts per second, best time, records and stuck states per minute, and each worker kind's efficiency and share |
 | Training | Experiments Postgres | Per game, release, version and run: reward, exit rate, entropy, explained variance, loss and episodes per round, and every run's hyperparameters |

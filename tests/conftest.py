@@ -14,6 +14,7 @@ from retro_speedlab_lakehouse.settings import (
     EngagementExperiment,
     EngagementSettings,
     EngagementSurface,
+    ExperimentPlanSettings,
     KafkaSettings,
     LakeSettings,
     MiningSettings,
@@ -108,6 +109,7 @@ def engagement_settings() -> EngagementSettings:
         min_exposures=200,
         min_hours=3,
         min_blocks=3,
+        plan=ExperimentPlanSettings(horizon_weeks=4, minimum_effect=0.2, power=0.8),
         surfaces={"home_games": beta, "stream_scenes": gamma},
         experiments={
             "cta_copy": EngagementExperiment(scope="visit", variants=("watch_live", "beat_the_ai"), goals=("click",)),

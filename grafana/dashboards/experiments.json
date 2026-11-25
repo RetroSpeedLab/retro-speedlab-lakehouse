@@ -14,6 +14,44 @@
   "panels": [
     {
       "type": "table",
+      "title": "Experiment plan",
+      "description": "Which site and stream tests run tonight: running, queued (everyone sees the control) or decided, the exposures per week, the visits or blocks per arm gathered and needed for a 20% change, and the weeks to a decision (empty: not within the 28-day window at this traffic)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT surface, experiment, status, exposures_per_week, gathered_per_arm, needed_per_arm, weeks_to_decision, alpha, computed_at FROM experiment_plan ORDER BY surface, status DESC, exposures_per_week DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "table",
       "title": "Engagement experiments",
       "description": "Each site, stream and holdout test with its arms, effect, confidence interval, p-value and the Holm-corrected verdict",
       "datasource": {
@@ -22,7 +60,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 8,
         "w": 24,
         "h": 12
       },
@@ -93,7 +131,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 20,
         "w": 24,
         "h": 10
       },
@@ -107,7 +145,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT item AS arm, exposures AS hours, outcomes AS new_followers, mean AS followers_per_hour, lower, upper, share, computed_at FROM content_ranking WHERE surface = twitch_channel ORDER BY mean DESC"
+          "rawSql": "SELECT item AS arm, exposures AS hours, outcomes AS new_followers, mean AS followers_per_hour, lower, upper, share, computed_at FROM content_ranking WHERE surface = 'twitch_channel' ORDER BY mean DESC"
         }
       ],
       "options": {
@@ -131,7 +169,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 30,
         "w": 24,
         "h": 12
       },

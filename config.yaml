@@ -72,6 +72,7 @@ engagement:
   min_exposures: 200
   min_hours: 12
   min_blocks: 12
+  plan: {horizon_weeks: 4, minimum_effect: 0.2, power: 0.8}
   surfaces:
     home_games: {family: beta, metric: click_rate, holdout: true, catalog: true}
     home_sections: {family: beta, metric: click_rate, holdout: true, catalog: false}

@@ -8,15 +8,25 @@ import pytest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import LongType, StringType, StructField, StructType, TimestampType
 
-from retro_speedlab_lakehouse.engagement.analysis import AB, HOLDOUT, MISMATCH, Arms, judged_all, rate_finding
+from retro_speedlab_lakehouse.engagement.analysis import (
+    AB,
+    HOLDOUT,
+    MISMATCH,
+    Arms,
+    Finding,
+    judged_all,
+    mean_finding,
+    rate_finding,
+)
 from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.events import engagement_events, umami_events
+from retro_speedlab_lakehouse.engagement.plan import plan_rows
 from retro_speedlab_lakehouse.engagement.posterior import BETA, GAMMA, Totals, posteriors, ranked
 from retro_speedlab_lakehouse.engagement.ranking import RANKING, ranking_rows, surface_totals
 from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_rows, twitch_minutes
 from retro_speedlab_lakehouse.engagement.umami import hours_to_load
 from retro_speedlab_lakehouse.experiments.analysis import BETTER, TOO_FEW
-from retro_speedlab_lakehouse.settings import Settings
+from retro_speedlab_lakehouse.settings import EngagementExperiment, Settings
 
 NOW = datetime(2026, 11, 16, 12, 5, tzinfo=UTC)
 FLOOR = 0.3
@@ -196,6 +206,41 @@ def test_a_clear_ab_result_names_a_winner_and_a_mismatch_never_does() -> None:
     assert (judged["cta_copy"].verdict, judged["cta_copy"].winner) == (BETTER, "beat_the_ai")
     assert (judged["hero_text"].verdict, judged["hero_text"].winner) == (MISMATCH, None)
     assert (judged["holdout_home_games"].verdict, judged["holdout_home_games"].winner) == (TOO_FEW, None)
+
+
+def site_test(name: str, views: int) -> Finding:
+    return rate_finding(
+        Arms(name, AB, "a", "b", 0.5), "click_rate", True, (views // 10, views), (views // 10, views), 200
+    )
+
+
+def stream_test(name: str, treatment: float) -> Finding:
+    control = [1.0, 1.2] * 165
+    return mean_finding(Arms(name, AB, "a", "b", 0.5), "viewers", True, control, [treatment] * 330, 12)
+
+
+def test_the_plan_runs_what_decides_in_time_and_the_closest_test_when_nothing_does(settings: Settings) -> None:
+    site = {
+        name: EngagementExperiment(scope="visit", variants=("a", "b"), goals=("click",)) for name in ("cta", "hero")
+    }
+    stream = {name: EngagementExperiment(scope="time", variants=("a", "b"), goals=()) for name in ("title", "overlay")}
+    engagement = settings.engagement.model_copy(update={"experiments": {**site, **stream}})
+    findings = [site_test("cta", 40), site_test("hero", 20), stream_test("title", 1.1), stream_test("overlay", 2.0)]
+    rows = {row[0]: row for row in plan_rows(judged_all(findings), engagement, datetime(2026, 11, 26, tzinfo=UTC))}
+
+    assert {name: row[2] for name, row in rows.items()} == {
+        "cta": "running",
+        "hero": "queued",
+        "title": "running",
+        "overlay": "decided",
+    }
+    assert rows["cta"][3] == 20.0 and rows["cta"][6] is None
+    assert rows["title"][6] == 0.0 and rows["title"][7] == 0.05
+    grown = [site_test("cta", 40000), site_test("hero", 20000)]
+    assert [row[2] for row in plan_rows(judged_all([*grown, *findings[2:]]), engagement, datetime.now(UTC))][:2] == [
+        "running",
+        "running",
+    ]
 
 
 def test_the_holdout_share_is_checked_for_a_sample_ratio_mismatch() -> None:

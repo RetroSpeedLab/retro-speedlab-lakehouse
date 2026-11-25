@@ -94,6 +94,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.community_daily` | `engagement-nightly` | `date` | Discord messages in public channels and joins per day, counts only |
 | `gold.content_ranking` | `engagement-hourly` | `surface`, `item` | Each surface's posterior mean, 90% interval, share and sampled order for the next hour |
 | `gold.engagement_experiments` | `engagement-nightly` | `experiment`, `metric` | Adaptive against holdout and the site and stream A/B tests, with SRM check, Holm and BH |
+| `gold.experiment_plan` | `engagement-nightly` | `experiment` | Which site and stream A/B tests run, are queued or decided, with exposures per week and weeks to a decision |
 | `gold.twitch_channel_outcomes` | `engagement-hourly` | `item`, `started_at` | Every turn of a Twitch category and title: average and peak viewers, viewer-hours, new followers per hour and chat messages per viewer-hour |
 | `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The sources' numbers of the last 2 days |
 | `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
@@ -227,6 +228,13 @@ tests per 30-minute block on viewers, chat messages per minute and follows per h
 SRM check, Holm and Benjamini-Hochberg. A variant wins only with a clear Holm verdict on its first metric and no sample
 ratio mismatch. The `chat` process also publishes Helix's viewers and followers per minute to `twitch.minutes`.
 
+The same job plans which A/B tests run, per surface (site or stream), in `gold.experiment_plan`, which the backend
+follows. For each test it takes the exposures per week of the window and the baseline of its first metric, and sizes
+the test for a relative change of `engagement.plan.minimum_effect` at `power`, two-sided at 0.05 divided by the tests
+running on that surface (the first Holm step). Tests run, most exposure first, while every running test would decide
+within `horizon_weeks` (at most the window, since older data leaves it); the rest are queued and show their control.
+When none can, the one closest to a decision runs, and a test with a winner is decided and frees its place.
+
 ## Grafana
 
 The owner's Grafana on the Home Lab shows the lab's traces, the lake's experiment results, the search turns, the PPO
@@ -236,7 +244,7 @@ restarts Grafana.
 
 | Dashboard | Data source | Shows |
 |-----------|-------------|-------|
-| Experiments | Experiments Postgres | Every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, each Twitch category and title pair's followers per hour and share, and every lab change |
+| Experiments | Experiments Postgres | The experiment plan, every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, each Twitch category and title pair's followers per hour and share, and every lab change |
 | Search bandit | Experiments Postgres | The bandit against the holdout split, frames saved per hour per day and arm, and every finished turn |
 | Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension and the approval rate of each Short feature |
 | Lab runs | Tempo | Each lab run's scores, each `claude -p` round, the failed steps and the progress after each run |
@@ -245,7 +253,7 @@ restarts Grafana.
 | Machines | Experiments Postgres | CPU, load, memory and the fullest disk of each server, and the Home Lab GPU's utilisation, memory, temperature and power |
 
 Grafana cannot read Delta, so the nightly `experiments-export` job copies `gold.engagement_experiments`,
-`gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences`, `gold.content_ranking` and every finished
+`gold.experiment_plan`, `gold.lab_experiments`, `gold.search_bandit`, `gold.promotion_roi`, `gold.promotion_preferences`, `gold.content_ranking` and every finished
 search turn (`search_bandit_turns`) into a small Postgres, each table replaced in one transaction. The job writes as
 the database's owner, Grafana reads with a role that may only select (`grafana/reader.sql`).
 

@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 import yaml
 from box import Box
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveFloat, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveFloat, PositiveInt, model_validator
 
 from retro_speedlab_lakehouse.environment import secret
 from retro_speedlab_lakehouse.sources.settings import (
@@ -14,6 +14,8 @@ from retro_speedlab_lakehouse.sources.settings import (
     UptimeSettings,
     load_sources,
 )
+
+DAYS_PER_WEEK = 7
 
 
 class Frozen(BaseModel):
@@ -88,6 +90,12 @@ class EngagementExperiment(Frozen):
     goals: tuple[str, ...]
 
 
+class ExperimentPlanSettings(Frozen):
+    horizon_weeks: PositiveInt
+    minimum_effect: float = Field(gt=0, lt=1)
+    power: float = Field(gt=0.5, lt=1)
+
+
 class EngagementSettings(Frozen):
     window_days: PositiveInt
     backfill_hours: PositiveInt
@@ -99,8 +107,17 @@ class EngagementSettings(Frozen):
     min_exposures: PositiveInt
     min_hours: PositiveInt
     min_blocks: PositiveInt
+    plan: ExperimentPlanSettings
     surfaces: dict[str, EngagementSurface]
     experiments: dict[str, EngagementExperiment]
+
+    @model_validator(mode="after")
+    def horizon_in_window(self) -> "EngagementSettings":
+        if self.plan.horizon_weeks * DAYS_PER_WEEK > self.window_days:
+            raise ValueError(
+                f"A test must decide within its {self.window_days}-day window, not {self.plan.horizon_weeks} weeks"
+            )
+        return self
 
 
 class ChatSettings(Frozen):

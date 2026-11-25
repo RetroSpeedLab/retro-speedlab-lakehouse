@@ -10,12 +10,14 @@ from retro_speedlab_lakehouse.engagement.catalog import (
     CONTENT_RANKING,
     ENGAGEMENT_EVENTS,
     ENGAGEMENT_EXPERIMENTS,
+    EXPERIMENT_PLAN,
     TWITCH_CHANNEL_OUTCOMES,
 )
 from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.discord import ACTIVITY, DISCORD, DiscordActivity
 from retro_speedlab_lakehouse.engagement.events import engagement_events
 from retro_speedlab_lakehouse.engagement.findings import holdout_findings, site_findings, stream_findings
+from retro_speedlab_lakehouse.engagement.plan import PLAN, plan_rows
 from retro_speedlab_lakehouse.engagement.ranking import RANKING, ranking_rows, surface_totals
 from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_rows, twitch_minutes
 from retro_speedlab_lakehouse.engagement.umami import CELLS, UMAMI, UmamiCells
@@ -113,9 +115,12 @@ def build_engagement_experiments(spark: SparkSession, settings: Settings, gate: 
         *site_findings(records, engagement),
         *stream_findings(exposures, twitch_minutes(searched), chat_minutes(searched), engagement),
     ]
-    rows = [result_row(judged, now) for judged in judged_all(findings)]
+    judged = judged_all(findings)
+    rows = [result_row(item, now) for item in judged]
     replace(ENGAGEMENT_EXPERIMENTS, settings.lake, spark.createDataFrame(rows, RESULT), gate)
-    return len(rows)
+    planned = plan_rows(judged, engagement, now)
+    replace(EXPERIMENT_PLAN, settings.lake, spark.createDataFrame(planned, PLAN), gate)
+    return len(rows) + len(planned)
 
 
 def build_community(spark: SparkSession, settings: Settings, gate: Gate) -> int:

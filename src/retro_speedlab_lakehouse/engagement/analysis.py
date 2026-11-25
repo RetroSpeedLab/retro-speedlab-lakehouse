@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from itertools import groupby
+from math import sqrt
+from statistics import fmean, stdev
 
 from experimentation_toolkit import (
     AnalysisResult,
@@ -27,12 +29,19 @@ class Arms:
 
 
 @dataclass(frozen=True, slots=True)
+class Baseline:
+    mean: float
+    deviation: float
+
+
+@dataclass(frozen=True, slots=True)
 class Finding:
     arms: Arms
     metric: str
     primary: bool
     control_n: int
     treatment_n: int
+    baseline: Baseline | None
     result: AnalysisResult | None
     srm_p: float | None
     srm_ok: bool
@@ -57,13 +66,21 @@ def sample_ratio(arms: Arms, control_n: int, treatment_n: int) -> tuple[float | 
     return checked.p_value, checked.status is DiagnosticStatus.PASS
 
 
+def rate_baseline(hits: int, total: int) -> Baseline | None:
+    if total == 0:
+        return None
+    rate = hits / total
+    return Baseline(rate, sqrt(rate * (1.0 - rate)))
+
+
 def rate_finding(
     arms: Arms, metric: str, primary: bool, control: tuple[int, int], treatment: tuple[int, int], minimum: int
 ) -> Finding:
     (control_hits, control_n), (treatment_hits, treatment_n) = control, treatment
     srm_p, srm_ok = sample_ratio(arms, control_n, treatment_n)
+    baseline = rate_baseline(control_hits + treatment_hits, control_n + treatment_n)
     if min(control_n, treatment_n) < minimum:
-        return Finding(arms, metric, primary, control_n, treatment_n, None, srm_p, srm_ok)
+        return Finding(arms, metric, primary, control_n, treatment_n, baseline, None, srm_p, srm_ok)
     result = analyze_proportion(
         control_successes=control_hits,
         control_total=control_n,
@@ -71,17 +88,19 @@ def rate_finding(
         treatment_total=treatment_n,
         metric_name=metric,
     )
-    return Finding(arms, metric, primary, control_n, treatment_n, result, srm_p, srm_ok)
+    return Finding(arms, metric, primary, control_n, treatment_n, baseline, result, srm_p, srm_ok)
 
 
 def mean_finding(
     arms: Arms, metric: str, primary: bool, control: list[float], treatment: list[float], minimum: int
 ) -> Finding:
     srm_p, srm_ok = sample_ratio(arms, len(control), len(treatment))
+    values = [*control, *treatment]
+    baseline = Baseline(fmean(values), stdev(values)) if len(values) > 1 else None
     if min(len(control), len(treatment)) < minimum:
-        return Finding(arms, metric, primary, len(control), len(treatment), None, srm_p, srm_ok)
+        return Finding(arms, metric, primary, len(control), len(treatment), baseline, None, srm_p, srm_ok)
     result = analyze_continuous(control=control, treatment=treatment, metric_name=metric)
-    return Finding(arms, metric, primary, len(control), len(treatment), result, srm_p, srm_ok)
+    return Finding(arms, metric, primary, len(control), len(treatment), baseline, result, srm_p, srm_ok)
 
 
 def winner_of(finding: Finding, judged: str) -> str | None:

@@ -72,7 +72,7 @@ class Gate:
         if not self.reports:
             return
         rows = [report_row(name, self.run, report, checked_at) for name, report, checked_at in self.reports]
-        append_rows(QUALITY_REPORTS, lake, spark.createDataFrame(rows, REPORT))
+        append_rows(QUALITY_REPORTS, lake, spark.createDataFrame(rows, REPORT).coalesce(1))
         failures = [row for row in rows if row[STATUS] != CheckStatus.PASS]
         if failures:
             append_rows(QUALITY_FAILURES, lake, spark.createDataFrame(failures, REPORT))

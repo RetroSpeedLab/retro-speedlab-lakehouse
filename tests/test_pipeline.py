@@ -12,7 +12,7 @@ from pyspark.sql import functions as F
 from retro_speedlab_lakehouse.batch import maintenance
 from retro_speedlab_lakehouse.batch.api import SNAPSHOT
 from retro_speedlab_lakehouse.batch.gold import build_gold
-from retro_speedlab_lakehouse.batch.maintenance import BUDGET, fewest_files_first, files, maintain
+from retro_speedlab_lakehouse.batch.maintenance import BUDGET, compact_small_files, fewest_files_first, files, maintain
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.lake.catalog import (
@@ -184,6 +184,21 @@ def test_maintenance_ends_with_the_most_files_and_at_its_budget(spark: SparkSess
     assert files(spark, PLATFORM_JOBS, settings.lake) == 9
     assert maintain(spark, CORE_TABLES, settings.lake, START, BUDGET) >= 8
     assert files(spark, PLATFORM_JOBS, settings.lake) == 1
+
+
+def test_small_files_are_compacted_once_a_table_is_fragmented(
+    spark: SparkSession, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gate = Gate("platform")
+    for run_id in ("run-1", "run-2", "run-3"):
+        record_job(spark, settings.lake, gate, JobRun("hourly", run_id, "silver", START, START, "success", 3, None))
+    monkeypatch.setattr(maintenance, "FRAGMENTED_AT", 4)
+    compact_small_files(spark, PLATFORM_JOBS, settings.lake)
+    assert files(spark, PLATFORM_JOBS, settings.lake) == 3
+    monkeypatch.setattr(maintenance, "FRAGMENTED_AT", 3)
+    compact_small_files(spark, PLATFORM_JOBS, settings.lake)
+    assert files(spark, PLATFORM_JOBS, settings.lake) == 1
+    assert read(spark, PLATFORM_JOBS, settings.lake).count() == 3
 
 
 def test_maintenance_stops_a_table_that_keeps_starting_jobs_past_its_budget(

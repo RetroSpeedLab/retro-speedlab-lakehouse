@@ -15,13 +15,16 @@ from retro_speedlab_lakehouse.lake.catalog import (
     Layer,
     Table,
 )
-from retro_speedlab_lakehouse.lake.tables import read
+from retro_speedlab_lakehouse.lake.tables import exists, read
 from retro_speedlab_lakehouse.settings import LakeSettings
 
 JOB_HISTORY_DAYS = 30
 BUDGET = timedelta(minutes=30)
 CANCEL_EVERY_SECONDS = 5.0
 HISTORY_COLUMNS = {PLATFORM_JOBS: "started_at", QUALITY_REPORTS: "checked_at"}
+FRAGMENTED_AT = 50
+SMALL_FILE_BYTES = 8 * 1024 * 1024
+OPTIMIZE_MIN_FILE_SIZE = "spark.databricks.delta.optimize.minFileSize"
 
 
 def compact(spark: SparkSession, table: Table, lake: LakeSettings) -> None:
@@ -30,6 +33,17 @@ def compact(spark: SparkSession, table: Table, lake: LakeSettings) -> None:
         optimizer.executeZOrderBy(*table.zorder)
         return
     optimizer.executeCompaction()
+
+
+def compact_small_files(spark: SparkSession, table: Table, lake: LakeSettings) -> None:
+    if not exists(spark, table, lake) or files(spark, table, lake) < FRAGMENTED_AT:
+        return
+    spark.conf.set(OPTIMIZE_MIN_FILE_SIZE, str(SMALL_FILE_BYTES))
+    try:
+        compact(spark, table, lake)
+    finally:
+        spark.conf.unset(OPTIMIZE_MIN_FILE_SIZE)
+    logger.info(f"Compacted the small files of {table.full_name}")
 
 
 def vacuum(spark: SparkSession, table: Table, lake: LakeSettings) -> None:

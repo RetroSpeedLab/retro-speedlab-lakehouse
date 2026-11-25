@@ -8,13 +8,13 @@ from retro_speedlab_lakehouse.bandit.allocation import build_allocation
 from retro_speedlab_lakehouse.bandit.holdout import build_bandit_comparison
 from retro_speedlab_lakehouse.batch.api import ingest_api_hourly, ingest_api_nightly
 from retro_speedlab_lakehouse.batch.gold import build_gold
-from retro_speedlab_lakehouse.batch.maintenance import BUDGET, maintain
+from retro_speedlab_lakehouse.batch.maintenance import BUDGET, compact_small_files, maintain
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
 from retro_speedlab_lakehouse.engagement.jobs import build_community, build_engagement, build_engagement_experiments
 from retro_speedlab_lakehouse.experiments.job import build_experiments
-from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, Table
+from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, QUALITY_REPORTS, Table
 from retro_speedlab_lakehouse.mining.build import build_mining_gold
 from retro_speedlab_lakehouse.mining.records import mine_records
 from retro_speedlab_lakehouse.mining.verify import verify_replays
@@ -59,11 +59,13 @@ def silver(spark: SparkSession, settings: Settings, gate: Gate) -> int:
 
 def gold(spark: SparkSession, settings: Settings, gate: Gate) -> int:
     moment = now()
-    return (
+    built = (
         build_gold(spark, settings.lake, gate, moment)
         + build_promotion_roi(spark, settings.lake, gate, moment)
         + build_promotion_preferences(spark, settings.lake, gate, moment)
     )
+    compact_small_files(spark, QUALITY_REPORTS, settings.lake)
+    return built
 
 
 def lab_experiments(spark: SparkSession, settings: Settings, gate: Gate) -> int:

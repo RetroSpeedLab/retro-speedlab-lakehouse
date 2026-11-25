@@ -96,7 +96,7 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `silver.community_daily` | `engagement-nightly` | `date` | Discord messages in public channels and joins per day, counts only |
 | `gold.content_ranking` | `engagement-hourly` | `surface`, `item` | Each surface's posterior mean, 90% interval, share and sampled order for the next hour |
 | `gold.engagement_experiments` | `engagement-nightly` | `experiment`, `metric` | Adaptive against holdout and the site and stream A/B tests, with SRM check, Holm and BH |
-| `gold.experiment_plan` | `engagement-nightly` | `experiment` | Which site and stream A/B tests run, are queued or decided, with exposures per week and weeks to a decision |
+| `gold.experiment_plan` | `engagement-nightly` | `experiment` | Which site and stream A/B tests run, are queued or decided, the metric each is judged on and since when, every candidate metric's data per arm and weeks of data, exposures per week and weeks to a decision |
 | `gold.twitch_channel_outcomes` | `engagement-hourly` | `item`, `started_at` | Every turn of a Twitch category and title: average and peak viewers, viewer-hours, new followers per hour and chat messages per viewer-hour |
 | `gold.source_numbers` | `sources-hourly`, `sources-nightly` | `source`, `metric` | The sources' numbers of the last 2 days |
 | `gold.game_plays` | `sources-hourly`, `sources-nightly` | `game`, `mode`, `window` | Human starts and campaign wins of every game, served on the highscore boards |
@@ -226,12 +226,20 @@ YouTube Shorts still learn what the maintainer approves. Every approved or rejec
 its counts and interval.
 
 `engagement-nightly` compares adaptive with holdout per surface, the site A/B tests per goal rate and the stream A/B
-tests per 30-minute block on viewers, chat messages per minute and follows per hour, with experimentation-toolkit, an
-SRM check, Holm and Benjamini-Hochberg. A variant wins only with a clear Holm verdict on its first metric and no sample
-ratio mismatch. The `chat` process also publishes Helix's viewers and followers per minute to `twitch.minutes`.
+tests per 30-minute block on the metrics listed as their `goals` (chat messages, new followers and average viewers per
+block), with experimentation-toolkit, an SRM check, Holm and Benjamini-Hochberg. A variant wins only with a clear Holm
+verdict on its primary metric and no sample ratio mismatch; the other metrics are descriptive. Stream metrics are
+compared with Welch's t-test on the per-block values: at today's audience chat and follows are small, zero-heavy counts
+that burst, so a Poisson test would understate their variance, while Welch uses the observed spread and the blocks,
+not the messages, are the randomized units.
+
+A site test's primary metric is its first goal. A stream test's primary metric follows the audience: each night every
+candidate is sized from the window's real blocks, and the one that needs the fewest weeks of data becomes primary (ties
+go to the first listed). The plan moves to another metric only when it needs less than half the weeks of the current
+one (`engagement.plan.switch_speedup`), so near ties never flap, and records the switch in `metric_since`. The `chat` process also publishes Helix's viewers and followers per minute to `twitch.minutes`.
 
 The same job plans which A/B tests run, per surface (site or stream), in `gold.experiment_plan`, which the backend
-follows. For each test it takes the exposures per week of the window and the baseline of its first metric, and sizes
+follows. For each test it takes the exposures per week of the window and the baseline of its primary metric, and sizes
 the test for a relative change of `engagement.plan.minimum_effect` at `power`, two-sided at 0.05 divided by the tests
 running on that surface (the first Holm step). Tests run, most exposure first, while every running test would decide
 within `horizon_weeks` (at most the window, since older data leaves it); the rest are queued and show their control.

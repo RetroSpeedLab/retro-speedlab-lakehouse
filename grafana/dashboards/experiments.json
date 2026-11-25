@@ -15,7 +15,7 @@
     {
       "type": "table",
       "title": "Experiment plan",
-      "description": "Which site and stream tests run tonight: running, queued (everyone sees the control) or decided, the exposures per week, the visits or blocks per arm gathered and needed for a 20% change, and the weeks to a decision (empty: not within the 28-day window at this traffic)",
+      "description": "Which site and stream tests run tonight: running, queued (everyone sees the control) or decided, the metric each is judged on and since when (a stream test takes the candidate that decides soonest and switches only to one twice as fast; metric_estimates holds every candidate), the exposures per week, the visits or blocks per arm gathered and needed for a 20% change, and the weeks to a decision (empty: not within the 28-day window at this traffic)",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "experiments"
@@ -36,7 +36,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT surface, experiment, status, exposures_per_week, gathered_per_arm, needed_per_arm, weeks_to_decision, alpha, computed_at FROM experiment_plan ORDER BY surface, status DESC, exposures_per_week DESC"
+          "rawSql": "SELECT surface, experiment, status, metric, metric_since, exposures_per_week, gathered_per_arm, needed_per_arm, weeks_to_decision, alpha, metric_estimates, computed_at FROM experiment_plan ORDER BY surface, status DESC, exposures_per_week DESC"
         }
       ],
       "options": {

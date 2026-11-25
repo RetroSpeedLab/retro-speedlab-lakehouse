@@ -17,7 +17,7 @@ from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.discord import ACTIVITY, DISCORD, DiscordActivity
 from retro_speedlab_lakehouse.engagement.events import engagement_events
 from retro_speedlab_lakehouse.engagement.findings import holdout_findings, site_findings, stream_findings
-from retro_speedlab_lakehouse.engagement.plan import PLAN, plan_rows
+from retro_speedlab_lakehouse.engagement.plan import PLAN, Choice, choices, plan_rows, with_primaries
 from retro_speedlab_lakehouse.engagement.ranking import RANKING, ranking_rows, surface_totals
 from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_rows, twitch_minutes
 from retro_speedlab_lakehouse.engagement.umami import CELLS, UMAMI, UmamiCells
@@ -104,6 +104,13 @@ def result_row(judged: Judged, now: datetime) -> tuple[object, ...]:
     return (*head, *sizes, *estimates, *tail)
 
 
+def previous_choices(spark: SparkSession, settings: Settings) -> dict[str, Choice]:
+    if not exists(spark, EXPERIMENT_PLAN, settings.lake):
+        return {}
+    planned = read(spark, EXPERIMENT_PLAN, settings.lake).select("experiment", "metric", "metric_since").collect()
+    return {row["experiment"]: Choice(row["metric"], row["metric_since"], {}) for row in planned}
+
+
 def build_engagement_experiments(spark: SparkSession, settings: Settings, gate: Gate, now: datetime) -> int:
     engagement = settings.engagement
     since = now - timedelta(days=engagement.window_days)
@@ -115,10 +122,11 @@ def build_engagement_experiments(spark: SparkSession, settings: Settings, gate: 
         *site_findings(records, engagement),
         *stream_findings(exposures, twitch_minutes(searched), chat_minutes(searched), engagement),
     ]
-    judged = judged_all(findings)
+    chosen = choices(findings, previous_choices(spark, settings), engagement, now)
+    judged = judged_all(with_primaries(findings, chosen))
     rows = [result_row(item, now) for item in judged]
     replace(ENGAGEMENT_EXPERIMENTS, settings.lake, spark.createDataFrame(rows, RESULT), gate)
-    planned = plan_rows(judged, engagement, now)
+    planned = plan_rows(judged, chosen, engagement, now)
     replace(EXPERIMENT_PLAN, settings.lake, spark.createDataFrame(planned, PLAN), gate)
     return len(rows) + len(planned)
 

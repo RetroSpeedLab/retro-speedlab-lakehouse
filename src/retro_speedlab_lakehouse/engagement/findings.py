@@ -3,7 +3,7 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.engagement.analysis import AB, HOLDOUT, Arms, Finding, mean_finding, rate_finding
 from retro_speedlab_lakehouse.engagement.events import umami_cells
-from retro_speedlab_lakehouse.engagement.stream import STREAM_SCENES, exposure_minutes
+from retro_speedlab_lakehouse.engagement.stream import SECONDS_PER_MINUTE, STREAM_SCENES, exposure_minutes
 from retro_speedlab_lakehouse.settings import EngagementSettings
 
 BETA = "beta"
@@ -11,8 +11,6 @@ ADAPTIVE = "adaptive"
 VARIANT_VIEW = "variant-view"
 VARIANT_GOAL = "variant-goal"
 EVEN = 0.5
-MINUTES_PER_HOUR = 60.0
-STREAM_METRICS = ("viewers", "chat_per_minute", "follows_per_hour")
 
 
 def holdout_findings(events: DataFrame, settings: EngagementSettings) -> list[Finding]:
@@ -72,14 +70,12 @@ def site_findings(records: DataFrame, settings: EngagementSettings) -> list[Find
 
 
 def stream_blocks(minutes: DataFrame, experiment: str, block_minutes: int) -> DataFrame:
-    block = F.floor(F.unix_timestamp("minute") / (block_minutes * 60))
+    block = F.floor(F.unix_timestamp("minute") / (block_minutes * SECONDS_PER_MINUTE))
     chosen = minutes.where(F.col("variants")[experiment].isNotNull())
     return chosen.groupBy(F.col("variants")[experiment].alias("variant"), block.alias("block")).agg(
-        F.avg("viewers").alias("viewers"),
-        (F.sum(F.coalesce("messages", F.lit(0.0)) * F.col("weight")) / F.sum("weight")).alias("chat_per_minute"),
-        ((F.max_by("followers", "minute") - F.min_by("followers", "minute")) * MINUTES_PER_HOUR / block_minutes).alias(
-            "follows_per_hour"
-        ),
+        F.avg("viewers").alias("average_viewers"),
+        F.sum(F.coalesce("messages", F.lit(0.0)) * F.col("weight")).alias("chat_messages_per_block"),
+        (F.max_by("followers", "minute") - F.min_by("followers", "minute")).alias("new_followers_per_block"),
     )
 
 
@@ -98,12 +94,11 @@ def stream_findings(
             continue
         arms = Arms(name, AB, *experiment.variants, EVEN)
         blocks = stream_blocks(minutes, name, settings.block_minutes).collect()
-        for metric in STREAM_METRICS:
+        for index, metric in enumerate(experiment.goals):
             control, treatment = (
                 [float(row[metric]) for row in blocks if row["variant"] == variant and row[metric] is not None]
                 for variant in experiment.variants
             )
-            primary = metric == STREAM_METRICS[0]
-            findings.append(mean_finding(arms, metric, primary, control, treatment, settings.min_blocks))
+            findings.append(mean_finding(arms, metric, index == 0, control, treatment, settings.min_blocks))
     minutes.unpersist()
     return findings

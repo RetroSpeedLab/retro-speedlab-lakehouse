@@ -94,6 +94,7 @@ class ExperimentPlanSettings(Frozen):
     horizon_weeks: PositiveInt
     minimum_effect: float = Field(gt=0, lt=1)
     power: float = Field(gt=0.5, lt=1)
+    switch_speedup: float = Field(gt=1)
 
 
 class EngagementSettings(Frozen):

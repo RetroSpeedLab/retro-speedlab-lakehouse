@@ -20,13 +20,13 @@ from retro_speedlab_lakehouse.engagement.analysis import (
 )
 from retro_speedlab_lakehouse.engagement.channel import channel_outcomes
 from retro_speedlab_lakehouse.engagement.events import engagement_events, umami_events
-from retro_speedlab_lakehouse.engagement.plan import plan_rows
+from retro_speedlab_lakehouse.engagement.plan import Choice, choices, plan_rows, with_primaries
 from retro_speedlab_lakehouse.engagement.posterior import BETA, GAMMA, Totals, posteriors, ranked
 from retro_speedlab_lakehouse.engagement.ranking import RANKING, ranking_rows, surface_totals
 from retro_speedlab_lakehouse.engagement.stream import chat_minutes, exposure_rows, twitch_minutes
 from retro_speedlab_lakehouse.engagement.umami import hours_to_load
 from retro_speedlab_lakehouse.experiments.analysis import BETTER, TOO_FEW
-from retro_speedlab_lakehouse.settings import EngagementExperiment, Settings
+from retro_speedlab_lakehouse.settings import EngagementExperiment, EngagementSettings, Settings
 
 NOW = datetime(2026, 11, 16, 12, 5, tzinfo=UTC)
 FLOOR = 0.3
@@ -216,17 +216,25 @@ def site_test(name: str, views: int) -> Finding:
 
 def stream_test(name: str, treatment: float) -> Finding:
     control = [1.0, 1.2] * 165
-    return mean_finding(Arms(name, AB, "a", "b", 0.5), "viewers", True, control, [treatment] * 330, 12)
+    return mean_finding(Arms(name, AB, "a", "b", 0.5), "average_viewers", True, control, [treatment] * 330, 12)
+
+
+def planned(findings: list[Finding], engagement: EngagementSettings, now: datetime) -> list[tuple[object, ...]]:
+    chosen = choices(findings, {}, engagement, now)
+    return plan_rows(judged_all(with_primaries(findings, chosen)), chosen, engagement, now)
 
 
 def test_the_plan_runs_what_decides_in_time_and_the_closest_test_when_nothing_does(settings: Settings) -> None:
     site = {
         name: EngagementExperiment(scope="visit", variants=("a", "b"), goals=("click",)) for name in ("cta", "hero")
     }
-    stream = {name: EngagementExperiment(scope="time", variants=("a", "b"), goals=()) for name in ("title", "overlay")}
+    stream = {
+        name: EngagementExperiment(scope="time", variants=("a", "b"), goals=("average_viewers",))
+        for name in ("title", "overlay")
+    }
     engagement = settings.engagement.model_copy(update={"experiments": {**site, **stream}})
     findings = [site_test("cta", 40), site_test("hero", 20), stream_test("title", 1.1), stream_test("overlay", 2.0)]
-    rows = {row[0]: row for row in plan_rows(judged_all(findings), engagement, datetime(2026, 11, 26, tzinfo=UTC))}
+    rows = {row[0]: row for row in planned(findings, engagement, datetime(2026, 11, 26, tzinfo=UTC))}
 
     assert {name: row[2] for name, row in rows.items()} == {
         "cta": "running",
@@ -234,13 +242,44 @@ def test_the_plan_runs_what_decides_in_time_and_the_closest_test_when_nothing_do
         "title": "running",
         "overlay": "decided",
     }
-    assert rows["cta"][3] == 20.0 and rows["cta"][6] is None
-    assert rows["title"][6] == 0.0 and rows["title"][7] == 0.05
+    assert rows["cta"][3] == "click_rate" and rows["title"][3] == "average_viewers"
+    assert rows["cta"][6] == 20.0 and rows["cta"][9] is None
+    assert rows["title"][9] == 0.0 and rows["title"][10] == 0.05
     grown = [site_test("cta", 40000), site_test("hero", 20000)]
-    assert [row[2] for row in plan_rows(judged_all([*grown, *findings[2:]]), engagement, datetime.now(UTC))][:2] == [
+    assert [row[2] for row in planned([*grown, *findings[2:]], engagement, datetime.now(UTC))][:2] == [
         "running",
         "running",
     ]
+
+
+def stream_metric(metric: str, control: list[float], treatment: list[float]) -> Finding:
+    return mean_finding(Arms("title", AB, "a", "b", 0.5), metric, False, control, treatment, 12)
+
+
+def test_a_stream_test_judges_the_metric_that_decides_soonest_and_switches_only_when_clearly_faster(
+    settings: Settings,
+) -> None:
+    metrics = ("chat_messages_per_block", "new_followers_per_block", "average_viewers")
+    stream = {"title": EngagementExperiment(scope="time", variants=("a", "b"), goals=metrics)}
+    engagement = settings.engagement.model_copy(update={"experiments": stream})
+    first, later = datetime(2026, 11, 26, tzinfo=UTC), datetime(2026, 12, 3, tzinfo=UTC)
+    chat = stream_metric(metrics[0], [0.0, 2.0, 1.0, 3.0] * 25, [1.0, 2.0, 2.0, 3.0] * 25)
+    follows = stream_metric(metrics[1], [0.0] * 100, [0.0] * 100)
+    viewers = stream_metric(metrics[2], [1.0, 2.4] * 50, [1.0, 2.4] * 50)
+
+    chosen = choices([chat, follows, viewers], {}, engagement, first)["title"]
+    assert (chosen.metric, chosen.since) == ("average_viewers", first)
+    assert chosen.estimates["new_followers_per_block"] == (None, float("inf"))
+    judged = judged_all(with_primaries([chat, follows, viewers], {"title": chosen}))
+    assert [item.finding.metric for item in judged if item.finding.primary] == ["average_viewers"]
+
+    kept = choices([chat, follows, viewers], {"title": Choice(metrics[0], first, {})}, engagement, later)["title"]
+    assert (kept.metric, kept.since) == (metrics[0], first)
+    steady = stream_metric(metrics[2], [1.0, 1.02] * 50, [1.0, 1.02] * 50)
+    moved = choices([chat, follows, steady], {"title": Choice(metrics[0], first, {})}, engagement, later)["title"]
+    assert (moved.metric, moved.since) == ("average_viewers", later)
+    tied = choices([chat, chat], {}, engagement, first)["title"]
+    assert tied.metric == metrics[0]
 
 
 def test_the_holdout_share_is_checked_for_a_sample_ratio_mismatch() -> None:

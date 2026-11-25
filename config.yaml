@@ -73,7 +73,7 @@ engagement:
   min_exposures: 200
   min_hours: 12
   min_blocks: 12
-  plan: {horizon_weeks: 4, minimum_effect: 0.2, power: 0.8}
+  plan: {horizon_weeks: 4, minimum_effect: 0.2, power: 0.8, switch_speedup: 2}
   surfaces:
     home_games: {family: beta, metric: click_rate, holdout: true, catalog: true}
     home_sections: {family: beta, metric: click_rate, holdout: true, catalog: false}
@@ -93,9 +93,18 @@ engagement:
     cta_copy: {scope: visit, variants: [watch_live, beat_the_ai], goals: [click]}
     hero_text: {scope: visit, variants: [current, challenge], goals: [click]}
     win_dialog: {scope: visit, variants: [current, compact], goals: [signin, saved]}
-    title_style: {scope: time, variants: [facts, challenge], goals: []}
-    commentary_style: {scope: time, variants: [current, explainer], goals: []}
-    overlay_emphasis: {scope: time, variants: [balanced, highscore], goals: []}
+    title_style:
+      scope: time
+      variants: [facts, challenge]
+      goals: [chat_messages_per_block, new_followers_per_block, average_viewers]
+    commentary_style:
+      scope: time
+      variants: [current, explainer]
+      goals: [chat_messages_per_block, new_followers_per_block, average_viewers]
+    overlay_emphasis:
+      scope: time
+      variants: [balanced, highscore]
+      goals: [chat_messages_per_block, new_followers_per_block, average_viewers]
 
 chat:
   ignored:

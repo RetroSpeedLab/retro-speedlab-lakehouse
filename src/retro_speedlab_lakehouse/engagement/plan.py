@@ -1,12 +1,13 @@
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, replace
 from datetime import datetime
-from math import ceil, inf
+from math import ceil, inf, isfinite
 
 from experimentation_toolkit import MDEType, proportion_sample_size
 from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType, TimestampType
 from scipy import stats
 
-from retro_speedlab_lakehouse.engagement.analysis import AB, Baseline, Judged
+from retro_speedlab_lakehouse.engagement.analysis import AB, Baseline, Finding, Judged
 from retro_speedlab_lakehouse.experiments.analysis import ALPHA
 from retro_speedlab_lakehouse.settings import DAYS_PER_WEEK, EngagementSettings, ExperimentPlanSettings
 
@@ -21,6 +22,9 @@ PLAN = StructType(
         StructField("experiment", StringType(), False),
         StructField("surface", StringType(), False),
         StructField("status", StringType(), False),
+        StructField("metric", StringType(), False),
+        StructField("metric_since", TimestampType(), False),
+        StructField("metric_estimates", StringType(), False),
         StructField("exposures_per_week", DoubleType(), False),
         StructField("gathered_per_arm", LongType(), False),
         StructField("needed_per_arm", LongType(), True),
@@ -42,24 +46,37 @@ class Candidate:
     winner: str | None
 
 
-def candidates(judged: list[Judged], settings: EngagementSettings) -> list[Candidate]:
+@dataclass(frozen=True, slots=True)
+class Choice:
+    metric: str
+    since: datetime
+    estimates: dict[str, tuple[int | None, float]]
+
+
+def minimum(scope: str, settings: EngagementSettings) -> int:
+    return settings.min_exposures if scope == VISIT else settings.min_blocks
+
+
+def candidate(finding: Finding, scope: str, winner: str | None, settings: EngagementSettings) -> Candidate:
     weeks = settings.window_days / DAYS_PER_WEEK
-    minimums = {VISIT: settings.min_exposures, "time": settings.min_blocks}
+    return Candidate(
+        finding.arms.experiment,
+        scope,
+        (finding.control_n + finding.treatment_n) / ARMS / weeks,
+        min(finding.control_n, finding.treatment_n),
+        minimum(scope, settings),
+        finding.baseline,
+        winner,
+    )
+
+
+def candidates(judged: list[Judged], settings: EngagementSettings) -> list[Candidate]:
     primary = {
         item.finding.arms.experiment: item for item in judged if item.finding.arms.kind == AB and item.finding.primary
     }
-    found = [(name, experiment.scope, primary[name]) for name, experiment in settings.experiments.items()]
     return [
-        Candidate(
-            name,
-            scope,
-            (item.finding.control_n + item.finding.treatment_n) / ARMS / weeks,
-            min(item.finding.control_n, item.finding.treatment_n),
-            minimums[scope],
-            item.finding.baseline,
-            item.winner,
-        )
-        for name, scope, item in found
+        candidate(primary[name].finding, experiment.scope, primary[name].winner, settings)
+        for name, experiment in settings.experiments.items()
     ]
 
 
@@ -96,6 +113,53 @@ def weeks_of_data(candidate: Candidate, alpha: float, plan: ExperimentPlanSettin
     return inf if found is None or candidate.per_arm_week == 0 else found / candidate.per_arm_week
 
 
+def choice(
+    group: list[Finding], scope: str, previous: Choice | None, settings: EngagementSettings, now: datetime
+) -> Choice:
+    sized = {finding.metric: candidate(finding, scope, None, settings) for finding in group}
+    estimates = {
+        metric: (needed(item, ALPHA, settings.plan), weeks_of_data(item, ALPHA, settings.plan))
+        for metric, item in sized.items()
+    }
+    fastest = min(estimates, key=lambda metric: estimates[metric][1])
+    if previous is None or previous.metric not in estimates:
+        return Choice(fastest, now, estimates)
+    if estimates[fastest][1] * settings.plan.switch_speedup < estimates[previous.metric][1]:
+        return Choice(fastest, now, estimates)
+    return Choice(previous.metric, previous.since, estimates)
+
+
+def choices(
+    findings: list[Finding], previous: dict[str, Choice], settings: EngagementSettings, now: datetime
+) -> dict[str, Choice]:
+    tested = [finding for finding in findings if finding.arms.kind == AB]
+    chosen: dict[str, Choice] = {}
+    for name, experiment in settings.experiments.items():
+        group = [
+            item for item in tested if item.arms.experiment == name and (experiment.scope != VISIT or item.primary)
+        ]
+        chosen[name] = choice(group, experiment.scope, previous[name] if name in previous else None, settings, now)
+    return chosen
+
+
+def with_primaries(findings: list[Finding], chosen: dict[str, Choice]) -> list[Finding]:
+    return [
+        replace(finding, primary=finding.metric == chosen[finding.arms.experiment].metric)
+        if finding.arms.kind == AB
+        else finding
+        for finding in findings
+    ]
+
+
+def estimates_json(estimates: dict[str, tuple[int | None, float]]) -> str:
+    return json.dumps(
+        {
+            metric: {"needed_per_arm": found, "weeks_of_data": weeks if isfinite(weeks) else None}
+            for metric, (found, weeks) in estimates.items()
+        }
+    )
+
+
 def running(group: list[Candidate], plan: ExperimentPlanSettings) -> list[Candidate]:
     undecided = sorted((item for item in group if item.winner is None), key=lambda item: -item.per_arm_week)
     chosen: list[Candidate] = []
@@ -117,12 +181,15 @@ def weeks_to_decision(candidate: Candidate, alpha: float, settings: EngagementSe
 
 
 def plan_row(
-    candidate: Candidate, status: str, alpha: float, settings: EngagementSettings, now: datetime
+    candidate: Candidate, picked: Choice, status: str, alpha: float, settings: EngagementSettings, now: datetime
 ) -> tuple[object, ...]:
     return (
         candidate.experiment,
         SURFACES[candidate.scope],
         status,
+        picked.metric,
+        picked.since,
+        estimates_json(picked.estimates),
         candidate.per_arm_week * ARMS,
         candidate.gathered,
         needed(candidate, alpha, settings.plan),
@@ -132,7 +199,9 @@ def plan_row(
     )
 
 
-def plan_rows(judged: list[Judged], settings: EngagementSettings, now: datetime) -> list[tuple[object, ...]]:
+def plan_rows(
+    judged: list[Judged], metrics: dict[str, Choice], settings: EngagementSettings, now: datetime
+) -> list[tuple[object, ...]]:
     every = candidates(judged, settings)
     rows: list[tuple[object, ...]] = []
     for scope in SURFACES:
@@ -140,8 +209,12 @@ def plan_rows(judged: list[Judged], settings: EngagementSettings, now: datetime)
         chosen = {item.experiment for item in running(group, settings.plan)}
         for candidate in group:
             if candidate.experiment in chosen:
-                rows.append(plan_row(candidate, RUNNING, ALPHA / len(chosen), settings, now))
+                rows.append(
+                    plan_row(candidate, metrics[candidate.experiment], RUNNING, ALPHA / len(chosen), settings, now)
+                )
                 continue
             status = QUEUED if candidate.winner is None else DECIDED
-            rows.append(plan_row(candidate, status, ALPHA / (len(chosen) + 1), settings, now))
+            rows.append(
+                plan_row(candidate, metrics[candidate.experiment], status, ALPHA / (len(chosen) + 1), settings, now)
+            )
     return rows

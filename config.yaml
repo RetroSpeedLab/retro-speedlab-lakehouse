@@ -16,6 +16,7 @@ kafka:
     - promotion.usage
     - hosts.metrics
     - donations.events
+    - articles.metrics
   search_topics:
     - runs.attempts
     - runs.steps

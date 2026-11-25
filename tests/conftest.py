@@ -131,6 +131,7 @@ def settings(tmp_path: Path) -> Settings:
                 "lab.reports",
                 "highscores.entries",
                 "donations.events",
+                "articles.metrics",
             ],
             search_topics=[
                 "runs.attempts",

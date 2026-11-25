@@ -17,6 +17,7 @@ from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, reco
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.lake.catalog import (
     API,
+    ARTICLE_METRICS,
     CORE_TABLES,
     DONATIONS,
     EVENTS,
@@ -180,6 +181,27 @@ def test_gold_counts_supporters_and_silver_names_only_public_ones(spark: SparkSe
     assert [(row["kind"], row["payments"], row["public_payments"], row["amount"]) for row in counts] == [
         ("Tip", 2, 1, 6.0)
     ]
+
+
+def test_silver_keeps_every_measurement_of_the_articles(spark: SparkSession, settings: Settings) -> None:
+    metric = {
+        "slug": "small-files-slow-uplink",
+        "title": "Small files, slow uplink",
+        "tags": ["spark", "deltalake"],
+        "channel": "devto",
+        "url": "https://dev.to/me/post",
+        "published": "2026-11-30T08:00:00+00:00",
+        "views": 40,
+        "reactions": 3,
+        "comments": 1,
+        "measured": "2026-11-30T14:00:00+00:00",
+    }
+    later = {**metric, "views": 95, "measured": "2026-11-30T20:00:00+00:00"}
+    key = "small-files-slow-uplink/devto"
+    measured = [event(7, "articles.metrics", key, metric, START), event(8, "articles.metrics", key, later, START)]
+    stream_events(spark, settings, [*events(), *measured])
+    rows = read(spark, ARTICLE_METRICS, settings.lake).orderBy("measured").collect()
+    assert [(row["views"], row["tags"]) for row in rows] == [(40, ["spark", "deltalake"]), (95, ["spark", "deltalake"])]
 
 
 def test_gold_shows_only_the_current_major(spark: SparkSession, settings: Settings) -> None:

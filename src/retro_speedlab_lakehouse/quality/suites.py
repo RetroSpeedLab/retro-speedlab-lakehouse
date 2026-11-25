@@ -8,6 +8,7 @@ from retro_speedlab_lakehouse.engagement.catalog import (
     TWITCH_CHANNEL_OUTCOMES,
 )
 from retro_speedlab_lakehouse.lake.catalog import (
+    ARTICLE_METRICS,
     BOARD_HISTORY,
     CHAT_PULSE,
     DONATIONS,
@@ -130,6 +131,11 @@ CHECKS: dict[Table, list[Check]] = {
     REPORTS: [*keyed(REPORTS), *present("headline", "event_id")],
     LAB_RUNS: [*keyed(LAB_RUNS), AllowedValues("outcome", OUTCOMES), *at_least_zero("minutes", "cost_usd")],
     HIGHSCORES: [*keyed(HIGHSCORES), *present("game", "version"), InRange("frames", min_value=1)],
+    ARTICLE_METRICS: [
+        *keyed(ARTICLE_METRICS),
+        *present("url", "published"),
+        *at_least_zero("views", "reactions", "comments"),
+    ],
     DONATIONS: [*keyed(DONATIONS), *present("at", "kind", "currency"), *at_least_zero("amount")],
     SUPPORTER_COUNTS: [*keyed(SUPPORTER_COUNTS), InRange("payments", min_value=1), *at_least_zero("amount")],
     HOST_STATUS: host_checks(HOST_STATUS),

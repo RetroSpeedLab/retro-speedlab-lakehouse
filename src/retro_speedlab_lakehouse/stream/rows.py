@@ -65,6 +65,20 @@ DONATION = StructType(
         StructField("first_payment", BooleanType(), False),
     ]
 )
+ARTICLE_METRIC = StructType(
+    [
+        StructField("slug", StringType(), False),
+        StructField("title", StringType(), False),
+        StructField("tags", ArrayType(StringType()), False),
+        StructField("channel", StringType(), False),
+        StructField("url", StringType(), False),
+        StructField("published", TimestampType(), False),
+        StructField("views", LongType(), False),
+        StructField("reactions", LongType(), False),
+        StructField("comments", LongType(), False),
+        StructField("measured", TimestampType(), False),
+    ]
+)
 GPU = StructType(
     [
         StructField("index", IntegerType(), False),
@@ -108,6 +122,7 @@ LAB_RUNS_TOPIC = "lab.runs"
 HIGHSCORES_TOPIC = "highscores.entries"
 HOSTS_TOPIC = "hosts.metrics"
 DONATIONS_TOPIC = "donations.events"
+ARTICLE_METRICS_TOPIC = "articles.metrics"
 LIVE_SLOT = "live"
 STAMP_FORMAT = "yyyy-MM-dd'T'HHmm"
 NON_FINITE = r":\s*-?(NaN|Infinity)\b"
@@ -222,6 +237,14 @@ def highscores(events: DataFrame) -> DataFrame:
 def donations(events: DataFrame) -> DataFrame:
     rows = newest(events.where(F.col("topic") == DONATIONS_TOPIC), ["key"])
     return rows.select(F.from_json("payload", DONATION).alias("donation"), "event_id").select("donation.*", "event_id")
+
+
+def article_metrics(events: DataFrame) -> DataFrame:
+    rows = events.where(F.col("topic") == ARTICLE_METRICS_TOPIC)
+    parsed = rows.select(F.from_json("payload", ARTICLE_METRIC).alias("metric"), "event_id").select(
+        "metric.*", "event_id"
+    )
+    return newest(parsed, ["slug", "channel", "measured"])
 
 
 def host_rows(events: DataFrame) -> DataFrame:

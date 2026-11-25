@@ -92,6 +92,7 @@ LAB_PROGRESS = table(Layer.SILVER, "lab_run_progress", ("game", "stamp"))
 REPORTS = table(Layer.SILVER, "reports", ("game", "name"))
 HIGHSCORES = table(Layer.SILVER, "highscores", ("id",))
 DONATIONS = table(Layer.SILVER, "donations", ("message_id",))
+ARTICLE_METRICS = table(Layer.SILVER, "article_metrics", ("slug", "channel", "measured"))
 HOST_METRICS = table(Layer.SILVER, "host_metrics", ("host", "measured_at"))
 GPU_METRICS = table(Layer.SILVER, "gpu_metrics", ("host", "gpu", "measured_at"))
 
@@ -158,6 +159,7 @@ CORE_TABLES = (
     REPORTS,
     HIGHSCORES,
     DONATIONS,
+    ARTICLE_METRICS,
     HOST_METRICS,
     GPU_METRICS,
     GAME_SUMMARY,

@@ -201,10 +201,12 @@ hour's order draws its leader by share and the rest by one Thompson draw. Catalo
 first seen. The backend follows a ranking only while that surface's switch is on, with 12% of visits or hours in random
 order as the holdout.
 
-The Twitch channel learns its category and title the same way: each turn's pair is an item of `twitch_channel`,
-measured in `gold.twitch_channel_outcomes` against the viewers, followers and chat minutes it overlapped. Its reward
-is new followers per hour, Gamma over the turn's hours, because a follow is the growth that lasts: it brings the
-viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in the table.
+The Twitch channel learns its category and title the same way: each hour's pair is an item of `twitch_channel`,
+measured in `gold.twitch_channel_outcomes` against the viewers, followers and chat minutes its turns overlapped. Its
+reward is new followers per hour, Gamma over the turns' hours, because a follow is the growth that lasts: it brings
+the viewer back at every go-live, while viewers and chat per viewer-hour stay beside it in the table. 12% of the hours
+show a random pair as the holdout, and `engagement-nightly` compares their followers per hour with the learned hours
+as `holdout_twitch_channel`. Each surface in `config.yaml` names the `metric` of its reward.
 
 Bluesky posts publish without review and learn from their engagement. Each post's draft records five dimensions in
 `copy.dimensions` (hook, length, media, tags, cta), and every value is an item of `bluesky_<dimension>`, Gamma over the
@@ -232,7 +234,7 @@ restarts Grafana.
 
 | Dashboard | Data source | Shows |
 |-----------|-------------|-------|
-| Experiments | Experiments Postgres | Every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, and every lab change |
+| Experiments | Experiments Postgres | Every engagement experiment's arms, effect, confidence interval, p-value and Holm verdict, each Twitch category and title pair's followers per hour and share, and every lab change |
 | Search bandit | Experiments Postgres | The bandit against the holdout split, frames saved per hour per day and arm, and every finished turn |
 | Promotion variants | Experiments Postgres | Each channel's variants with reach per dollar, the Bluesky engagement per post of each dimension and the approval rate of each Short feature |
 | Lab runs | Tempo | Each lab run's scores, each `claude -p` round, the failed steps and the progress after each run |

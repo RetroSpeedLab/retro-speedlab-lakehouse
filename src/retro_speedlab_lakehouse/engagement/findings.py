@@ -34,14 +34,14 @@ def holdout_findings(events: DataFrame, settings: EngagementSettings) -> list[Fi
         if configured.family == BETA:
             held = totals[(surface, HOLDOUT)] if (surface, HOLDOUT) in totals else (0, 0)
             learned = totals[(surface, ADAPTIVE)] if (surface, ADAPTIVE) in totals else (0, 0)
-            findings.append(rate_finding(arms, "click_rate", True, held, learned, settings.min_exposures))
+            findings.append(rate_finding(arms, configured.metric, True, held, learned, settings.min_exposures))
             continue
         rates = {
             arm: [row["rate"] for row in hourly if row["surface"] == surface and row["arm"] == arm]
             for arm in (HOLDOUT, ADAPTIVE)
         }
         findings.append(
-            mean_finding(arms, "chat_per_minute", True, rates[HOLDOUT], rates[ADAPTIVE], settings.min_hours)
+            mean_finding(arms, configured.metric, True, rates[HOLDOUT], rates[ADAPTIVE], settings.min_hours)
         )
     return findings
 

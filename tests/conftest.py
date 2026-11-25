@@ -95,8 +95,8 @@ def source_settings() -> Sources:
 
 
 def engagement_settings() -> EngagementSettings:
-    beta = EngagementSurface(family="beta", holdout=True, catalog=True)
-    gamma = EngagementSurface(family="gamma", holdout=True, catalog=False)
+    beta = EngagementSurface(family="beta", metric="click_rate", holdout=True, catalog=True)
+    gamma = EngagementSurface(family="gamma", metric="chat_per_minute", holdout=True, catalog=False)
     return EngagementSettings(
         window_days=28,
         backfill_hours=2,

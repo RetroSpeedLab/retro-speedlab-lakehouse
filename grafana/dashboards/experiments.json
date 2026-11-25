@@ -85,6 +85,44 @@
     },
     {
       "type": "table",
+      "title": "Twitch channel arms",
+      "description": "Each Twitch category and title pair: hours on stream, new followers and followers per hour with its interval, and the share it gets",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "experiments"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "experiments"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT item AS arm, exposures AS hours, outcomes AS new_followers, mean AS followers_per_hour, lower, upper, share, computed_at FROM content_ranking WHERE surface = twitch_channel ORDER BY mean DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "table",
       "title": "Lab changes",
       "description": "Every deployed lab change against the search before it",
       "datasource": {
@@ -93,7 +131,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 22,
         "w": 24,
         "h": 12
       },

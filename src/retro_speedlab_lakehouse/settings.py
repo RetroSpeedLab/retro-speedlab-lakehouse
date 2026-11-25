@@ -77,6 +77,7 @@ class BanditSettings(Frozen):
 
 class EngagementSurface(Frozen):
     family: Literal["beta", "gamma"]
+    metric: str
     holdout: bool
     catalog: bool
 

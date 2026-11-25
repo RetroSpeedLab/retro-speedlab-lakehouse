@@ -73,20 +73,20 @@ engagement:
   min_hours: 12
   min_blocks: 12
   surfaces:
-    home_games: {family: beta, holdout: true, catalog: true}
-    home_sections: {family: beta, holdout: true, catalog: false}
-    games_cards: {family: beta, holdout: true, catalog: true}
-    stream_scenes: {family: gamma, holdout: true, catalog: false}
-    stream_clips: {family: gamma, holdout: true, catalog: true}
-    stream_games: {family: gamma, holdout: false, catalog: true}
-    promotion: {family: gamma, holdout: false, catalog: false}
-    promotion_variants: {family: beta, holdout: false, catalog: false}
-    bluesky_hook: {family: gamma, holdout: false, catalog: false}
-    bluesky_length: {family: gamma, holdout: false, catalog: false}
-    bluesky_media: {family: gamma, holdout: false, catalog: false}
-    bluesky_tags: {family: gamma, holdout: false, catalog: false}
-    bluesky_cta: {family: gamma, holdout: false, catalog: false}
-    twitch_channel: {family: gamma, holdout: false, catalog: false}
+    home_games: {family: beta, metric: click_rate, holdout: true, catalog: true}
+    home_sections: {family: beta, metric: click_rate, holdout: true, catalog: false}
+    games_cards: {family: beta, metric: click_rate, holdout: true, catalog: true}
+    stream_scenes: {family: gamma, metric: chat_per_minute, holdout: true, catalog: false}
+    stream_clips: {family: gamma, metric: chat_per_minute, holdout: true, catalog: true}
+    stream_games: {family: gamma, metric: chat_per_minute, holdout: false, catalog: true}
+    promotion: {family: gamma, metric: interactions_per_post, holdout: false, catalog: false}
+    promotion_variants: {family: beta, metric: approval_rate, holdout: false, catalog: false}
+    bluesky_hook: {family: gamma, metric: interactions_per_post, holdout: false, catalog: false}
+    bluesky_length: {family: gamma, metric: interactions_per_post, holdout: false, catalog: false}
+    bluesky_media: {family: gamma, metric: interactions_per_post, holdout: false, catalog: false}
+    bluesky_tags: {family: gamma, metric: interactions_per_post, holdout: false, catalog: false}
+    bluesky_cta: {family: gamma, metric: interactions_per_post, holdout: false, catalog: false}
+    twitch_channel: {family: gamma, metric: follows_per_hour, holdout: true, catalog: false}
   experiments:
     cta_copy: {scope: visit, variants: [watch_live, beat_the_ai], goals: [click]}
     hero_text: {scope: visit, variants: [current, challenge], goals: [click]}

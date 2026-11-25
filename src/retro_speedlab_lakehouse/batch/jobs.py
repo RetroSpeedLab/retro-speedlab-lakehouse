@@ -15,6 +15,8 @@ from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
 from retro_speedlab_lakehouse.engagement.jobs import build_community, build_engagement, build_engagement_experiments
 from retro_speedlab_lakehouse.experiments.job import build_experiments
 from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, QUALITY_REPORTS, Table
+from retro_speedlab_lakehouse.lineage import observed
+from retro_speedlab_lakehouse.lineage.graph import build_lineage, record_job_lineage
 from retro_speedlab_lakehouse.mining.build import build_mining_gold
 from retro_speedlab_lakehouse.mining.records import mine_records
 from retro_speedlab_lakehouse.mining.verify import verify_replays
@@ -93,7 +95,8 @@ def experiments_export(spark: SparkSession, settings: Settings, gate: Gate) -> i
 
 
 def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return build_platform(spark, ALL_TABLES, settings.lake, gate, now())
+    moment = now()
+    return build_platform(spark, ALL_TABLES, settings.lake, gate, moment) + build_lineage(spark, settings, gate, moment)
 
 
 def maintenance(spark: SparkSession, settings: Settings, gate: Gate) -> int:
@@ -127,6 +130,7 @@ def run_job(spark: SparkSession, settings: Settings, name: str, dag: str, run_id
     if name not in JOBS:
         raise ValueError(f"No job is called {name}; the jobs are {', '.join(JOBS)}")
     started_at = now()
+    observed.clear()
     gate = Gate(f"{dag}/{run_id}/{name}")
     try:
         rows = JOBS[name](spark, settings, gate)
@@ -134,7 +138,10 @@ def run_job(spark: SparkSession, settings: Settings, name: str, dag: str, run_id
         gate.flush(spark, settings.lake)
         failure = JobRun(dag, run_id, name, started_at, now(), FAILED, 0, str(error)[:ERROR_LENGTH])
         record_job(spark, settings.lake, gate, failure)
+        record_job_lineage(spark, settings, gate, dag, run_id, name, True, failure.finished_at)
         raise
     gate.flush(spark, settings.lake)
-    record_job(spark, settings.lake, gate, JobRun(dag, run_id, name, started_at, now(), SUCCESS, rows, None))
+    finished_at = now()
+    record_job(spark, settings.lake, gate, JobRun(dag, run_id, name, started_at, finished_at, SUCCESS, rows, None))
+    record_job_lineage(spark, settings, gate, dag, run_id, name, False, finished_at)
     logger.info(f"{name} wrote {rows} rows in {(now() - started_at).total_seconds():.1f} s")

@@ -113,6 +113,10 @@ PLATFORM_JOBS = table(Layer.GOLD, "platform_jobs", ("run_id", "job"))
 SOURCES_STATUS = table(Layer.GOLD, "sources_status", ("source", "stream"))
 QUALITY_REPORTS = table(Layer.GOLD, "quality_reports", ())
 QUALITY_FAILURES = table(Layer.GOLD, "quality_failures", ())
+LINEAGE_EVENTS = table(Layer.SILVER, "lineage_events", ("run",))
+LINEAGE_NODES = table(Layer.GOLD, "lineage_nodes", ("node",))
+LINEAGE_EDGES = table(Layer.GOLD, "lineage_edges", ("source", "target", "job"))
+BOOKKEEPING = frozenset(name.full_name for name in (QUALITY_REPORTS, QUALITY_FAILURES, PLATFORM_JOBS, LINEAGE_EVENTS))
 
 TRACE_PIECES = table(Layer.BRONZE, "trace_pieces", ("game", "record", "segment"))
 FRAME_TRACES = Table(Layer.BRONZE, "frame_traces", ("game", "frame"), ("game",), ())
@@ -174,6 +178,9 @@ CORE_TABLES = (
     SOURCES_STATUS,
     QUALITY_REPORTS,
     QUALITY_FAILURES,
+    LINEAGE_EVENTS,
+    LINEAGE_NODES,
+    LINEAGE_EDGES,
 )
 MINING_TABLES = (
     TRACE_PIECES,

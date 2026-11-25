@@ -108,6 +108,8 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.position_heatmap`, `gold.ram_heatmap` | `mining-gold` | `game`, `level` | Frames per 16 px cell and per shown RAM value |
 | `gold.board_history`, `gold.humans_vs_ai`, `gold.split_comparison`, `gold.verification_stats` | `mining-gold` | `game` | Best human against the AI, per-level comparisons and replay verdicts |
 | `gold.platform_tables`, `gold.platform_jobs` | `platform`, every job | | Size and versions per table, measured nightly, and every job run |
+| `silver.lineage_events` | every job, `platform` | `run` | One OpenLineage event per job run (the tables and outside systems it read and wrote, or `FAIL`), and a `RUNNING` event per long-running process: relay, runner, chat and the three stream queries |
+| `gold.lineage_nodes`, `gold.lineage_edges` | `platform` | `node`; `source`, `target`, `job` | The current graph: sources, Kafka topics, tables and exports as nodes, and the newest successful run of each job as edges from its inputs to its outputs; the data page draws it |
 | `silver.search_turn_minutes`, `silver.search_kind_minutes` | `tracking-hourly` | `run`, `step`; `run`, `kind`, `step` | Each minute of a search turn: frames saved, best time, records, crossings, attempts per second and stuck states, and per worker kind its frames saved per worker-second and share |
 | `silver.ppo_rounds` | `tracking-hourly` | `run`, `round` | Every PPO round: reward, exits, episodes, exit rate, entropy, explained variance, loss and the run's hyperparameters |
 | `gold.search_turns` | `tracking-hourly` | `game`, `turn` | Each search turn: arm, minutes, frames saved in total and per hour, attempts per second, best time, records, crossings and stuck states |
@@ -244,6 +246,16 @@ the test for a relative change of `engagement.plan.minimum_effect` at `power`, t
 running on that surface (the first Holm step). Tests run, most exposure first, while every running test would decide
 within `horizon_weeks` (at most the window, since older data leaves it); the rest are queued and show their control.
 When none can, the one closest to a decision runs, and a test with a winner is decided and frees its place.
+
+## Lineage
+
+Every table read and write goes through `lake/tables.py`, so each job records what it touched. `run_job` adds the outside
+systems it knows (the backend, each source, the mined records, Grafana's Postgres) and writes an
+[OpenLineage](https://openlineage.io) run event to `silver.lineage_events`. The relay, runner, chat and stream queries are
+declared in `lineage/topology.py` and recorded each night. `platform` builds the nodes and edges in gold from the newest
+successful event of each job, so lineage is per job, not per column. The backend serves them with
+`GET /lakehouse/platform` and the website draws them. The openlineage-spark listener and Airflow's OpenLineage provider are
+not used: the job runner already knows each job's tables, and no catalog service runs.
 
 ## Grafana
 

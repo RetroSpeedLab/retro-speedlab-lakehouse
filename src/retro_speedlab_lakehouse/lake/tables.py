@@ -2,6 +2,7 @@ from delta.tables import DeltaTable
 from pyspark.sql import DataFrame, SparkSession
 
 from retro_speedlab_lakehouse.lake.catalog import RETENTION_PROPERTIES, Table
+from retro_speedlab_lakehouse.lineage import observed
 from retro_speedlab_lakehouse.settings import LakeSettings
 
 
@@ -17,6 +18,7 @@ def create(table: Table, lake: LakeSettings, rows: DataFrame) -> None:
 
 
 def ensure(table: Table, lake: LakeSettings, rows: DataFrame) -> None:
+    observed.write_of(table)
     if not exists(rows.sparkSession, table, lake):
         create(table, lake, rows)
 
@@ -27,4 +29,5 @@ def append_rows(table: Table, lake: LakeSettings, rows: DataFrame) -> None:
 
 
 def read(spark: SparkSession, table: Table, lake: LakeSettings) -> DataFrame:
+    observed.read_of(table)
     return spark.read.format("delta").load(table.location(lake))

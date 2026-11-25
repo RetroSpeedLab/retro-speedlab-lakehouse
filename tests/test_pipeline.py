@@ -1,16 +1,18 @@
 import json
 import time
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from py4j.protocol import Py4JJavaError
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.batch import maintenance
 from retro_speedlab_lakehouse.batch.api import SNAPSHOT
 from retro_speedlab_lakehouse.batch.gold import build_gold
-from retro_speedlab_lakehouse.batch.maintenance import fewest_files_first, files, maintain
+from retro_speedlab_lakehouse.batch.maintenance import BUDGET, fewest_files_first, files, maintain
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.lake.catalog import (
@@ -168,7 +170,7 @@ def test_platform_measures_tables_and_records_jobs(spark: SparkSession, settings
     assert tables["bronze.events"]["rows"] == 6 and tables["bronze.events"]["store"] == "black-omen"
     assert tables["live.live_run"]["store"] == "lake"
     assert read(spark, PLATFORM_JOBS, settings.lake).count() == 1
-    assert maintain(spark, CORE_TABLES, settings.lake, START) >= 8
+    assert maintain(spark, CORE_TABLES, settings.lake, START, BUDGET) >= 8
 
 
 def test_maintenance_ends_with_the_most_files_and_at_its_budget(spark: SparkSession, settings: Settings) -> None:
@@ -176,21 +178,25 @@ def test_maintenance_ends_with_the_most_files_and_at_its_budget(spark: SparkSess
     gate = Gate("platform")
     for run_id in ("run-1", "run-2", "run-3", "run-4", "run-5", "run-6", "run-7", "run-8", "run-9"):
         record_job(spark, settings.lake, gate, JobRun("nightly", run_id, "silver", START, START, "success", 3, None))
+    build_platform(spark, CORE_TABLES, settings.lake, gate, START)
     assert fewest_files_first(spark, CORE_TABLES, settings.lake)[-1] == PLATFORM_JOBS
     assert maintain(spark, CORE_TABLES, settings.lake, START, timedelta(0)) == 0
     assert files(spark, PLATFORM_JOBS, settings.lake) == 9
-    assert maintain(spark, CORE_TABLES, settings.lake, START) >= 8
+    assert maintain(spark, CORE_TABLES, settings.lake, START, BUDGET) >= 8
     assert files(spark, PLATFORM_JOBS, settings.lake) == 1
 
 
-def test_maintenance_stops_a_table_that_runs_past_its_budget(
+def test_maintenance_stops_a_table_that_keeps_starting_jobs_past_its_budget(
     spark: SparkSession, settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     stream_events(spark, settings, events())
 
     def endless(spark: SparkSession, table: Table, lake: LakeSettings) -> None:
-        spark.range(1).foreach(lambda _: time.sleep(300))
+        for _ in range(10):
+            with suppress(Py4JJavaError):
+                spark.range(1).foreach(lambda _: time.sleep(30))
 
+    build_platform(spark, (EVENTS,), settings.lake, Gate("platform"), START)
     monkeypatch.setattr(maintenance, "compact", endless)
     started = time.monotonic()
     assert maintain(spark, (EVENTS,), settings.lake, START, timedelta(seconds=20)) == 0

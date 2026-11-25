@@ -8,17 +8,19 @@ from pyspark.sql import functions as F
 
 from retro_speedlab_lakehouse.lake.catalog import (
     PLATFORM_JOBS,
+    PLATFORM_TABLES,
     QUALITY_REPORTS,
     RAW_DAYS,
     RETENTION_HOURS,
     Layer,
     Table,
 )
-from retro_speedlab_lakehouse.lake.tables import exists
+from retro_speedlab_lakehouse.lake.tables import read
 from retro_speedlab_lakehouse.settings import LakeSettings
 
 JOB_HISTORY_DAYS = 30
 BUDGET = timedelta(minutes=30)
+CANCEL_EVERY_SECONDS = 5.0
 HISTORY_COLUMNS = {PLATFORM_JOBS: "started_at", QUALITY_REPORTS: "checked_at"}
 
 
@@ -52,8 +54,9 @@ def files(spark: SparkSession, table: Table, lake: LakeSettings) -> int:
 
 
 def fewest_files_first(spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings) -> list[Table]:
-    kept = [table for table in tables if exists(spark, table, lake)]
-    return sorted(kept, key=lambda table: files(spark, table, lake))
+    named = {table.full_name: table for table in tables}
+    measured = read(spark, PLATFORM_TABLES, lake).select("table", "files").orderBy("files", "table").collect()
+    return [named[row["table"]] for row in measured if row["table"] in named]
 
 
 def maintain_table(spark: SparkSession, table: Table, lake: LakeSettings, now: datetime) -> None:
@@ -63,11 +66,18 @@ def maintain_table(spark: SparkSession, table: Table, lake: LakeSettings, now: d
     logger.info(f"Maintained {table.full_name}")
 
 
+def cancel_until(spark: SparkSession, done: threading.Event) -> None:
+    while not done.is_set():
+        spark.sparkContext.cancelAllJobs()
+        done.wait(CANCEL_EVERY_SECONDS)
+
+
 def maintain(
-    spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, now: datetime, budget: timedelta = BUDGET
+    spark: SparkSession, tables: tuple[Table, ...], lake: LakeSettings, now: datetime, budget: timedelta
 ) -> int:
     deadline = datetime.now(UTC) + budget
-    stop = threading.Timer(budget.total_seconds(), spark.sparkContext.cancelAllJobs)
+    done = threading.Event()
+    stop = threading.Timer(budget.total_seconds(), cancel_until, (spark, done))
     stop.start()
     maintained = 0
     try:
@@ -80,6 +90,7 @@ def maintain(
         if datetime.now(UTC) < deadline:
             raise
     finally:
+        done.set()
         stop.cancel()
     if datetime.now(UTC) >= deadline:
         logger.warning(f"Maintenance took {budget}; it maintained {maintained} tables, the rest wait for a later night")

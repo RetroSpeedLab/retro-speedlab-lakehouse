@@ -59,6 +59,7 @@ def session_builder(name: str, spark: SparkSettings, lake: LakeSettings) -> Spar
         .config("spark.databricks.delta.merge.repartitionBeforeWrite.enabled", "true")
         .config("spark.databricks.delta.autoCompact.enabled", "true")
         .config("spark.databricks.delta.autoCompact.nonBlindAppend.enabled", "true")
+        .config("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
     )
     if spark.jars_dir is not None:
         builder = builder.config("spark.jars", ",".join(str(jar) for jar in sorted(spark.jars_dir.glob("*.jar"))))

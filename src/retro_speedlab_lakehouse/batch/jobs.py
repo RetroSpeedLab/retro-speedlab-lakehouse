@@ -8,7 +8,7 @@ from retro_speedlab_lakehouse.bandit.allocation import build_allocation
 from retro_speedlab_lakehouse.bandit.holdout import build_bandit_comparison
 from retro_speedlab_lakehouse.batch.api import ingest_api_hourly, ingest_api_nightly
 from retro_speedlab_lakehouse.batch.gold import build_gold
-from retro_speedlab_lakehouse.batch.maintenance import maintain
+from retro_speedlab_lakehouse.batch.maintenance import BUDGET, maintain
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
@@ -95,7 +95,7 @@ def platform(spark: SparkSession, settings: Settings, gate: Gate) -> int:
 
 
 def maintenance(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return maintain(spark, ALL_TABLES, settings.lake, now())
+    return maintain(spark, ALL_TABLES, settings.lake, now(), BUDGET)
 
 
 JOBS: dict[str, Job] = {

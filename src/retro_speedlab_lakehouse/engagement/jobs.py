@@ -28,6 +28,7 @@ from retro_speedlab_lakehouse.quality.gate import Gate
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.bronze import ingest, latest
 from retro_speedlab_lakehouse.sources.catalog import BLUESKY_POSTS
+from retro_speedlab_lakehouse.sources.record import Source
 
 WWW = "www"
 GAMES_SITE = "games"
@@ -61,10 +62,18 @@ RESULT = StructType(
 )
 
 
+def umami_cells(settings: Settings) -> UmamiCells:
+    websites = {WWW: settings.sources.umami.website, GAMES_SITE: settings.sources.umami.games_website}
+    return UmamiCells(settings.sources.umami, websites, settings.engagement.backfill_hours)
+
+
+def engagement_sources(settings: Settings) -> list[Source]:
+    return [umami_cells(settings), DiscordActivity(settings.sources.discord)]
+
+
 def build_engagement(spark: SparkSession, settings: Settings, gate: Gate, now: datetime) -> int:
     engagement = settings.engagement
-    websites = {WWW: settings.sources.umami.website, GAMES_SITE: settings.sources.umami.games_website}
-    ingest(spark, settings.lake, gate, UmamiCells(settings.sources.umami, websites, engagement.backfill_hours))
+    ingest(spark, settings.lake, gate, umami_cells(settings))
     records = latest(spark, settings.lake, UMAMI, CELLS)
     searched = read(spark, SEARCH_EVENTS, settings.lake)
     chat = chat_minutes(searched)

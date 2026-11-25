@@ -105,9 +105,16 @@ def test_a_failing_source_keeps_the_others_and_their_gold_numbers(spark: SparkSe
     gate = Gate("sources")
     first = SnapshotSource("discord", NUMBERS, lambda now: [Number("members", "Members", 4, "", "on the server")])
     later = SnapshotSource("discord", NUMBERS, lambda now: [Number("members", "Members", 5, "", "on the server")])
-    ingest_sources(spark, settings.lake, gate, [first], NOW)
+    ingest_sources(spark, settings.lake, gate, [first], [first], NOW)
     with pytest.raises(SourcesFailed, match=r"these failed: twitch\.numbers \(ConnectError\)$"):
-        ingest_sources(spark, settings.lake, gate, [later, SnapshotSource("twitch", NUMBERS, failing)], NOW)
+        ingest_sources(
+            spark,
+            settings.lake,
+            gate,
+            [later, SnapshotSource("twitch", NUMBERS, failing)],
+            [later, SnapshotSource("twitch", NUMBERS, failing)],
+            NOW,
+        )
     numbers = read(spark, SOURCE_NUMBERS, settings.lake).collect()
     assert [(row["source"], row["metric"], row["value"]) for row in numbers] == [("discord", "members", 5.0)]
     status = read(spark, SOURCES_STATUS, settings.lake).collect()
@@ -124,7 +131,14 @@ def test_a_refused_source_names_its_status_but_never_its_url(spark: SparkSession
         return []
 
     with pytest.raises(SourcesFailed) as failure:
-        ingest_sources(spark, settings.lake, Gate("sources"), [SnapshotSource("youtube", NUMBERS, refused)], NOW)
+        ingest_sources(
+            spark,
+            settings.lake,
+            Gate("sources"),
+            [SnapshotSource("youtube", NUMBERS, refused)],
+            [SnapshotSource("youtube", NUMBERS, refused)],
+            NOW,
+        )
     assert str(failure.value) == "Kept the other sources; these failed: youtube.numbers (HTTP 503)"
 
 
@@ -136,7 +150,7 @@ def test_human_plays_reach_gold_for_every_game_mode_and_window(spark: SparkSessi
         GAMES, settings.lake, spark.createDataFrame(COLLECTION, "slug string, number int, title string, version string")
     )
     plays = SnapshotSource("umami", PLAYS, lambda now: umami_plays(settings.sources.umami, "games", now))
-    ingest_sources(spark, settings.lake, Gate("sources"), [plays], NOW)
+    ingest_sources(spark, settings.lake, Gate("sources"), [plays], [plays], NOW)
     rows = read(spark, GAME_PLAYS, settings.lake).collect()
     counted = {(row["game"], row["mode"], row["window"]): (row["started"], row["won"]) for row in rows}
     assert len(counted) == len(COLLECTION) * 2 * 3
@@ -155,7 +169,7 @@ def test_itch_days_reach_gold_per_game_and_day(spark: SparkSession, settings: Se
         GAMES, settings.lake, spark.createDataFrame(COLLECTION, "slug string, number int, title string, version string")
     )
     days = SnapshotSource("itch", DAILY, lambda now: itch_days(settings.sources.umami, now))
-    ingest_sources(spark, settings.lake, Gate("sources"), [days], NOW)
+    ingest_sources(spark, settings.lake, Gate("sources"), [days], [days], NOW)
     rows = read(spark, ITCH_DAILY, settings.lake).collect()
     counted = {(row["game"], row["date"].isoformat()): (row["views"], row["campaign"], row["cleared"]) for row in rows}
     assert len(counted) == len(COLLECTION) * 2
@@ -214,7 +228,7 @@ def test_bluesky_keeps_the_accounts_own_posts_of_every_page(spark: SparkSession,
     respx.get(PROFILE).respond(json={"followersCount": 12})
     route = respx.get(FEED).mock(side_effect=feed)
     posts = SnapshotSource("bluesky", POSTS, lambda now: bluesky_posts(settings.sources.bluesky))
-    ingest_sources(spark, settings.lake, Gate("sources"), [posts], NOW)
+    ingest_sources(spark, settings.lake, Gate("sources"), [posts], [posts], NOW)
     rows = {row["post"]: row for row in read(spark, BLUESKY_POSTS, settings.lake).collect()}
     assert sorted(rows) == ["3m5a", "3m5b"]
     assert (rows["3m5a"]["text"], rows["3m5a"]["likes"], rows["3m5a"]["engagement"]) == ("Post 3m5a", 4, 10)
@@ -302,6 +316,6 @@ def test_youtube_loads_the_channels_last_28_days_and_each_day(spark: SparkSessio
     )
     assert (len(numbers), numbers["views"], numbers["average_view_seconds"]) == (8, 47, 47)
     days = SnapshotSource("youtube", DAILY, lambda now: youtube_days(settings.sources.youtube, now))
-    ingest_sources(spark, settings.lake, Gate("sources"), [days], NOW)
+    ingest_sources(spark, settings.lake, Gate("sources"), [days], [days], NOW)
     rows = {row["date"].isoformat(): row for row in read(spark, YOUTUBE_DAILY, settings.lake).collect()}
     assert (rows["2026-11-12"]["minutes_watched"], rows["2026-11-13"]["subscribers_gained"]) == (19, 1)

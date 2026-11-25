@@ -40,7 +40,14 @@ def round_span(number: int, cost: float, model: str) -> dict[str, Any]:
 def test_each_round_in_tempo_adds_up_to_its_run_and_its_day(spark: SparkSession, settings: Settings) -> None:
     spans = [round_span(1, 1.5, "claude-opus-5-5"), round_span(2, 0.5, "claude-haiku-4-5")]
     route = respx.get("https://tempo.test/api/search").respond(json={"traces": [{"spanSets": [{"spans": spans}]}]})
-    ingest_sources(spark, settings.lake, Gate("sources"), [TempoRounds(settings.sources.tempo)], NOW)
+    ingest_sources(
+        spark,
+        settings.lake,
+        Gate("sources"),
+        [TempoRounds(settings.sources.tempo)],
+        [TempoRounds(settings.sources.tempo)],
+        NOW,
+    )
 
     [run] = read(spark, LAB_RUN_TRACES, settings.lake).collect()
     assert (run["rounds"], run["cost_usd"], run["minutes"], run["model"]) == (2, 2.0, 10.0, "claude-opus-5-5")
@@ -53,7 +60,14 @@ def test_each_round_in_tempo_adds_up_to_its_run_and_its_day(spark: SparkSession,
 @respx.mock
 def test_a_round_tempo_returns_without_a_duration_lasted_zero_minutes(spark: SparkSession, settings: Settings) -> None:
     respx.get("https://tempo.test/api/search").respond(json=fixture("tempo-rounds.json"))
-    ingest_sources(spark, settings.lake, Gate("sources"), [TempoRounds(settings.sources.tempo)], AFTER_REAL_RUN)
+    ingest_sources(
+        spark,
+        settings.lake,
+        Gate("sources"),
+        [TempoRounds(settings.sources.tempo)],
+        [TempoRounds(settings.sources.tempo)],
+        AFTER_REAL_RUN,
+    )
 
     rounds = {row["round"]: row for row in read(spark, LAB_RUN_ROUNDS, settings.lake).collect()}
     assert (rounds[2]["minutes"], rounds[2]["model"], rounds[2]["tokens"]) == (0.0, None, 0)

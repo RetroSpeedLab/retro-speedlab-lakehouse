@@ -12,7 +12,12 @@ from retro_speedlab_lakehouse.batch.maintenance import BUDGET, compact_small_fil
 from retro_speedlab_lakehouse.batch.platform import JobRun, build_platform, record_job
 from retro_speedlab_lakehouse.batch.silver import build_silver
 from retro_speedlab_lakehouse.engagement.catalog import ENGAGEMENT_TABLES
-from retro_speedlab_lakehouse.engagement.jobs import build_community, build_engagement, build_engagement_experiments
+from retro_speedlab_lakehouse.engagement.jobs import (
+    build_community,
+    build_engagement,
+    build_engagement_experiments,
+    engagement_sources,
+)
 from retro_speedlab_lakehouse.experiments.job import build_experiments
 from retro_speedlab_lakehouse.lake.catalog import CORE_TABLES, MINING_TABLES, QUALITY_REPORTS, Table
 from retro_speedlab_lakehouse.lineage import observed
@@ -27,6 +32,7 @@ from retro_speedlab_lakehouse.results.job import export_experiments
 from retro_speedlab_lakehouse.settings import Settings
 from retro_speedlab_lakehouse.sources.catalog import SOURCE_TABLES
 from retro_speedlab_lakehouse.sources.job import ingest_sources
+from retro_speedlab_lakehouse.sources.record import Source
 from retro_speedlab_lakehouse.sources.registry import hourly_sources, nightly_sources
 from retro_speedlab_lakehouse.tracking.catalog import TRACKING_TABLES
 from retro_speedlab_lakehouse.tracking.job import load_tracking
@@ -43,12 +49,20 @@ def now() -> datetime:
     return datetime.now(UTC)
 
 
+def configured_sources(settings: Settings) -> list[Source]:
+    return [*nightly_sources(settings.sources), *engagement_sources(settings)]
+
+
 def sources_hourly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return ingest_sources(spark, settings.lake, gate, hourly_sources(settings.sources), now())
+    return ingest_sources(
+        spark, settings.lake, gate, hourly_sources(settings.sources), configured_sources(settings), now()
+    )
 
 
 def sources_nightly(spark: SparkSession, settings: Settings, gate: Gate) -> int:
-    return ingest_sources(spark, settings.lake, gate, nightly_sources(settings.sources), now())
+    return ingest_sources(
+        spark, settings.lake, gate, nightly_sources(settings.sources), configured_sources(settings), now()
+    )
 
 
 def tracking_hourly(spark: SparkSession, settings: Settings, gate: Gate) -> int:

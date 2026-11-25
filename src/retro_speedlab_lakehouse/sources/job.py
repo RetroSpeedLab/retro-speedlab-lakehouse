@@ -23,7 +23,9 @@ def reason(error: Exception) -> str:
     return type(error).__name__
 
 
-def ingest_sources(spark: SparkSession, lake: LakeSettings, gate: Gate, sources: list[Source], now: datetime) -> int:
+def ingest_sources(
+    spark: SparkSession, lake: LakeSettings, gate: Gate, sources: list[Source], configured: list[Source], now: datetime
+) -> int:
     loaded = 0
     failed: list[str] = []
     for source in sources:
@@ -33,7 +35,7 @@ def ingest_sources(spark: SparkSession, lake: LakeSettings, gate: Gate, sources:
             logger.error(f"{source.name} could not be loaded: {error!r}")
             failed.append(f"{source.name}.{source.stream} ({reason(error)})")
     built = build_source_silver(spark, lake, gate) + build_source_gold(spark, lake, gate, now)
-    written = loaded + built + build_sources_status(spark, lake, gate)
+    written = loaded + built + build_sources_status(spark, lake, gate, configured)
     if failed:
         raise SourcesFailed(f"Kept the other sources; these failed: {', '.join(failed)}")
     return written

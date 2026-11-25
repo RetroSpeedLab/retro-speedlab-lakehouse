@@ -47,7 +47,7 @@ def test_human_dropoff_counts_who_reached_and_ended_each_level(spark: SparkSessi
     respx.get(f"{UMAMI}/websites/games/event-data/values").mock(side_effect=umami_values)
     append_rows(SPLIT_COMPARISON, settings.lake, spark.createDataFrame(SPLITS, SPLIT_COLUMNS))
     dropoff = SnapshotSource("umami", DROPOFF, lambda now: umami_dropoff(settings.sources.umami, now))
-    ingest_sources(spark, settings.lake, Gate("sources"), [dropoff], NOW)
+    ingest_sources(spark, settings.lake, Gate("sources"), [dropoff], [dropoff], NOW)
     found = read(spark, HUMAN_DROPOFF, settings.lake).orderBy("level_index").collect()
     assert [(row["level_index"], row["reached"], row["ended"]) for row in found] == [(0, 10, 4), (1, 6, 0), (2, 6, 3)]
     assert [row["ended_share"] for row in found] == pytest.approx([0.4, 0.0, 0.5])

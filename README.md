@@ -113,9 +113,9 @@ headers. The lakehouse runs as an unprivileged user that owns its data.
 | `gold.sources_status` | `sources-hourly`, `sources-nightly` | `source`, `stream` | Each source's newest load and its records |
 | `gold.quality_reports`, `gold.quality_failures` | every write | | The data-quality report of every silver, gold and live write, and the failed ones again |
 
-Writes use Delta MERGE (newest event wins); the live pulse tables are overwritten. Every write compacts its table
+Writes use Delta MERGE (newest event wins); the live pulse tables are overwritten. Every merge compacts its table
 once it has 50 small files (Delta auto compaction), so a job reads a table across the uplink in a few requests instead
-of one per write since the last night. The nightly `maintenance` job runs
+of one per write since the last night; appends, like the bronze tables and the quality reports, wait for the night. The nightly `maintenance` job runs
 OPTIMIZE, VACUUM and the retention of each layer, starting with the tables that have the fewest files, and leaves the
 tables it has no time for after 30 minutes to a later night. The event schemas are in [EVENTS.md](EVENTS.md).
 

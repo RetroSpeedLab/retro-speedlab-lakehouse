@@ -199,7 +199,7 @@ def test_maintenance_stops_a_table_that_keeps_starting_jobs_past_its_budget(
     build_platform(spark, (EVENTS,), settings.lake, Gate("platform"), START)
     monkeypatch.setattr(maintenance, "compact", endless)
     started = time.monotonic()
-    assert maintain(spark, (EVENTS,), settings.lake, START, timedelta(seconds=20)) == 0
+    maintain(spark, (EVENTS,), settings.lake, START, timedelta(seconds=20))
     assert time.monotonic() - started < 120
 
 

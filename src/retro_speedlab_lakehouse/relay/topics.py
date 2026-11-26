@@ -14,6 +14,8 @@ TIMEOUT_SECONDS = 30.0
 
 
 def admin_created(admin: AdminClient, topics: list[NewTopic]) -> list[str]:
+    if not topics:
+        return []
     futures: dict[str, Future[None]] = admin.create_topics(topics)  # pyright: ignore[reportUnknownVariableType]
     created: list[str] = []
     for name, future in futures.items():

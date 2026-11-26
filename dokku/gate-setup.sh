@@ -44,9 +44,10 @@ sign_in_host() {
         || sudo dokku config:set --no-restart ${BACKEND} SSO_SECRET=\$(openssl rand -hex 32) >/dev/null"
     local hosts
     hosts="$(owner_hosts)"
-    [[ "$(ssh "${MAIN_DOKKU}" config:get "${BACKEND}" SSO_HOSTS)" == "${hosts}" ]] \
-        || ssh "${MAIN_DOKKU}" config:set "${BACKEND}" "SSO_URL=${SSO_URL}" "SSO_OWNER_ID=${OWNER_DISCORD_ID}" \
-            "SSO_HOSTS=${hosts}"
+    [[ "$(ssh "${MAIN_DOKKU}" config:get "${BACKEND}" SSO_HOSTS)" == "${hosts}" ]] && return
+    ssh "${MAIN_DOKKU}" config:set --no-restart "${BACKEND}" "SSO_URL=${SSO_URL}" \
+        "SSO_OWNER_ID=${OWNER_DISCORD_ID}" "SSO_HOSTS=${hosts}"
+    ssh "${MAIN_DOKKU}" ps:rebuild "${BACKEND}"
 }
 
 shared_files() {

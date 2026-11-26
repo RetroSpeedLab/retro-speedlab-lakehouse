@@ -355,13 +355,15 @@ cross-site request except a GET navigation (`$gate_cross_site` in `gate/owner-ga
 | Bugsink | trusts `X-Gate-User` (`gate/bugsink`, set by `DJANGO_SETTINGS_MODULE=gate.settings`) | ingest and the token API under `/api/` |
 | Uptime Kuma | its own auth is off | status pages, push and badge URLs and their assets |
 | Umami | the gate signs in at `/login` and hands the token to the browser | `script.js` and the API under `/api/` |
+| Vaultwarden | only `/admin`, which still asks for its admin token | the web vault and the Bitwarden apps' API |
 
 - `gate/` holds the nginx snippets, one include per tool in `gate/apps` and the Bugsink module;
   `bash dokku/gate-setup.sh APP...` installs them, writes the tools' credentials into root-only nginx includes on Main
   and switches each tool to the gate after its gate is in place.
 - nginx strips `X-Gate-User` from every public path and sets it on the gated ones, so no client can name a user.
 - The backend needs `SSO_URL`, `SSO_SECRET`, `SSO_OWNER_ID` and `SSO_HOSTS` (the tools' hosts on Main and the LAN);
-  Discord must list `https://sso.retrospeedlab.com/callback` as a redirect of the backend's app.
+  Discord must list `https://sso.retrospeedlab.com/callback` as a redirect of the backend's app. The backend bakes its
+  config into its image, so `gate-setup.sh` sets a new host list with `--no-restart` and rebuilds the backend.
 
 ## Alerts
 

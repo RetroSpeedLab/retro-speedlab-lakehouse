@@ -63,7 +63,7 @@ def lake_settings(root: Path) -> LakeSettings:
 @pytest.fixture(scope="session")
 def spark(tmp_path_factory: pytest.TempPathFactory) -> Iterator[SparkSession]:
     settings = SparkSettings(
-        master="local[1]", driver_memory="1g", shuffle_partitions=1, jars_dir=None, packages=[DELTA]
+        master="local[1]", driver_memory="3g", shuffle_partitions=1, jars_dir=None, packages=[DELTA]
     )
     session = spark_session("lakehouse-tests", settings, lake_settings(tmp_path_factory.mktemp("unused")))
     yield session

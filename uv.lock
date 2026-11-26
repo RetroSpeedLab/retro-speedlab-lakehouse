@@ -1523,14 +1523,14 @@ wheels = [
 
 [[package]]
 name = "python-box"
-version = "7.4.1"
+version = "8.0.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/0f/34e7ee0a72f1464b4c7a2e8bafb389f230477256af586bc82bcfad85295a/python_box-7.4.1.tar.gz", hash = "sha256:e412e36c25fca8223560516d53ef6c7993591c3b0ec8bb4ec582bf7defdd79f0", size = 49859, upload-time = "2026-02-21T16:21:16.008Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/0a/0f8c99fd3c0c532450591e7d83cab59df53e0e995e7f97ae1a0eb8c02fa3/python_box-8.0.1.tar.gz", hash = "sha256:425432a41bd16ffdbf2258de86200a7ba8145c28dd49c52c060ecff9786e6b2a", size = 117497, upload-time = "2026-11-13T19:08:47.787Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/d9/d05f317b38b42253422d8483f5d7dc16d382c99ddc253e426639a0f2f235/python_box-7.4.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:dfb91effff00d9e23486c4f0db3b19e03d602ebb7c9e20fc6a287c704fad2552", size = 1849441, upload-time = "2026-02-21T16:21:37.314Z" },
-    { url = "https://files.pythonhosted.org/packages/ba/a3/383eb3d658f36c6e531c8cf1e348ccb4b5031231df4aeb7742bb159a3166/python_box-7.4.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b7f977f00e715b030cee6ffef2322ff8ce100ffbf1dbcc4ef91099c75752d5f8", size = 4485153, upload-time = "2026-02-21T16:26:04.507Z" },
-    { url = "https://files.pythonhosted.org/packages/65/f9/5de3c18415dd6f5286f00e6539c0ae3cceb1c6aaf28d1d5f17b0b568c97f/python_box-7.4.1-cp312-cp312-win_amd64.whl", hash = "sha256:2ca9a18fd15326bc267e9cc7e0e6e3a0cb78d11507940f43f687adf7e156d882", size = 1295520, upload-time = "2026-02-21T16:22:26.192Z" },
-    { url = "https://files.pythonhosted.org/packages/06/a6/5d3f3abf46b37aa44b1f6788d287c8b4f2319b55013191dddf25b9e6d62c/python_box-7.4.1-py3-none-any.whl", hash = "sha256:a3b0d84d003882fb6abe505b1b883b3a5dcbf226b0fe168d24bc5ff75d9826e5", size = 30402, upload-time = "2026-02-21T16:21:14.78Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/6c/26545a5daf78c63169976bbad39854b9a9e8a59a76fe1041dfb1d868c0fe/python_box-8.0.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:6ff5e36b124878bb5370fc9ac4b75432f6e061e60af573e6ddca542489c768b4", size = 2823369, upload-time = "2026-11-13T19:08:25.417Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/b1/f0dc0e369869ffa64c48861c5640b7802bbdf57905b97df8a6ff57be1e83/python_box-8.0.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6c85995e1ddbdc41025f598416913425bbcd00b74cc97c7f7daef84c706c2a0b", size = 6793434, upload-time = "2026-11-13T19:08:27.46Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/43/82dba5624e7a2fa76cb9bbec3362eed483766f6eb17af762dd2ac80e979e/python_box-8.0.1-cp312-cp312-win_amd64.whl", hash = "sha256:965ba032fc8851156cfe9e536be41d71dda5fbecb166bf9bbe1aa46bf7a4ce6c", size = 1917794, upload-time = "2026-11-13T19:08:29.291Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/70/43b9ec98842cc7e193cea467bd27b0b2477d10cdf0224ccdde3dd41f76ac/python_box-8.0.1-py3-none-any.whl", hash = "sha256:16ccdea9fce0c3a1776ee9ce91fba168cc62f6179d7156ea3143dc4d2a44c819", size = 45886, upload-time = "2026-11-13T19:08:46.459Z" },
 ]
 
 [[package]]
@@ -1707,7 +1707,7 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "pyspark", specifier = "==4.1.3" },
     { name = "pyspark-data-quality", specifier = "==0.1.0" },
-    { name = "python-box", specifier = "==7.4.1" },
+    { name = "python-box", specifier = "==8.0.1" },
     { name = "pyxel", specifier = "==3.0.1" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "scipy", specifier = "==1.18.1" },

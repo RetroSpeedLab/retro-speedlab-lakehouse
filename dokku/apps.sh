@@ -5,6 +5,7 @@ readonly MAIN_SHELL=jumphost
 readonly INTERACTIVE_CPU_SHARES=2048
 readonly LAN_DOMAINS=(tools.retrospeedlab.com grafana.retrospeedlab.com)
 readonly SECRET_CHARACTERS='^[A-Za-z0-9._~@+-]+$'
+readonly VAULT="the Default collection of the RetroSpeedLab organization in Vaultwarden"
 APPS_SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly APPS_SCRIPTS
 
@@ -40,6 +41,18 @@ set_once() {
     local app="$1" name="$2" command="$3"
     ssh "${HOME_LAB}" "dokku config:get ${app} ${name} >/dev/null || { value=\$(${command}) && test -n \"\${value}\" \
         && dokku config:set --no-restart ${app} ${name}=\"\${value}\" >/dev/null; }"
+}
+
+vault_step() {
+    local item="$1" app="$2" value="$3"
+    echo "Store ${value} as the vault item ${item} in ${VAULT}; the secrets sync sets ${item%@*} on ${app} within 15 minutes" >&2
+}
+
+require_secret() {
+    local host="$1" app="$2" item="$3" value="$4"
+    ssh "${host}" config:get "${app}" "${item%@*}" >/dev/null && return
+    vault_step "${item}" "${app}" "${value}"
+    exit 1
 }
 
 plain_secret() {

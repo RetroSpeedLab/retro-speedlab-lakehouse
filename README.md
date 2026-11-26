@@ -364,6 +364,7 @@ cross-site request except a GET navigation (`$gate_cross_site` in `gate/owner-ga
 - The backend needs `SSO_URL`, `SSO_SECRET`, `SSO_OWNER_ID` and `SSO_HOSTS` (the tools' hosts on Main and the LAN);
   Discord must list `https://sso.retrospeedlab.com/callback` as a redirect of the backend's app. The backend bakes its
   config into its image, so `gate-setup.sh` sets a new host list with `--no-restart` and rebuilds the backend.
+  `SSO_SECRET` is a vault item.
 
 ## Alerts
 
@@ -386,7 +387,9 @@ stream triggers and sources. Secrets come from the environment:
 | `AIRFLOW__API_AUTH__JWT_SECRET` | Airflow's API |
 | `EXPERIMENTS_DATABASE_PASSWORD` | The experiments Postgres Grafana reads, set by `dokku/grafana-setup.sh` |
 
-`dokku/sources.sh` copies the sources' credentials from the backend's config without printing them.
+Secrets live in Vaultwarden and reach dokku only through the maintainer's secrets sync: a setup script that misses
+one names the vault item to create and stops. Only `dokku/grafana-setup.sh` generates its own, the database and
+Grafana passwords the sync leaves unsynced. `dokku/sources.sh` copies the sources' other settings from the backend.
 
 ## Deploy
 
@@ -399,12 +402,12 @@ bash dokku/lake-setup.sh      # once, Main: the Garage app, storage, domain and 
 bash dokku/lake-deploy.sh     # Main: Garage
 ssh dokku letsencrypt:enable retro-speedlab-lake
 bash dokku/kafka-setup.sh     # once, Home Lab: Kafka
-bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage, limits and upload key
-bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend
+bash dokku/setup.sh           # once, Home Lab: the lakehouse app, storage and limits
+bash dokku/lake-keys.sh       # once: bucket and keys for the lakehouse and the backend, then their vault items
 bash dokku/grafana-setup.sh   # Tempo, the experiments Postgres and Grafana with its dashboards; rerun after a change
 bash dokku/lan-setup.sh       # the LAN proxy, sign-in, certificate, Main's default site and Pi-hole names; safe to rerun
 bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool on Main; no APP only syncs its hosts
-bash dokku/sources.sh         # whenever a source's credentials change
+bash dokku/sources.sh         # whenever a source's settings change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse
 # the stream and relay create missing Kafka topics at every start; `python -m retro_speedlab_lakehouse topics config.yaml` does it by hand

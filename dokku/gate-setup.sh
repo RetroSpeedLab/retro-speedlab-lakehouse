@@ -40,8 +40,7 @@ sign_in_host() {
         ssh "${MAIN_DOKKU}" domains:add "${BACKEND}" "${SSO_DOMAIN}"
         ssh "${MAIN_DOKKU}" letsencrypt:enable "${BACKEND}"
     fi
-    ssh "${MAIN_SHELL}" "sudo dokku config:get ${BACKEND} SSO_SECRET >/dev/null \
-        || sudo dokku config:set --no-restart ${BACKEND} SSO_SECRET=\$(openssl rand -hex 32) >/dev/null"
+    require_secret "${MAIN_DOKKU}" "${BACKEND}" SSO_SECRET "the output of openssl rand -hex 32"
     local hosts
     hosts="$(owner_hosts)"
     [[ "$(ssh "${MAIN_DOKKU}" config:get "${BACKEND}" SSO_HOSTS)" == "${hosts}" ]] && return

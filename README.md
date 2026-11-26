@@ -405,7 +405,7 @@ bash dokku/gate-setup.sh APP... # the owner sign-in in front of each owner tool 
 bash dokku/sources.sh         # whenever a source's credentials change
 bash dokku/wheelhouse.sh      # whenever uv.lock, jars.lock or java.lock change
 bash dokku/deploy.sh retro-speedlab-lakehouse
-ssh dokku-black-omen run retro-speedlab-lakehouse python -m retro_speedlab_lakehouse topics config.yaml
+# the stream and relay create missing Kafka topics at every start; `python -m retro_speedlab_lakehouse topics config.yaml` does it by hand
 bash dokku/hosts-setup.sh     # once: the collector app on both servers, after the topics exist
 bash dokku/hosts-deploy.sh    # the collectors
 ```

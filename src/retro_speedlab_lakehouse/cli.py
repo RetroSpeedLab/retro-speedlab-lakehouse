@@ -7,15 +7,19 @@ from typing import Annotated
 
 import typer
 from loguru import logger
+from pyspark.sql import SparkSession
+from tenacity import RetryCallState, retry, wait_exponential
 
 from retro_speedlab_lakehouse.batch.jobs import run_job
 from retro_speedlab_lakehouse.batch.night import NIGHT_END, NIGHT_START, outside_the_night
 from retro_speedlab_lakehouse.chat.watch import watch_chat
 from retro_speedlab_lakehouse.relay.producer import relay as run_relay
 from retro_speedlab_lakehouse.relay.topics import create_topics
-from retro_speedlab_lakehouse.settings import load_settings
+from retro_speedlab_lakehouse.settings import Settings, load_settings
 from retro_speedlab_lakehouse.spark.session import spark_session
 from retro_speedlab_lakehouse.stream.job import start
+
+RETRY_MAX_SECONDS = 300
 
 app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 
@@ -33,7 +37,9 @@ def stopping(name: str) -> threading.Event:
 
 @app.command()
 def relay(config: Path) -> None:
-    run_relay(load_settings(config), stopping("relay"))
+    settings = load_settings(config)
+    create_topics(settings.kafka)
+    run_relay(settings, stopping("relay"))
 
 
 @app.command()
@@ -46,12 +52,25 @@ def topics(config: Path) -> None:
     create_topics(load_settings(config).kafka)
 
 
+def log_stream_failure(state: RetryCallState) -> None:
+    logger.error(f"The stream failed and restarts in {state.next_action.sleep:.0f}s: {state.outcome.exception()!r}")  # pyright: ignore[reportOptionalMemberAccess]
+
+
+@retry(wait=wait_exponential(max=RETRY_MAX_SECONDS), before_sleep=log_stream_failure)
+def run_stream(spark: SparkSession, settings: Settings) -> None:
+    create_topics(settings.kafka)
+    try:
+        start(spark, settings)
+        spark.streams.awaitAnyTermination()
+    finally:
+        for query in spark.streams.active:
+            query.stop()
+
+
 @app.command()
 def stream(config: Path) -> None:
     settings = load_settings(config)
-    spark = spark_session("lakehouse-stream", settings.spark, settings.lake)
-    start(spark, settings)
-    spark.streams.awaitAnyTermination()
+    run_stream(spark_session("lakehouse-stream", settings.spark, settings.lake), settings)
 
 
 @app.command()

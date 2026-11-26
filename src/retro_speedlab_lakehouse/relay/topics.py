@@ -1,5 +1,6 @@
 from concurrent.futures import Future
 
+from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import NewTopic
 from loguru import logger
@@ -14,9 +15,16 @@ TIMEOUT_SECONDS = 30.0
 
 def admin_created(admin: AdminClient, topics: list[NewTopic]) -> list[str]:
     futures: dict[str, Future[None]] = admin.create_topics(topics)  # pyright: ignore[reportUnknownVariableType]
-    for future in futures.values():
-        future.result()
-    return list(futures)
+    created: list[str] = []
+    for name, future in futures.items():
+        try:
+            future.result()
+        except KafkaException as error:
+            if error.args[0].code() != KafkaError.TOPIC_ALREADY_EXISTS:
+                raise
+            continue
+        created.append(name)
+    return created
 
 
 def create_topics(kafka: KafkaSettings) -> None:

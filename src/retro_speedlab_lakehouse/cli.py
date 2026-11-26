@@ -49,6 +49,7 @@ def topics(config: Path) -> None:
 @app.command()
 def stream(config: Path) -> None:
     settings = load_settings(config)
+    create_topics(settings.kafka)
     spark = spark_session("lakehouse-stream", settings.spark, settings.lake)
     start(spark, settings)
     spark.streams.awaitAnyTermination()

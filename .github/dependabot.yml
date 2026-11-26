@@ -24,18 +24,6 @@ updates:
         update-types:
           - minor
           - patch
-  - package-ecosystem: npm
-    directory: /lan/maintainer
-    schedule:
-      interval: weekly
-      day: monday
-      time: "10:00"
-      timezone: UTC
-    groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
   - package-ecosystem: docker
     directory: /
     schedule:

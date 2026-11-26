@@ -1,0 +1,98 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: pip
+    directory: /hosts
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: npm
+    directory: /lan/maintainer
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /hosts
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /lake
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /lan/placeholder
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: UTC
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch

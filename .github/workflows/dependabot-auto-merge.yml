@@ -1,0 +1,36 @@
+name: Dependabot auto-merge
+
+on: pull_request
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Wait for CI, then squash-merge
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: |
+          for _ in $(seq 12); do
+            run_id=$(gh run list --workflow ci.yml --commit "$HEAD_SHA" --event pull_request --json databaseId --jq '.[0].databaseId')
+            [ -n "$run_id" ] && break
+            sleep 10
+          done
+          gh run watch "$run_id" --exit-status
+          gh pr merge --squash "$PULL_REQUEST_URL"

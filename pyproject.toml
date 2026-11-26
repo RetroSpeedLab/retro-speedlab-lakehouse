@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.27.0"]
+requires = ["hatchling==1.33.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -16,28 +16,28 @@ dependencies = [
     "pyspark-data-quality==0.1.0",
     "experimentation-toolkit==0.2.0",
     "delta-spark==4.4.1",
-    "apache-airflow==3.3.2",
-    "apache-airflow-providers-standard==1.20.1",
-    "confluent-kafka==2.16.0",
+    "apache-airflow==3.4.0",
+    "apache-airflow-providers-standard==1.21.0",
+    "confluent-kafka==2.16.2",
     "httpx==0.28.1",
-    "numpy==2.5.1",
+    "numpy==2.5.5",
     "scipy==1.18.1",
-    "pyxel==3.0.1",
-    "tenacity==9.1.2",
-    "loguru==0.7.3",
-    "pydantic==2.12.5",
+    "pyxel==3.0.4",
+    "tenacity==9.2.1",
+    "loguru==0.8.0",
+    "pydantic==2.14.4",
     "python-box==7.4.1",
-    "pyyaml==6.0.3",
-    "typer==0.20.0",
-    "psycopg[binary]==3.3.8",
+    "pyyaml==6.0.4",
+    "typer==0.29.2",
+    "psycopg[binary]==3.3.9",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest==9.1.1",
-    "ruff==0.15.20",
-    "pyright==1.1.408",
-    "respx==0.22.0",
+    "pytest==9.2.0",
+    "ruff==0.17.6",
+    "pyright==1.1.414",
+    "respx==0.23.1",
 ]
 
 [tool.hatch.build.targets.wheel]
